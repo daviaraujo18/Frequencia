@@ -17,11 +17,19 @@ module Presenca
         punched_at = DateTime.strptime(parts[2], "%d:%m:%Y:%H:%M:%S")
         next unless User.exists?(user_id)
 
+        punch_type = begin
+          PunchTypeService.determine(user_id, punched_at)
+        rescue => e
+          Rails.logger.warn "[PunchTypeService] Erro para user #{user_id}: #{e.message}"
+          nil
+        end
+
         TimeRecord.create!(
           user_id: user_id,
           raw_data: linha,
           punched_at: punched_at,
-          authentication_mode: "biometric"
+          authentication_mode: "biometric",
+          punch_type: punch_type
         )
       end
 

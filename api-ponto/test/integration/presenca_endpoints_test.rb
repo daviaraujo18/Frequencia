@@ -155,4 +155,57 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal "sincronizado", @response.body
   end
+
+  # --- Testes de PunchTypeService integration (Task A.3) ---
+
+  test "POST SincronizarRegistrosPonto assigns punch_type alternating entry/exit" do
+    now = Time.zone.now
+    # 3 records processed in order: earliest first, then middle, then latest
+    line1 = "#{@user.id}-#{(now - 2.hours).strftime("%d:%m:%Y:%H:%M:%S")}"
+    line2 = "#{@user.id}-#{(now - 1.hour).strftime("%d:%m:%Y:%H:%M:%S")}"
+    line3 = "#{@user.id}-#{now.strftime("%d:%m:%Y:%H:%M:%S")}"
+    registros = [line1, line2, line3].join("\n")
+
+    enc = CryptoDes.encrypt(registros)
+    post presenca_ajax_SincronizarRegistrosPonto_url,
+      params: { registros: enc, codAtivacao: "poc-ativacao-001" }
+    assert_response :success
+
+    records = TimeRecord.where(user: @user).order(:punched_at)
+    assert_equal 3, records.size
+    assert_equal "entry", records[0].punch_type
+    assert_equal "exit",  records[1].punch_type
+    assert_equal "entry", records[2].punch_type
+  end
+
+  test "POST SincronizarRegistrosPonto assigns entry when user has no prior records today" do
+    registros = "#{@user.id}-15:07:2026:14:30:45"
+    enc = CryptoDes.encrypt(registros)
+    post presenca_ajax_SincronizarRegistrosPonto_url,
+      params: { registros: enc, codAtivacao: "poc-ativacao-001" }
+    assert_response :success
+
+    record = TimeRecord.last
+    assert_equal "entry", record.punch_type
+  end
+
+  test "POST SincronizarRegistrosPonto nil punch_type does not break sync when service fails" do
+    # Simula falha do service substituindo o método temporariamente
+    original = PunchTypeService.method(:determine)
+    begin
+      PunchTypeService.define_singleton_method(:determine) { |*| raise "Falha simulada" }
+
+      registros = "#{@user.id}-15:07:2026:14:30:45"
+      enc = CryptoDes.encrypt(registros)
+      post presenca_ajax_SincronizarRegistrosPonto_url,
+        params: { registros: enc, codAtivacao: "poc-ativacao-001" }
+      assert_response :success
+      assert_equal "sincronizado", @response.body
+
+      record = TimeRecord.last
+      assert_nil record.punch_type
+    ensure
+      PunchTypeService.define_singleton_method(:determine, &original)
+    end
+  end
 end
