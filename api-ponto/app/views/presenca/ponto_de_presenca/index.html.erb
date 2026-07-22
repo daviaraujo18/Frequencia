@@ -1,86 +1,58 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Ponto de Presenca</title>
-    <script>
-        // Minimal jQuery stub for station compatibility
-        window.jQuery = function(selector) {
-            var el = document.querySelector(selector);
-            return {
-                val: function(v) {
-                    if (v === undefined) return el ? el.value : undefined;
-                    if (el) el.value = v;
-                    return this;
-                },
-                hide: function() { if (el) el.style.display = 'none'; return this; },
-                show: function() { if (el) el.style.display = ''; return this; }
-            };
-        };
-        window.$ = window.jQuery;
-    </script>
-</head>
-<body>
-    <input type="hidden" id="codigoAtivacao" value="">
-    <input type="hidden" id="codigoUnicoMaquina" value="">
-    <input type="hidden" id="digitaisHash" value="">
-    <div id="loading">Carregando...</div>
+<div id="loading">Carregando...</div>
 
-    <script>
-        window.comando = "NADA";
+<script>
+    window.comando = "NADA";
 
-        function removeLoading() {
-            $('#loading').hide();
-        }
+    function removeLoading() {
+        $('#loading').hide();
+    }
 
-        function changeInfoDigital(status, message) {
-            console.log('Digital: ' + status + ' - ' + message);
-        }
+    function changeInfoDigital(status, message) {
+        console.log('Digital: ' + status + ' - ' + message);
+    }
 
-        function atualizaRelogioLocal(horario) {
-            console.log('Horario: ' + horario);
-        }
+    function atualizaRelogioLocal(horario) {
+        console.log('Horario: ' + horario);
+    }
 
-        function lock() {
-            console.log('Lock');
-        }
+    function lock() {
+        console.log('Lock');
+    }
 
-        function unlock() {
-            console.log('Unlock');
-        }
+    function unlock() {
+        console.log('Unlock');
+    }
 
-        function sincronizaPonto(dados, codAtivacao) {
-            console.log('Sincronizando: ' + dados);
-            fetch('/presenca/ajax/SincronizarRegistrosPonto', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'registros=' + encodeURIComponent(dados) + '&codAtivacao=' + encodeURIComponent(codAtivacao)
-            })
-            .then(response => response.text())
-            .then(data => {
-                console.log('Resposta: ' + data);
-                if (data === 'sincronizado') {
-                    alert('Sincronizando');
-                } else {
-                    alert('naosincronizado');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
+    function sincronizaPonto(dados, codAtivacao) {
+        console.log('Sincronizando: ' + dados);
+        fetch('/presenca/ajax/SincronizarRegistrosPonto', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'registros=' + encodeURIComponent(dados) + '&codAtivacao=' + encodeURIComponent(codAtivacao)
+        })
+        .then(response => response.text())
+        .then(data => {
+            console.log('Resposta: ' + data);
+            if (data === 'sincronizado') {
+                alert('Sincronizando');
+            } else {
                 alert('naosincronizado');
-            });
-        }
-
-        $(document).ready(function() {
-            alert('downloadFrequentadores');
-            alert('horarioServidorAtual:<%= Time.current.day %>:<%= Time.current.month %>:<%= Time.current.year %>:<%= Time.current.hour %>:<%= "%02d" % Time.current.min %>');
-
-            setInterval(function() {
-                alert('atualizarRelogioLocal');
-            }, 1000);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('naosincronizado');
         });
-    </script>
-</body>
-</html>
+    }
+
+    $(document).ready(function() {
+        alert('downloadFrequentadores');
+        alert('horarioServidorAtual:<%= Time.current.day %>:<%= Time.current.month %>:<%= Time.current.year %>:<%= Time.current.hour %>:<%= "%02d" % Time.current.min %>');
+
+        setInterval(function() {
+            alert('atualizarRelogioLocal');
+        }, 1000);
+    });
+</script>

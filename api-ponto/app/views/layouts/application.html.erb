@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "application" %>
+  <title>Estação Ponto</title>
+</head>
+<body class="hold-transition sidebar-mini">
+  <div class="wrapper">
+    <!-- Navbar -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+        </li>
+      </ul>
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <span id="relogio" class="nav-link"><%= Time.current.strftime("%H:%M:%S") %></span>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Sidebar -->
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+      <a href="/presenca/PontoDePresenca" class="brand-link">
+        <span class="brand-text fw-light">Estação Ponto</span>
+      </a>
+      <div class="sidebar">
+        <nav class="mt-2">
+          <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+            <li class="nav-item">
+              <a href="/presenca/PontoDePresenca" class="nav-link">
+                <i class="nav-icon fas fa-clock"></i>
+                <p>Ponto de Presença</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link disabled">
+                <i class="nav-icon fas fa-users"></i>
+                <p>Frequentadores</p>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Content Wrapper -->
+    <div class="content-wrapper">
+      <section class="content">
+        <% if notice %>
+          <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <%= notice %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        <% end %>
+        <% if alert %>
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <%= alert %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        <% end %>
+        <%= yield %>
+      </section>
+    </div>
+
+    <!-- Hidden fields for JavaFX bridge -->
+    <input type="hidden" id="codigoAtivacao" value="<%= yield(:codigo_ativacao).presence || "" %>">
+    <input type="hidden" id="codigoUnicoMaquina" value="<%= yield(:codigo_unico_maquina).presence || "" %>">
+    <input type="hidden" id="digitaisHash" value="<%= yield(:digitais_hash).presence || "" %>">
+
+    <%= javascript_importmap_tags "application" %>
+  </div>
+</body>
+</html>
