@@ -6,6 +6,7 @@
 # Rails
 log/
 tmp/
+public/assets/
 vendor/bundle/
 vendor/cache/
 node_modules/
