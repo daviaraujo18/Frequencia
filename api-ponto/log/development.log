@@ -1,0 +1,717 @@
+  [1m[35mSQL (0.6ms)[0m  [1m[35mSET search_path TO public /*application='ApiPonto'*/[0m
+  [1m[35m (1180.7ms)[0m  [1m[35mCREATE DATABASE "api_ponto_development" ENCODING = 'unicode' /*application='ApiPonto'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='ApiPonto'*/[0m
+  [1m[35m (1063.0ms)[0m  [1m[35mCREATE DATABASE "api_ponto_test" ENCODING = 'unicode' /*application='ApiPonto'*/[0m
+  [1m[35m (103.4ms)[0m  [1m[35mCREATE TABLE "schema_migrations" ("version" character varying NOT NULL PRIMARY KEY) /*application='ApiPonto'*/[0m
+  [1m[35m (53.8ms)[0m  [1m[35mCREATE TABLE "ar_internal_metadata" ("key" character varying NOT NULL PRIMARY KEY, "value" character varying, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='ApiPonto'*/[0m
+  [1m[35m (2.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(7924882114928183895) /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.0ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.4ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Create (8.2ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('environment', 'development', '2026-07-21 19:05:03.391534', '2026-07-21 19:05:03.391540') RETURNING "key" /*application='ApiPonto'*/[0m
+Migrating to CreateUsers (20260721190452)
+  [1m[36mTRANSACTION (1.3ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  [1m[35m (35.1ms)[0m  [1m[35mCREATE TABLE "users" ("id" bigserial primary key, "nome_completo" character varying NOT NULL, "username" character varying NOT NULL, "password_digest" character varying NOT NULL, "status" integer DEFAULT 1 NOT NULL, "digitais_hash" text, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='ApiPonto'*/[0m
+  [1m[35m (18.1ms)[0m  [1m[35mCREATE UNIQUE INDEX "index_users_on_username" ON "users" ("username") /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Create (0.5ms)[0m  [1m[32mINSERT INTO "schema_migrations" ("version") VALUES ('20260721190452') RETURNING "version" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (7.5ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[35m (0.7ms)[0m  [1m[34mSELECT pg_advisory_unlock(7924882114928183895) /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+  [1m[35m (0.3ms)[0m  [1m[34mSELECT pg_try_advisory_lock(7924882114928183895) /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.1ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.8ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='ApiPonto'*/[0m
+Migrating to CreateTimeRecords (20260721190532)
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  [1m[35m (19.8ms)[0m  [1m[35mCREATE TABLE "time_records" ("id" bigserial primary key, "user_id" bigint NOT NULL, "raw_data" character varying, "punched_at" timestamp(6), "authentication_mode" character varying, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL, CONSTRAINT "fk_rails_3035fce619"
+FOREIGN KEY ("user_id")
+  REFERENCES "users" ("id")
+) /*application='ApiPonto'*/[0m
+  [1m[35m (5.1ms)[0m  [1m[35mCREATE INDEX "index_time_records_on_user_id" ON "time_records" ("user_id") /*application='ApiPonto'*/[0m
+  [1m[35m (5.7ms)[0m  [1m[35mCREATE INDEX "index_time_records_on_punched_at" ON "time_records" ("punched_at") /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Create (0.3ms)[0m  [1m[32mINSERT INTO "schema_migrations" ("version") VALUES ('20260721190532') RETURNING "version" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (3.3ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[35m (0.4ms)[0m  [1m[34mSELECT pg_advisory_unlock(7924882114928183895) /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:31:in `generate_username'
+  [1m[36mUser Exists? (25.3ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'jose.silva' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:31:in `generate_username'
+  [1m[36mUser Exists? (0.4ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE LOWER("users"."username") = LOWER('jose.silva') LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Create (1.6ms)[0m  [1m[32mINSERT INTO "users" ("nome_completo", "username", "password_digest", "status", "digitais_hash", "created_at", "updated_at") VALUES ('José Silva', 'jose.silva', '$2a$12$d5ACP2sWvIp64qIB0L4cnucToWQY8mjtvMqq7ulyn.bUjc7C1WQKC', 1, NULL, '2026-07-21 19:08:14.274959', '2026-07-21 19:08:14.274959') RETURNING "id" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (2.0ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:31:in `generate_username'
+  [1m[36mUser Exists? (2.5ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'jose.silva' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:31:in `generate_username'
+  [1m[36mUser Exists? (0.4ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'jose.silva.2' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:31:in `generate_username'
+  [1m[36mUser Exists? (0.6ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE LOWER("users"."username") = LOWER('jose.silva.2') LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Create (0.6ms)[0m  [1m[32mINSERT INTO "users" ("nome_completo", "username", "password_digest", "status", "digitais_hash", "created_at", "updated_at") VALUES ('José Silva', 'jose.silva.2', '$2a$12$mIxj571NMiGHVsz27UMVGugJ3oM/Ew4xPVH6IBsZpVDTZElWoK7Wi', 1, NULL, '2026-07-21 19:08:19.692648', '2026-07-21 19:08:19.692648') RETURNING "id" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (2.4ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:31:in `generate_username'
+  [1m[36mUser Exists? (4.7ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'maria.maria' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:31:in `generate_username'
+  [1m[36mUser Exists? (0.5ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE LOWER("users"."username") = LOWER('maria.maria') LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Create (0.5ms)[0m  [1m[32mINSERT INTO "users" ("nome_completo", "username", "password_digest", "status", "digitais_hash", "created_at", "updated_at") VALUES ('Maria', 'maria.maria', '$2a$12$YI1c8L8HqgCgtXnYPyVB5eg90FAk5lMsmcgyJKV.rMXHNm2oXbtWm', 1, NULL, '2026-07-21 19:08:25.229573', '2026-07-21 19:08:25.229573') RETURNING "id" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (2.2ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (3.2ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'maria' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (0.9ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE LOWER("users"."username") = LOWER('maria') LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Create (0.6ms)[0m  [1m[32mINSERT INTO "users" ("nome_completo", "username", "password_digest", "status", "digitais_hash", "created_at", "updated_at") VALUES ('Maria', 'maria', '$2a$12$vWR5L2AHFNxm0F5t6vpVWebgCcumVraC/8KJR52biqnxihzz..etC', 1, NULL, '2026-07-21 19:08:34.630740', '2026-07-21 19:08:34.630740') RETURNING "id" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (3.5ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (1.7ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'joao' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (0.4ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE LOWER("users"."username") = LOWER('joao') LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Create (0.6ms)[0m  [1m[32mINSERT INTO "users" ("nome_completo", "username", "password_digest", "status", "digitais_hash", "created_at", "updated_at") VALUES ('João', 'joao', '$2a$12$3V/UM2FFAqnRVBfLho2qROoxHEXkIDTNC3/4XcH9TqkezaCDDmAIG', 1, NULL, '2026-07-21 19:08:34.968070', '2026-07-21 19:08:34.968070') RETURNING "id" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (2.7ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (0.3ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (3.7ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'ana' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (0.4ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE LOWER("users"."username") = LOWER('ana') LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Create (0.5ms)[0m  [1m[32mINSERT INTO "users" ("nome_completo", "username", "password_digest", "status", "digitais_hash", "created_at", "updated_at") VALUES ('Ana', 'ana', '$2a$12$BjqYHpkLfSsB08cVj0ss8eJT5mXGEaKX7PSkgNneso6KKSKdMNz4G', 1, NULL, '2026-07-21 19:08:40.712314', '2026-07-21 19:08:40.712314') RETURNING "id" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (7.0ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (2.2ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'ana' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (0.3ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'ana.2' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (0.6ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE LOWER("users"."username") = LOWER('ana.2') LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Create (0.4ms)[0m  [1m[32mINSERT INTO "users" ("nome_completo", "username", "password_digest", "status", "digitais_hash", "created_at", "updated_at") VALUES ('Ana', 'ana.2', '$2a$12$Fbik/voSpWeSxCraCfo59uK8ve5d1yMQnUKr973mYfFJ/Dn7hWQyy', 1, NULL, '2026-07-21 19:08:41.020005', '2026-07-21 19:08:41.020005') RETURNING "id" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (2.7ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.9ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+  [1m[36mUser Load (1.1ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."nome_completo" = 'Usuário Teste' LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  [1m[36mUser Exists? (2.3ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'usuario.teste' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (0.8ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE LOWER("users"."username") = LOWER('usuario.teste') LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Create (0.7ms)[0m  [1m[32mINSERT INTO "users" ("nome_completo", "username", "password_digest", "status", "digitais_hash", "created_at", "updated_at") VALUES ('Usuário Teste', 'usuario.teste', '$2a$12$A5/cvNFKrOZcsYzt5M7PFe2qLBu7widMsyg1FNTOw1u.7G8NrHYRC', 1, NULL, '2026-07-21 19:09:07.455046', '2026-07-21 19:09:07.455046') RETURNING "id" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (2.5ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[36mUser Load (0.4ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."nome_completo" = 'João Biométrico' LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (1.8ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'joao.biometrico' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (0.5ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE LOWER("users"."username") = LOWER('joao.biometrico') LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Create (0.5ms)[0m  [1m[32mINSERT INTO "users" ("nome_completo", "username", "password_digest", "status", "digitais_hash", "created_at", "updated_at") VALUES ('João Biométrico', 'joao.biometrico', '$2a$12$MQGQKCLgCVXWPxeb9wyXauS5gJXLGAV0aXKG9cMGiWvb76IHKsWx6', 1, 'FIR_TEXTENCODE_SAMPLE_HASH_1234567890', '2026-07-21 19:09:07.763292', '2026-07-21 19:09:07.763292') RETURNING "id" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (2.5ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[36mUser Load (16.8ms)[0m  [1m[34mSELECT "users".* FROM "users" /*application='ApiPonto'*/[0m
+  [1m[35mSQL (0.3ms)[0m  [1m[35mSET search_path TO public /*application='ApiPonto'*/[0m
+  [1m[35m (69.7ms)[0m  [1m[35mDROP DATABASE IF EXISTS "api_ponto_development" /*application='ApiPonto'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='ApiPonto'*/[0m
+  [1m[35m (129.2ms)[0m  [1m[35mDROP DATABASE IF EXISTS "api_ponto_test" /*application='ApiPonto'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='ApiPonto'*/[0m
+  [1m[35m (681.1ms)[0m  [1m[35mCREATE DATABASE "api_ponto_development" ENCODING = 'unicode' /*application='ApiPonto'*/[0m
+  [1m[35mSQL (0.2ms)[0m  [1m[35mSET search_path TO public /*application='ApiPonto'*/[0m
+  [1m[35m (562.7ms)[0m  [1m[35mCREATE DATABASE "api_ponto_test" ENCODING = 'unicode' /*application='ApiPonto'*/[0m
+  [1m[35mSQL (28.0ms)[0m  [1m[35mCREATE EXTENSION IF NOT EXISTS "plpgsql" SCHEMA pg_catalog /*application='ApiPonto'*/[0m
+  [1m[35m (1.2ms)[0m  [1m[35mDROP TABLE IF EXISTS "time_records" CASCADE /*application='ApiPonto'*/[0m
+  [1m[35m (32.5ms)[0m  [1m[35mCREATE TABLE "time_records" ("id" bigserial primary key, "user_id" bigint NOT NULL, "raw_data" character varying, "punched_at" timestamp(6), "authentication_mode" character varying, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='ApiPonto'*/[0m
+  [1m[35m (13.1ms)[0m  [1m[35mCREATE INDEX "index_time_records_on_punched_at" ON "time_records" ("punched_at") /*application='ApiPonto'*/[0m
+  [1m[35m (15.3ms)[0m  [1m[35mCREATE INDEX "index_time_records_on_user_id" ON "time_records" ("user_id") /*application='ApiPonto'*/[0m
+  [1m[35m (0.3ms)[0m  [1m[35mDROP TABLE IF EXISTS "users" CASCADE /*application='ApiPonto'*/[0m
+  [1m[35m (39.7ms)[0m  [1m[35mCREATE TABLE "users" ("id" bigserial primary key, "nome_completo" character varying NOT NULL, "username" character varying NOT NULL, "password_digest" character varying NOT NULL, "status" integer DEFAULT 1 NOT NULL, "digitais_hash" text, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='ApiPonto'*/[0m
+  [1m[35m (16.7ms)[0m  [1m[35mCREATE UNIQUE INDEX "index_users_on_username" ON "users" ("username") /*application='ApiPonto'*/[0m
+  [1m[35m (9.9ms)[0m  [1m[35mALTER TABLE "time_records" ADD CONSTRAINT "fk_rails_3035fce619"
+FOREIGN KEY ("user_id")
+  REFERENCES "users" ("id")
+ /*application='ApiPonto'*/[0m
+  [1m[35m (26.5ms)[0m  [1m[35mCREATE TABLE "schema_migrations" ("version" character varying NOT NULL PRIMARY KEY) /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+  [1m[35m (4.5ms)[0m  [1m[32mINSERT INTO "schema_migrations" (version) VALUES (20260721190532) /*application='ApiPonto'*/[0m
+  [1m[35m (16.7ms)[0m  [1m[32mINSERT INTO "schema_migrations" (version) VALUES
+(20260721190452); /*application='ApiPonto'*/[0m
+  [1m[35m (39.8ms)[0m  [1m[35mCREATE TABLE "ar_internal_metadata" ("key" character varying NOT NULL PRIMARY KEY, "value" character varying, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (2.0ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Create (4.0ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('environment', 'development', '2026-07-21 19:09:20.053550', '2026-07-21 19:09:20.053558') RETURNING "key" /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.4ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.7ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'schema_sha1' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Create (5.2ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('schema_sha1', '7bf1cc0a261b4a44214bf42c4ab2913777779fcf', '2026-07-21 19:09:20.069644', '2026-07-21 19:09:20.069653') RETURNING "key" /*application='ApiPonto'*/[0m
+  [1m[35mSQL (21.9ms)[0m  [1m[35mCREATE EXTENSION IF NOT EXISTS "plpgsql" SCHEMA pg_catalog /*application='ApiPonto'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[35mDROP TABLE IF EXISTS "time_records" CASCADE /*application='ApiPonto'*/[0m
+  [1m[35m (39.1ms)[0m  [1m[35mCREATE TABLE "time_records" ("id" bigserial primary key, "user_id" bigint NOT NULL, "raw_data" character varying, "punched_at" timestamp(6), "authentication_mode" character varying, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='ApiPonto'*/[0m
+  [1m[35m (16.4ms)[0m  [1m[35mCREATE INDEX "index_time_records_on_punched_at" ON "time_records" ("punched_at") /*application='ApiPonto'*/[0m
+  [1m[35m (15.5ms)[0m  [1m[35mCREATE INDEX "index_time_records_on_user_id" ON "time_records" ("user_id") /*application='ApiPonto'*/[0m
+  [1m[35m (0.3ms)[0m  [1m[35mDROP TABLE IF EXISTS "users" CASCADE /*application='ApiPonto'*/[0m
+  [1m[35m (31.9ms)[0m  [1m[35mCREATE TABLE "users" ("id" bigserial primary key, "nome_completo" character varying NOT NULL, "username" character varying NOT NULL, "password_digest" character varying NOT NULL, "status" integer DEFAULT 1 NOT NULL, "digitais_hash" text, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='ApiPonto'*/[0m
+  [1m[35m (12.9ms)[0m  [1m[35mCREATE UNIQUE INDEX "index_users_on_username" ON "users" ("username") /*application='ApiPonto'*/[0m
+  [1m[35m (4.8ms)[0m  [1m[35mALTER TABLE "time_records" ADD CONSTRAINT "fk_rails_3035fce619"
+FOREIGN KEY ("user_id")
+  REFERENCES "users" ("id")
+ /*application='ApiPonto'*/[0m
+  [1m[35m (28.8ms)[0m  [1m[35mCREATE TABLE "schema_migrations" ("version" character varying NOT NULL PRIMARY KEY) /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+  [1m[35m (6.3ms)[0m  [1m[32mINSERT INTO "schema_migrations" (version) VALUES (20260721190532) /*application='ApiPonto'*/[0m
+  [1m[35m (3.6ms)[0m  [1m[32mINSERT INTO "schema_migrations" (version) VALUES
+(20260721190452); /*application='ApiPonto'*/[0m
+  [1m[35m (24.4ms)[0m  [1m[35mCREATE TABLE "ar_internal_metadata" ("key" character varying NOT NULL PRIMARY KEY, "value" character varying, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.6ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Create (5.5ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('environment', 'development', '2026-07-21 19:09:20.353814', '2026-07-21 19:09:20.353818') RETURNING "key" /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.4ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Update (3.3ms)[0m  [1m[33mUPDATE "ar_internal_metadata" SET "value" = 'test', "updated_at" = '2026-07-21 19:09:20.364416' WHERE "ar_internal_metadata"."key" = 'environment' /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.5ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'schema_sha1' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Create (3.0ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('schema_sha1', '7bf1cc0a261b4a44214bf42c4ab2913777779fcf', '2026-07-21 19:09:20.372900', '2026-07-21 19:09:20.372904') RETURNING "key" /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.0ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+  [1m[36mUser Load (0.8ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."nome_completo" = 'Usuário Teste' LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  [1m[36mUser Exists? (0.4ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'usuario.teste' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (1.3ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE LOWER("users"."username") = LOWER('usuario.teste') LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Create (0.8ms)[0m  [1m[32mINSERT INTO "users" ("nome_completo", "username", "password_digest", "status", "digitais_hash", "created_at", "updated_at") VALUES ('Usuário Teste', 'usuario.teste', '$2a$12$Th/qEiQomD7e8Tw.gL/ucO7weucdFin6XFRJgL9FzullLVU.26sHu', 1, NULL, '2026-07-21 19:09:20.755890', '2026-07-21 19:09:20.755890') RETURNING "id" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (4.2ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[36mUser Load (0.4ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."nome_completo" = 'João Biométrico' LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (0.3ms)[0m  [1m[35mBEGIN /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (1.9ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."username" = 'joao.biometrico' LIMIT 1 /*application='ApiPonto'*/[0m
+  ↳ app/models/user.rb:33:in `generate_username'
+  [1m[36mUser Exists? (0.4ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE LOWER("users"."username") = LOWER('joao.biometrico') LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Create (0.5ms)[0m  [1m[32mINSERT INTO "users" ("nome_completo", "username", "password_digest", "status", "digitais_hash", "created_at", "updated_at") VALUES ('João Biométrico', 'joao.biometrico', '$2a$12$EkqdUPgIPpk2.WdPbNZNUeRxfC3HKyMz3C5ujXfuwEDfJWUzZ/K7i', 1, 'FIR_TEXTENCODE_SAMPLE_HASH_1234567890', '2026-07-21 19:09:21.064107', '2026-07-21 19:09:21.064107') RETURNING "id" /*application='ApiPonto'*/[0m
+  [1m[36mTRANSACTION (2.4ms)[0m  [1m[35mCOMMIT /*application='ApiPonto'*/[0m
+  [1m[35m (0.4ms)[0m  [1m[34mSELECT pg_try_advisory_lock(7924882114928183895) /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.4ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[35m (0.4ms)[0m  [1m[34mSELECT pg_advisory_unlock(7924882114928183895) /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.3ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+  [1m[36mUser Load (0.9ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."nome_completo" = 'Usuário Teste' LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Load (0.4ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."nome_completo" = 'João Biométrico' LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Load (15.0ms)[0m  [1m[34mSELECT "users".* FROM "users" /*application='ApiPonto'*/[0m
+Started GET "/up" for 127.0.0.1 at 2026-07-21 16:11:33 -0300
+  [1m[36mActiveRecord::SchemaMigration Load (0.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+Processing by Rails::HealthController#show as */*
+  Rendering html template
+  Rendered html template (Duration: 0.3ms | GC: 0.0ms)
+Completed 200 OK in 16ms (Views: 11.8ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 1.2ms)
+
+
+Started GET "/presenca/CarregaRelogioAtual" for 127.0.0.1 at 2026-07-21 16:11:36 -0300
+Processing by Presenca::CarregaRelogioAtualController#show as */*
+Completed 204 No Content in 1ms (ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.7ms)
+
+
+Started GET "/presenca/InicializarPonto?codigoAtivacao=poc-ativacao-001&codigoUnicoMaquina=teste" for 127.0.0.1 at 2026-07-21 16:11:36 -0300
+Processing by Presenca::InicializarPontoController#show as */*
+  Parameters: {"codigoAtivacao"=>"poc-ativacao-001", "codigoUnicoMaquina"=>"teste"}
+Completed 204 No Content in 0ms (ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/" for 127.0.0.1 at 2026-07-21 16:11:49 -0300
+Processing by Rails::WelcomeController#index as HTML
+  Rendering /home/wilker/.asdf/installs/ruby/3.3.3/lib/ruby/gems/3.3.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb
+  Rendered /home/wilker/.asdf/installs/ruby/3.3.3/lib/ruby/gems/3.3.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb (Duration: 1.8ms | GC: 0.0ms)
+Completed 200 OK in 15ms (Views: 3.6ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.8ms)
+
+
+Started GET "/icon.png" for 127.0.0.1 at 2026-07-21 16:11:50 -0300
+  
+ActionController::RoutingError (No route matches [GET] "/icon.png"):
+  
+Started GET "/presenca/CarregaRelogioAtual" for 127.0.0.1 at 2026-07-21 16:19:35 -0300
+Processing by Presenca::CarregaRelogioAtualController#show as */*
+Completed 200 OK in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/ValidarFrequentador?loginAccessKey=C8uw0ilEQgD8Ofy8TM1Tzw&plainPassword=[FILTERED]&codAtivacao=poc-ativacao-001" for 127.0.0.1 at 2026-07-21 16:19:48 -0300
+Processing by Presenca::ValidarFrequentadorController#show as */*
+  Parameters: {"loginAccessKey"=>"C8uw0ilEQgD8Ofy8TM1Tzw", "plainPassword"=>"[FILTERED]", "codAtivacao"=>"poc-ativacao-001"}
+Completed 200 OK in 1ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/ValidarFrequentador?loginAccessKey=C8uw0ilEQgD8Ofy8TM1Tzw&plainPassword=[FILTERED]&codAtivacao=poc-ativacao-001" for 127.0.0.1 at 2026-07-21 16:19:48 -0300
+Processing by Presenca::ValidarFrequentadorController#show as */*
+  Parameters: {"loginAccessKey"=>"C8uw0ilEQgD8Ofy8TM1Tzw", "plainPassword"=>"[FILTERED]", "codAtivacao"=>"poc-ativacao-001"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/ValidarFrequentador?loginAccessKey=C8uw0ilEQgD8Ofy8TM1Tzw&plainPassword=[FILTERED]&codAtivacao=errado" for 127.0.0.1 at 2026-07-21 16:19:48 -0300
+Processing by Presenca::ValidarFrequentadorController#show as */*
+  Parameters: {"loginAccessKey"=>"C8uw0ilEQgD8Ofy8TM1Tzw", "plainPassword"=>"[FILTERED]", "codAtivacao"=>"errado"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/" for 127.0.0.1 at 2026-07-21 16:19:51 -0300
+Processing by Rails::WelcomeController#index as HTML
+  Rendering /home/wilker/.asdf/installs/ruby/3.3.3/lib/ruby/gems/3.3.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb
+  Rendered /home/wilker/.asdf/installs/ruby/3.3.3/lib/ruby/gems/3.3.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb (Duration: 2.7ms | GC: 0.0ms)
+Completed 200 OK in 6ms (Views: 4.3ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+  [1m[36mUser Load (1.0ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."username" = 'usuario.teste' LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Load (1.3ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."username" = 'usuario.teste' LIMIT 1 /*application='ApiPonto'*/[0m
+Started GET "/presenca/ValidarFrequentador?loginAccessKey=C8uw0ilEQgD8Ofy8TM1Tzw&plainPassword=[FILTERED]&codAtivacao=poc-ativacao-001" for 127.0.0.1 at 2026-07-21 16:22:13 -0300
+  [1m[36mActiveRecord::SchemaMigration Load (1.3ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+Processing by Presenca::ValidarFrequentadorController#show as */*
+  Parameters: {"loginAccessKey"=>"C8uw0ilEQgD8Ofy8TM1Tzw", "plainPassword"=>"[FILTERED]", "codAtivacao"=>"poc-ativacao-001"}
+  [1m[36mUser Load (0.8ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."username" = 'usuario.teste' LIMIT 1 /*action='show',application='ApiPonto',controller='validar_frequentador'*/[0m
+  ↳ app/controllers/presenca/validar_frequentador_controller.rb:11:in `show'
+Completed 200 OK in 391ms (Views: 0.4ms | ActiveRecord: 14.3ms (1 query, 0 cached) | GC: 28.8ms)
+
+
+Started GET "/presenca/ValidarFrequentador?loginAccessKey=C8uw0ilEQgD8Ofy8TM1Tzw&plainPassword=[FILTERED]&codAtivacao=poc-ativacao-001" for 127.0.0.1 at 2026-07-21 16:22:18 -0300
+Processing by Presenca::ValidarFrequentadorController#show as */*
+  Parameters: {"loginAccessKey"=>"C8uw0ilEQgD8Ofy8TM1Tzw", "plainPassword"=>"[FILTERED]", "codAtivacao"=>"poc-ativacao-001"}
+  [1m[36mUser Load (0.5ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."username" = 'usuario.teste' LIMIT 1 /*action='show',application='ApiPonto',controller='validar_frequentador'*/[0m
+  ↳ app/controllers/presenca/validar_frequentador_controller.rb:11:in `show'
+Completed 200 OK in 300ms (Views: 0.2ms | ActiveRecord: 0.5ms (1 query, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/ValidarFrequentador?loginAccessKey=C8uw0ilEQgD8Ofy8TM1Tzw&plainPassword=[FILTERED]&codAtivacao=poc-ativacao-001" for 127.0.0.1 at 2026-07-21 16:22:18 -0300
+Processing by Presenca::ValidarFrequentadorController#show as */*
+  Parameters: {"loginAccessKey"=>"C8uw0ilEQgD8Ofy8TM1Tzw", "plainPassword"=>"[FILTERED]", "codAtivacao"=>"poc-ativacao-001"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/ValidarFrequentador?loginAccessKey=C8uw0ilEQgD8Ofy8TM1Tzw&plainPassword=[FILTERED]&codAtivacao=errado" for 127.0.0.1 at 2026-07-21 16:22:18 -0300
+Processing by Presenca::ValidarFrequentadorController#show as */*
+  Parameters: {"loginAccessKey"=>"C8uw0ilEQgD8Ofy8TM1Tzw", "plainPassword"=>"[FILTERED]", "codAtivacao"=>"errado"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/InicializarPonto?codigoAtivacao=poc-ativacao-001&codigoUnicoMaquina=ABC123" for 127.0.0.1 at 2026-07-21 16:22:28 -0300
+Processing by Presenca::InicializarPontoController#show as */*
+  Parameters: {"codigoAtivacao"=>"poc-ativacao-001", "codigoUnicoMaquina"=>"ABC123"}
+Completed 200 OK in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/InicializarPonto" for 127.0.0.1 at 2026-07-21 16:22:28 -0300
+Processing by Presenca::InicializarPontoController#show as */*
+Completed 200 OK in 2ms (Views: 1.9ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 1.5ms)
+
+
+Started GET "/presenca/DynHashFrequentadoresEstacao" for 127.0.0.1 at 2026-07-21 16:23:34 -0300
+Processing by Presenca::DynHashFrequentadoresEstacaoController#show as */*
+  [1m[36mUser Load (0.5ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."digitais_hash" IS NOT NULL /*action='show',application='ApiPonto',controller='dyn_hash_frequentadores_estacao'*/[0m
+  ↳ app/services/frequentadores_serializer.rb:6:in `map'
+Completed 200 OK in 25ms (Views: 0.2ms | ActiveRecord: 8.0ms (1 query, 0 cached) | GC: 0.9ms)
+
+
+  [1m[36mUser Count (0.6ms)[0m  [1m[34mSELECT COUNT(*) FROM "users" WHERE "users"."status" = 1 AND "users"."digitais_hash" IS NOT NULL /*application='ApiPonto'*/[0m
+  [1m[36mUser Load (0.8ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."digitais_hash" IS NOT NULL /*application='ApiPonto'*/[0m
+  ↳ app/services/frequentadores_serializer.rb:6:in `map'
+Started GET "/presenca/DynFrequentadoresEstacao" for 127.0.0.1 at 2026-07-21 16:24:19 -0300
+Processing by Presenca::DynFrequentadoresEstacaoController#index as */*
+  [1m[36mUser Load (0.6ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."digitais_hash" IS NOT NULL /*action='index',application='ApiPonto',controller='dyn_frequentadores_estacao'*/[0m
+  ↳ app/services/frequentadores_serializer.rb:6:in `map'
+Completed 200 OK in 26ms (Views: 0.2ms | ActiveRecord: 9.2ms (1 query, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/DynFrequentadoresEstacao" for 127.0.0.1 at 2026-07-21 16:24:34 -0300
+Processing by Presenca::DynFrequentadoresEstacaoController#index as HTML
+  [1m[36mUser Load (0.5ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."digitais_hash" IS NOT NULL /*action='index',application='ApiPonto',controller='dyn_frequentadores_estacao'*/[0m
+  ↳ app/services/frequentadores_serializer.rb:6:in `map'
+Completed 200 OK in 4ms (Views: 0.1ms | ActiveRecord: 0.5ms (1 query, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/presenca/ajax/SincronizarRegistrosPonto" for 127.0.0.1 at 2026-07-21 16:25:40 -0300
+Processing by Presenca::SincronizarRegistrosPontoController#create as */*
+  Parameters: {"registros"=>"    Any part of Rails can be skipped during app generation.", "codAtivacao"=>"poc-ativacao-001"}
+Completed 200 OK in 1ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/presenca/ajax/SincronizarRegistrosPonto" for 127.0.0.1 at 2026-07-21 16:25:51 -0300
+Processing by Presenca::SincronizarRegistrosPontoController#create as */*
+  Parameters: {"registros"=>"VaRpOTiQpAotrox8EVqVSEhzlrhI_W7b8Dxne44BLseS5muJbeIXufdp1AcPi3qH", "codAtivacao"=>"poc-ativacao-001"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+  [1m[36mTimeRecord Load (22.9ms)[0m  [1m[34mSELECT "time_records".* FROM "time_records" /*application='ApiPonto'*/[0m
+  [1m[36mUser Exists? (0.6ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."id" = 1 LIMIT 1 /*application='ApiPonto'*/[0m
+  [1m[36mUser Load (0.3ms)[0m  [1m[34mSELECT "users".* FROM "users" /*application='ApiPonto'*/[0m
+Started POST "/presenca/ajax/SincronizarRegistrosPonto" for 127.0.0.1 at 2026-07-21 16:26:12 -0300
+Processing by Presenca::SincronizarRegistrosPontoController#create as */*
+  Parameters: {"registros"=>"VaRpOTiQpAotrox8EVqVSC5aoqsv7jvju8R4XwzQsSLij0878WL1wiPdSzJroovZ", "codAtivacao"=>"poc-ativacao-001"}
+  [1m[36mUser Exists? (0.5ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."id" = 1 LIMIT 1 /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:17:in `block in create'
+  [1m[36mTRANSACTION (0.4ms)[0m  [1m[35mBEGIN /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:19:in `block in create'
+  [1m[36mUser Load (3.5ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."id" = 1 LIMIT 1 /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:19:in `block in create'
+  [1m[36mTimeRecord Create (2.8ms)[0m  [1m[32mINSERT INTO "time_records" ("user_id", "raw_data", "punched_at", "authentication_mode", "created_at", "updated_at") VALUES (1, '1-15:07:2026:14:30:45', '2026-07-15 14:30:45', 'biometric', '2026-07-21 19:26:12.972565', '2026-07-21 19:26:12.972565') RETURNING "id" /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:19:in `block in create'
+  [1m[36mTRANSACTION (2.3ms)[0m  [1m[35mCOMMIT /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:19:in `block in create'
+  [1m[36mUser Exists? (0.4ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."id" = 2 LIMIT 1 /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:17:in `block in create'
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:19:in `block in create'
+  [1m[36mUser Load (14.8ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."id" = 2 LIMIT 1 /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:19:in `block in create'
+  [1m[36mTimeRecord Create (0.7ms)[0m  [1m[32mINSERT INTO "time_records" ("user_id", "raw_data", "punched_at", "authentication_mode", "created_at", "updated_at") VALUES (2, '2-15:07:2026:14:31:00', '2026-07-15 14:31:00', 'biometric', '2026-07-21 19:26:13.003441', '2026-07-21 19:26:13.003441') RETURNING "id" /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:19:in `block in create'
+  [1m[36mTRANSACTION (3.4ms)[0m  [1m[35mCOMMIT /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:19:in `block in create'
+Completed 200 OK in 113ms (Views: 0.1ms | ActiveRecord: 42.3ms (6 queries, 0 cached) | GC: 12.8ms)
+
+
+  [1m[36mTimeRecord Load (16.1ms)[0m  [1m[34mSELECT "time_records".* FROM "time_records" /*application='ApiPonto'*/[0m
+Started GET "/presenca/CarregaRelogioAtual" for 127.0.0.1 at 2026-07-21 16:43:30 -0300
+  [1m[36mActiveRecord::SchemaMigration Load (0.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+Processing by Presenca::CarregaRelogioAtualController#show as */*
+Completed 200 OK in 11ms (Views: 0.3ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/CarregaRelogioAtual" for 127.0.0.1 at 2026-07-21 16:44:17 -0300
+  [1m[36mActiveRecord::SchemaMigration Load (0.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+Processing by Presenca::CarregaRelogioAtualController#show as */*
+Completed 200 OK in 9ms (Views: 0.3ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/DynHashFrequentadoresEstacao" for 127.0.0.1 at 2026-07-21 16:44:17 -0300
+Processing by Presenca::DynHashFrequentadoresEstacaoController#show as */*
+  [1m[36mUser Load (0.6ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."digitais_hash" IS NOT NULL /*action='show',application='ApiPonto',controller='dyn_hash_frequentadores_estacao'*/[0m
+  ↳ app/services/frequentadores_serializer.rb:6:in `map'
+Completed 200 OK in 96ms (Views: 0.7ms | ActiveRecord: 13.9ms (1 query, 0 cached) | GC: 32.6ms)
+
+
+Started GET "/presenca/DynFrequentadoresEstacao" for 127.0.0.1 at 2026-07-21 16:44:17 -0300
+Processing by Presenca::DynFrequentadoresEstacaoController#index as */*
+  [1m[36mUser Load (0.7ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."digitais_hash" IS NOT NULL /*action='index',application='ApiPonto',controller='dyn_frequentadores_estacao'*/[0m
+  ↳ app/services/frequentadores_serializer.rb:6:in `map'
+Completed 200 OK in 4ms (Views: 0.2ms | ActiveRecord: 0.6ms (1 query, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/InicializarPonto?codigoAtivacao=SistemaOperacionalNaoSuportado&codigoUnicoMaquina=test" for 127.0.0.1 at 2026-07-21 16:44:17 -0300
+Processing by Presenca::InicializarPontoController#show as */*
+  Parameters: {"codigoAtivacao"=>"SistemaOperacionalNaoSuportado", "codigoUnicoMaquina"=>"test"}
+Completed 200 OK in 1ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/ValidarFrequentador?loginAccessKey=C8uw0ilEQgD8Ofy8TM1Tzw&plainPassword=[FILTERED]&codAtivacao=SistemaOperacionalNaoSuportado" for 127.0.0.1 at 2026-07-21 16:44:29 -0300
+Processing by Presenca::ValidarFrequentadorController#show as */*
+  Parameters: {"loginAccessKey"=>"C8uw0ilEQgD8Ofy8TM1Tzw", "plainPassword"=>"[FILTERED]", "codAtivacao"=>"SistemaOperacionalNaoSuportado"}
+  [1m[36mUser Load (1.4ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."username" = 'usuario.teste' LIMIT 1 /*action='show',application='ApiPonto',controller='validar_frequentador'*/[0m
+  ↳ app/controllers/presenca/validar_frequentador_controller.rb:11:in `show'
+Completed 200 OK in 304ms (Views: 0.2ms | ActiveRecord: 1.4ms (1 query, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/ValidarFrequentador?loginAccessKey=C8uw0ilEQgD8Ofy8TM1Tzw&plainPassword=[FILTERED]&codAtivacao=SistemaOperacionalNaoSuportado" for 127.0.0.1 at 2026-07-21 16:44:29 -0300
+Processing by Presenca::ValidarFrequentadorController#show as */*
+  Parameters: {"loginAccessKey"=>"C8uw0ilEQgD8Ofy8TM1Tzw", "plainPassword"=>"[FILTERED]", "codAtivacao"=>"SistemaOperacionalNaoSuportado"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/ValidarFrequentador?loginAccessKey=C8uw0ilEQgD8Ofy8TM1Tzw&plainPassword=[FILTERED]&codAtivacao=invalid" for 127.0.0.1 at 2026-07-21 16:44:29 -0300
+Processing by Presenca::ValidarFrequentadorController#show as */*
+  Parameters: {"loginAccessKey"=>"C8uw0ilEQgD8Ofy8TM1Tzw", "plainPassword"=>"[FILTERED]", "codAtivacao"=>"invalid"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/CarregaRelogioAtual" for 127.0.0.1 at 2026-07-21 16:47:39 -0300
+Processing by Presenca::CarregaRelogioAtualController#show as HTML
+Completed 200 OK in 3ms (Views: 2.3ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 1.9ms)
+
+
+Started GET "/presenca/" for 127.0.0.1 at 2026-07-21 16:47:44 -0300
+  
+ActionController::RoutingError (No route matches [GET] "/presenca"):
+  
+Started GET "/presenca/CarregaRelogioAtual" for 127.0.0.1 at 2026-07-21 16:48:11 -0300
+Processing by Presenca::CarregaRelogioAtualController#show as HTML
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/favicon.ico" for 127.0.0.1 at 2026-07-21 16:48:11 -0300
+  
+ActionController::RoutingError (No route matches [GET] "/favicon.ico"):
+  
+Started GET "/presenca/CarregaRelogioAtual" for 127.0.0.1 at 2026-07-21 16:48:34 -0300
+Processing by Presenca::CarregaRelogioAtualController#show as HTML
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/" for 127.0.0.1 at 2026-07-21 16:48:54 -0300
+Processing by Rails::WelcomeController#index as HTML
+  Rendering /home/wilker/.asdf/installs/ruby/3.3.3/lib/ruby/gems/3.3.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb
+  Rendered /home/wilker/.asdf/installs/ruby/3.3.3/lib/ruby/gems/3.3.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb (Duration: 0.7ms | GC: 0.0ms)
+Completed 200 OK in 7ms (Views: 2.9ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 3.5ms)
+
+
+Started GET "/presenca/CarregaRelogioAtual" for 127.0.0.1 at 2026-07-21 17:00:22 -0300
+  [1m[36mActiveRecord::SchemaMigration Load (0.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+Processing by Presenca::CarregaRelogioAtualController#show as */*
+Completed 200 OK in 7ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/IniciarPonto" for 127.0.0.1 at 2026-07-21 17:00:22 -0300
+Processing by Presenca::IniciarPontoController#show as */*
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/InicializarPonto?codigoAtivacao=SistemaOperacionalNaoSuportado&codigoUnicoMaquina=test" for 127.0.0.1 at 2026-07-21 17:00:22 -0300
+Processing by Presenca::InicializarPontoController#show as */*
+  Parameters: {"codigoAtivacao"=>"SistemaOperacionalNaoSuportado", "codigoUnicoMaquina"=>"test"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/PontoDePresenca" for 127.0.0.1 at 2026-07-21 17:00:22 -0300
+Processing by Presenca::PontoDePresencaController#show as */*
+Completed 200 OK in 1ms (Views: 0.4ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/DynHashFrequentadoresEstacao" for 127.0.0.1 at 2026-07-21 17:00:22 -0300
+Processing by Presenca::DynHashFrequentadoresEstacaoController#show as */*
+  [1m[36mUser Load (1.0ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."digitais_hash" IS NOT NULL /*action='show',application='ApiPonto',controller='dyn_hash_frequentadores_estacao'*/[0m
+  ↳ app/services/frequentadores_serializer.rb:6:in `map'
+Completed 200 OK in 81ms (Views: 0.2ms | ActiveRecord: 25.2ms (1 query, 0 cached) | GC: 3.9ms)
+
+
+Started GET "/presenca/DynFrequentadoresEstacao" for 127.0.0.1 at 2026-07-21 17:00:22 -0300
+Processing by Presenca::DynFrequentadoresEstacaoController#index as */*
+  [1m[36mUser Load (0.6ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."status" = 1 AND "users"."digitais_hash" IS NOT NULL /*action='index',application='ApiPonto',controller='dyn_frequentadores_estacao'*/[0m
+  ↳ app/services/frequentadores_serializer.rb:6:in `map'
+Completed 200 OK in 4ms (Views: 0.2ms | ActiveRecord: 0.5ms (1 query, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/AdicioneEstacao?codAtivacao=SistemaOperacionalNaoSuportado&versao=1.2&estadoEstacao=FUNCIONANDO" for 127.0.0.1 at 2026-07-21 17:00:22 -0300
+Processing by Presenca::AdicioneEstacaoController#show as */*
+  Parameters: {"codAtivacao"=>"SistemaOperacionalNaoSuportado", "versao"=>"1.2", "estadoEstacao"=>"FUNCIONANDO"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/PontoDePresenca" for 127.0.0.1 at 2026-07-21 17:00:27 -0300
+Processing by Presenca::PontoDePresencaController#show as */*
+Completed 200 OK in 3ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 1.7ms)
+
+
+Started GET "/presenca/PontoDePresenca" for 127.0.0.1 at 2026-07-21 17:00:52 -0300
+Processing by Presenca::PontoDePresencaController#show as HTML
+Completed 200 OK in 2ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/PontoDePresenca" for 127.0.0.1 at 2026-07-21 17:01:19 -0300
+Processing by Presenca::PontoDePresencaController#show as */*
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/PontoDePresenca" for 127.0.0.1 at 2026-07-21 17:01:29 -0300
+Processing by Presenca::PontoDePresencaController#show as */*
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/PontoDePresenca" for 127.0.0.1 at 2026-07-21 17:01:56 -0300
+Processing by Presenca::PontoDePresencaController#show as */*
+Completed 200 OK in 0ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/PontoDePresenca" for 127.0.0.1 at 2026-07-21 17:02:29 -0300
+Processing by Presenca::PontoDePresencaController#show as */*
+Completed 200 OK in 2ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started POST "/presenca/ajax/SincronizarRegistrosPonto" for 127.0.0.1 at 2026-07-21 17:02:36 -0300
+Processing by Presenca::SincronizarRegistrosPontoController#create as */*
+  Parameters: {"registros"=>"1-15:07:2026:14:30:45", "codAtivacao"=>"SistemaOperacionalNaoSuportado"}
+  [1m[36mUser Exists? (1.5ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."id" = 1 LIMIT 1 /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:18:in `block in create'
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:20:in `block in create'
+  [1m[36mUser Load (3.0ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."id" = 1 LIMIT 1 /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:20:in `block in create'
+  [1m[36mTimeRecord Create (0.9ms)[0m  [1m[32mINSERT INTO "time_records" ("user_id", "raw_data", "punched_at", "authentication_mode", "created_at", "updated_at") VALUES (1, '1-15:07:2026:14:30:45', '2026-07-15 14:30:45', 'biometric', '2026-07-21 20:02:36.632476', '2026-07-21 20:02:36.632476') RETURNING "id" /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:20:in `block in create'
+  [1m[36mTRANSACTION (2.2ms)[0m  [1m[35mCOMMIT /*action='create',application='ApiPonto',controller='sincronizar_registros_ponto'*/[0m
+  ↳ app/controllers/presenca/sincronizar_registros_ponto_controller.rb:20:in `block in create'
+Completed 200 OK in 68ms (Views: 0.1ms | ActiveRecord: 18.3ms (3 queries, 0 cached) | GC: 0.0ms)
+
+
+  [1m[36mTimeRecord Load (3.2ms)[0m  [1m[34mSELECT "time_records".* FROM "time_records" ORDER BY "time_records"."id" DESC LIMIT 3 /*application='ApiPonto'*/[0m
+Started GET "/presenca/CarregaRelogioAtual" for 127.0.0.1 at 2026-07-21 17:08:30 -0300
+Processing by Presenca::CarregaRelogioAtualController#show as */*
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+[ActionDispatch::HostAuthorization::DefaultResponseApp] Blocked hosts: host.docker.internal:3000
+Started GET "/presenca/CarregaRelogioAtual" for 172.17.0.2 at 2026-07-21 17:10:09 -0300
+  [1m[36mActiveRecord::SchemaMigration Load (0.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+Processing by Presenca::CarregaRelogioAtualController#show as */*
+Completed 200 OK in 6ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/CarregaRelogioAtual" for 172.19.0.2 at 2026-07-21 17:11:44 -0300
+Processing by Presenca::CarregaRelogioAtualController#show as HTML
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/IniciarPonto" for 172.19.0.2 at 2026-07-21 17:11:44 -0300
+Processing by Presenca::IniciarPontoController#show as HTML
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/InicializarPonto?codigoAtivacao=SistemaOperacionalNaoSuportado&codigoUnicoMaquina=b69ca80d-f318-4872-97dd-103ed19857a2" for 172.19.0.2 at 2026-07-21 17:11:45 -0300
+Processing by Presenca::InicializarPontoController#show as HTML
+  Parameters: {"codigoAtivacao"=>"SistemaOperacionalNaoSuportado", "codigoUnicoMaquina"=>"b69ca80d-f318-4872-97dd-103ed19857a2"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/Frequentador?type=explore" for 172.19.0.2 at 2026-07-21 17:12:31 -0300
+Processing by Presenca::FrequentadorController#show as HTML
+  Parameters: {"type"=>"explore"}
+Completed 200 OK in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/Frequentador?type=explore" for 172.19.0.2 at 2026-07-21 17:12:32 -0300
+Processing by Presenca::FrequentadorController#show as HTML
+  Parameters: {"type"=>"explore"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/Frequentador?type=explore" for 172.19.0.2 at 2026-07-21 17:12:32 -0300
+Processing by Presenca::FrequentadorController#show as HTML
+  Parameters: {"type"=>"explore"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/Frequentador?type=explore" for 172.19.0.2 at 2026-07-21 17:12:33 -0300
+Processing by Presenca::FrequentadorController#show as HTML
+  Parameters: {"type"=>"explore"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/Frequentador?type=explore" for 172.19.0.2 at 2026-07-21 17:12:33 -0300
+Processing by Presenca::FrequentadorController#show as HTML
+  Parameters: {"type"=>"explore"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/Frequentador?type=explore" for 172.19.0.2 at 2026-07-21 17:12:33 -0300
+Processing by Presenca::FrequentadorController#show as HTML
+  Parameters: {"type"=>"explore"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/Frequentador?type=explore" for 172.19.0.2 at 2026-07-21 17:12:34 -0300
+Processing by Presenca::FrequentadorController#show as HTML
+  Parameters: {"type"=>"explore"}
+Completed 200 OK in 0ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/Frequentador?type=explore" for 172.19.0.2 at 2026-07-21 17:12:38 -0300
+Processing by Presenca::FrequentadorController#show as HTML
+  Parameters: {"type"=>"explore"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/Frequentador?type=explore" for 172.19.0.2 at 2026-07-21 17:12:55 -0300
+Processing by Presenca::FrequentadorController#show as HTML
+  Parameters: {"type"=>"explore"}
+Completed 200 OK in 2ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 1.2ms)
+
+
+Started GET "/" for 127.0.0.1 at 2026-07-21 17:13:07 -0300
+Processing by Rails::WelcomeController#index as HTML
+  Rendering /home/wilker/.asdf/installs/ruby/3.3.3/lib/ruby/gems/3.3.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb
+  Rendered /home/wilker/.asdf/installs/ruby/3.3.3/lib/ruby/gems/3.3.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb (Duration: 3.5ms | GC: 1.8ms)
+Completed 200 OK in 33ms (Views: 23.0ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 12.2ms)
+
+
+Started GET "/presenca/PontoDePresenca" for 127.0.0.1 at 2026-07-21 17:15:57 -0300
+Processing by Presenca::PontoDePresencaController#show as */*
+Completed 200 OK in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/" for 127.0.0.1 at 2026-07-21 17:16:29 -0300
+Processing by Rails::WelcomeController#index as HTML
+  Rendering /home/wilker/.asdf/installs/ruby/3.3.3/lib/ruby/gems/3.3.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb
+  Rendered /home/wilker/.asdf/installs/ruby/3.3.3/lib/ruby/gems/3.3.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb (Duration: 5.3ms | GC: 0.0ms)
+Completed 200 OK in 8ms (Views: 6.6ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/InicializarPonto?codigoAtivacao=test&codigoUnicoMaquina=test" for 127.0.0.1 at 2026-07-21 17:16:54 -0300
+Processing by Presenca::InicializarPontoController#show as */*
+  Parameters: {"codigoAtivacao"=>"test", "codigoUnicoMaquina"=>"test"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started HEAD "/presenca/InicializarPonto?codigoAtivacao=test&codigoUnicoMaquina=test" for 127.0.0.1 at 2026-07-21 17:18:06 -0300
+Processing by Presenca::InicializarPontoController#show as */*
+  Parameters: {"codigoAtivacao"=>"test", "codigoUnicoMaquina"=>"test"}
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started HEAD "/presenca/IniciarPonto" for 127.0.0.1 at 2026-07-21 17:18:42 -0300
+Processing by Presenca::IniciarPontoController#show as */*
+Completed 200 OK in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started HEAD "/presenca/InicializarPonto?codigoAtivacao=test&codigoUnicoMaquina=test" for 127.0.0.1 at 2026-07-21 17:18:42 -0300
+Processing by Presenca::InicializarPontoController#show as */*
+  Parameters: {"codigoAtivacao"=>"test", "codigoUnicoMaquina"=>"test"}
+Completed 200 OK in 0ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started HEAD "/presenca/PontoDePresenca" for 127.0.0.1 at 2026-07-21 17:18:42 -0300
+Processing by Presenca::PontoDePresencaController#show as */*
+Completed 200 OK in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started HEAD "/presenca/Frequentador?type=explore" for 127.0.0.1 at 2026-07-21 17:18:42 -0300
+Processing by Presenca::FrequentadorController#show as */*
+  Parameters: {"type"=>"explore"}
+Completed 200 OK in 1ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/estacao_ponto_de_presenca" for 127.0.0.1 at 2026-07-21 17:19:01 -0300
+  
+ActionController::RoutingError (No route matches [GET] "/estacao_ponto_de_presenca"):
+  
+Started GET "/" for ::1 at 2026-07-22 11:36:04 -0300
+  [1m[36mActiveRecord::SchemaMigration Load (3.0ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+Processing by Rails::WelcomeController#index as HTML
+  Rendering /home/wilker/.asdf/installs/ruby/4.0.0/lib/ruby/gems/4.0.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb
+  Rendered /home/wilker/.asdf/installs/ruby/4.0.0/lib/ruby/gems/4.0.0/gems/railties-8.0.5/lib/rails/templates/rails/welcome/index.html.erb (Duration: 0.9ms | GC: 0.0ms)
+Completed 200 OK in 19ms (Views: 7.9ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/icon.png" for ::1 at 2026-07-22 11:36:05 -0300
+  
+ActionController::RoutingError (No route matches [GET] "/icon.png"):
+  
+Started GET "/presenca/CarregaRelogioAtual" for 172.19.0.2 at 2026-07-22 11:47:33 -0300
+  [1m[36mActiveRecord::SchemaMigration Load (0.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+Processing by Presenca::CarregaRelogioAtualController#show as HTML
+Completed 200 OK in 9ms (Views: 0.3ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/IniciarPonto" for 172.19.0.2 at 2026-07-22 11:47:33 -0300
+Processing by Presenca::IniciarPontoController#show as HTML
+Completed 200 OK in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/InicializarPonto?codigoAtivacao=SistemaOperacionalNaoSuportado&codigoUnicoMaquina=b69ca80d-f318-4872-97dd-103ed19857a2" for 172.19.0.2 at 2026-07-22 11:47:33 -0300
+Processing by Presenca::InicializarPontoController#show as HTML
+  Parameters: {"codigoAtivacao" => "SistemaOperacionalNaoSuportado", "codigoUnicoMaquina" => "b69ca80d-f318-4872-97dd-103ed19857a2"}
+Completed 200 OK in 0ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/PontoDePresenca" for 172.19.0.2 at 2026-07-22 11:47:34 -0300
+Processing by Presenca::PontoDePresencaController#show as HTML
+Completed 200 OK in 1ms (Views: 0.1ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/CarregaRelogioAtual" for 172.19.0.2 at 2026-07-22 11:49:24 -0300
+  [1m[36mActiveRecord::SchemaMigration Load (0.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ApiPonto'*/[0m
+Processing by Presenca::CarregaRelogioAtualController#show as HTML
+Completed 200 OK in 8ms (Views: 0.3ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/IniciarPonto" for 172.19.0.2 at 2026-07-22 11:49:25 -0300
+Processing by Presenca::IniciarPontoController#show as HTML
+Completed 200 OK in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/InicializarPonto?codigoAtivacao=SistemaOperacionalNaoSuportado&codigoUnicoMaquina=b69ca80d-f318-4872-97dd-103ed19857a2" for 172.19.0.2 at 2026-07-22 11:49:25 -0300
+Processing by Presenca::InicializarPontoController#show as HTML
+  Parameters: {"codigoAtivacao" => "SistemaOperacionalNaoSuportado", "codigoUnicoMaquina" => "b69ca80d-f318-4872-97dd-103ed19857a2"}
+Completed 200 OK in 1ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+
+Started GET "/presenca/PontoDePresenca" for 172.19.0.2 at 2026-07-22 11:49:25 -0300
+Processing by Presenca::PontoDePresencaController#show as HTML
+Completed 200 OK in 2ms (Views: 0.2ms | ActiveRecord: 0.0ms (0 queries, 0 cached) | GC: 0.0ms)
+
+

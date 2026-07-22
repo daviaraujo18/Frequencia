@@ -1,0 +1,158 @@
+require "test_helper"
+
+class PresencaEndpointsTest < ActionDispatch::IntegrationTest
+  setup do
+    @user = User.create!(
+      nome_completo: "Teste Integração",
+      password: "123456"
+    )
+    @username_enc = CryptoDes.encrypt(@user.username)
+    @password_enc = CryptoDes.encrypt("123456")
+  end
+
+  test "GET CarregaRelogioAtual returns timestamp in milliseconds" do
+    get presenca_CarregaRelogioAtual_url
+    assert_response :success
+    assert_match(/\A\d+\z/, @response.body)
+    assert @response.body.to_i > 1_700_000_000_000
+  end
+
+  test "GET ValidarFrequentador returns user ID for valid credentials" do
+    get presenca_ValidarFrequentador_url(
+      loginAccessKey: @username_enc,
+      plainPassword: @password_enc,
+      codAtivacao: "poc-ativacao-001"
+    )
+    assert_response :success
+    assert_equal @user.id.to_s, @response.body
+  end
+
+  test "GET ValidarFrequentador returns error for wrong password" do
+    get presenca_ValidarFrequentador_url(
+      loginAccessKey: @username_enc,
+      plainPassword: CryptoDes.encrypt("wrong_password"),
+      codAtivacao: "poc-ativacao-001"
+    )
+    assert_response :success
+    assert_equal "USUARIO_SENHA_INVALIDOS", @response.body
+  end
+
+  test "GET ValidarFrequentador returns error for wrong activation code" do
+    get presenca_ValidarFrequentador_url(
+      loginAccessKey: @username_enc,
+      plainPassword: @password_enc,
+      codAtivacao: "wrong-code"
+    )
+    assert_response :success
+    assert_equal "USUARIO_SENHA_INVALIDOS", @response.body
+  end
+
+  test "GET ValidarFrequentador returns error for inactive user" do
+    @user.update!(status: 0)
+    get presenca_ValidarFrequentador_url(
+      loginAccessKey: @username_enc,
+      plainPassword: @password_enc,
+      codAtivacao: "poc-ativacao-001"
+    )
+    assert_response :success
+    assert_equal "USUARIO_SENHA_INVALIDOS", @response.body
+  end
+
+  test "GET ValidarFrequentador returns error for invalid DES data" do
+    get presenca_ValidarFrequentador_url(
+      loginAccessKey: "invalid-des-data",
+      plainPassword: @password_enc,
+      codAtivacao: "poc-ativacao-001"
+    )
+    assert_response :success
+    assert_equal "USUARIO_SENHA_INVALIDOS", @response.body
+  end
+
+  test "GET InicializarPonto returns redirect HTML" do
+    get presenca_InicializarPonto_url(
+      codigoAtivacao: "poc-ativacao-001",
+      codigoUnicoMaquina: "test-machine"
+    )
+    assert_response :success
+    assert_includes @response.body, "PontoDePresenca"
+  end
+
+  test "GET InicializarPonto returns redirect HTML even without params" do
+    get presenca_InicializarPonto_url
+    assert_response :success
+    assert_includes @response.body, "PontoDePresenca"
+  end
+
+  test "GET DynHashFrequentadoresEstacao returns 32-char uppercase MD5" do
+    get presenca_DynHashFrequentadoresEstacao_url
+    assert_response :success
+    assert_match(/\A[A-F0-9]{32}\z/, @response.body)
+  end
+
+  test "GET DynFrequentadoresEstacao returns serialized data with correct format" do
+    User.create!(nome_completo: "Digital Test", password: "123456", digitais_hash: "HASH123")
+    get presenca_DynFrequentadoresEstacao_url
+    assert_response :success
+    parts = @response.body.split(";")
+    assert_equal 8, parts.size
+    assert_equal "false", parts[5]
+    assert_equal "N", parts[6]
+    assert_equal "0", parts[7]
+  end
+
+  test "GET DynFrequentadoresEstacao excludes users without digitais_hash" do
+    get presenca_DynFrequentadoresEstacao_url
+    refute_includes @response.body, "usuario.teste"
+  end
+
+  test "GET DynFrequentadoresEstacao excludes inactive users" do
+    User.create!(nome_completo: "Inativo Digital", password: "123456", digitais_hash: "HASH", status: 0)
+    get presenca_DynFrequentadoresEstacao_url
+    refute_includes @response.body, "inativo.digital"
+  end
+
+  test "POST SincronizarRegistrosPonto saves records and returns sincronizado" do
+    registros = "#{@user.id}-15:07:2026:14:30:45"
+    enc = CryptoDes.encrypt(registros)
+    post presenca_ajax_SincronizarRegistrosPonto_url,
+      params: { registros: enc, codAtivacao: "poc-ativacao-001" }
+    assert_response :success
+    assert_equal "sincronizado", @response.body
+    assert_equal 1, TimeRecord.where(raw_data: registros).count
+  end
+
+  test "POST SincronizarRegistrosPonto handles multiple records" do
+    registros = "#{@user.id}-15:07:2026:14:30:45\n#{@user.id}-15:07:2026:14:31:00"
+    enc = CryptoDes.encrypt(registros)
+    post presenca_ajax_SincronizarRegistrosPonto_url,
+      params: { registros: enc, codAtivacao: "poc-ativacao-001" }
+    assert_response :success
+    assert_equal 2, TimeRecord.count
+  end
+
+  test "POST SincronizarRegistrosPonto ignores records for non-existent users" do
+    registros = "99999-15:07:2026:14:30:45"
+    enc = CryptoDes.encrypt(registros)
+    post presenca_ajax_SincronizarRegistrosPonto_url,
+      params: { registros: enc, codAtivacao: "poc-ativacao-001" }
+    assert_response :success
+    assert_equal "sincronizado", @response.body
+    assert_equal 0, TimeRecord.count
+  end
+
+  test "POST SincronizarRegistrosPonto accepts any codAtivacao (PoC)" do
+    registros = "1-15:07:2026:14:30:45"
+    enc = CryptoDes.encrypt(registros)
+    post presenca_ajax_SincronizarRegistrosPonto_url,
+      params: { registros: enc, codAtivacao: "invalid" }
+    assert_response :success
+    assert_equal "sincronizado", @response.body
+  end
+
+  test "POST SincronizarRegistrosPonto handles invalid DES data gracefully" do
+    post presenca_ajax_SincronizarRegistrosPonto_url,
+      params: { registros: "invalid-data", codAtivacao: "poc-ativacao-001" }
+    assert_response :success
+    assert_equal "sincronizado", @response.body
+  end
+end
