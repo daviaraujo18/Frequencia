@@ -1,76 +1,132 @@
-<%# Preenche os campos ocultos no layout %>
+<%# Preenche os campos ocultos definidos no layout compartilhado (evita IDs duplicados no DOM) %>
 <% content_for :codigo_ativacao, @codigo_ativacao %>
+<% content_for :codigo_unico_maquina, @codigo_unico_maquina %>
+<% content_for :digitais_hash, @digitais_hash %>
 
-<input type="hidden" id="codigoUnicoMaquina" value="">
-<input type="hidden" id="digitaisHash" value="">
 <div class="status-card" id="statusCard">
     <h1>Controle de Ponto</h1>
 
-    <% if @ultimo_registro.present? %>
-      <% tipo = @ultimo_registro.punch_type == 'entry' ? 'Entrada' : 'Saída' %>
-      <% css_class = @ultimo_registro.punch_type == 'entry' ? 'entry' : 'exit' %>
-      <div class="status-badge <%= css_class %>">
-        Último registro: <%= tipo %> às <%= @ultimo_registro.punched_at.strftime('%H:%M') %>
+    <% if @erro_status %>
+      <div class="status-badge error" id="statusError">
+        Não foi possível carregar o status da última batida.
       </div>
     <% else %>
-      <div class="status-badge none">
-        Nenhum registro hoje
+      <div id="frequentadorInfo">
+        <% if @ultimo_registro.present? %>
+          <p id="nomeFrequentador" class="frequentador-nome">
+            <%= @ultimo_registro.user.nome_completo %> (<%= @ultimo_registro.user.username %>)
+          </p>
+        <% end %>
       </div>
+
+      <% if @ultimo_registro.present? %>
+        <% tipo_label = @ultimo_registro.punch_type == "entry" ? "Entrada ✅" : "Saída ⬆️" %>
+        <% css_class = @ultimo_registro.punch_type == "entry" ? "entry" : "exit" %>
+        <div class="status-badge <%= css_class %>" id="statusBadge">
+          <%= tipo_label %> às <%= @ultimo_registro.punched_at.strftime("%d/%m/%Y %H:%M") %>
+        </div>
+      <% else %>
+        <div class="status-badge none" id="statusBadge">
+          —
+        </div>
+        <p class="no-record-message">Nenhum registro hoje</p>
+      <% end %>
     <% end %>
 
     <div class="waiting" id="waitingArea">
         <div class="spinner"></div>
         <p id="waitingMessage">Aguardando digital...</p>
     </div>
+
+    <div id="feedbackToast" class="feedback-toast" style="display: none;"></div>
+
+    <% if Rails.env.development? %>
+      <button type="button" id="btnSimularDigital" class="btn-simular-digital">
+        🧪 Simular digital (teste)
+      </button>
+    <% end %>
 </div>
+
+<div id="lockOverlay" class="lock-overlay" style="display: none;"></div>
 
 <script>
     window.comando = "NADA";
 
-    function removeLoading() {
-        $('#loading').hide();
-    }
-
+    /**
+     * Bridge function: exibe feedback (toast) para o processo de cadastro de digitais.
+     * Chamado pela Estação JavaFX via The.inserirJavascript.
+     * @param {string} status - status do cadastro (ex: 'ok', 'erro')
+     * @param {string} message - mensagem a exibir ao usuário
+     */
     function changeInfoDigital(status, message) {
         console.log('Digital: ' + status + ' - ' + message);
+        var toast = document.getElementById('feedbackToast');
+        if (toast) {
+            toast.textContent = message;
+            toast.className = 'feedback-toast ' + (status === 'erro' ? 'feedback-error' : 'feedback-ok');
+            toast.style.display = 'block';
+            setTimeout(function() { toast.style.display = 'none'; }, 4000);
+        }
     }
 
-    function atualizaRelogioLocal(horario) {
-        console.log('Horario: ' + horario);
-    }
-
+    /**
+     * Bridge function: bloqueia a interação com a tela (ex: durante sincronização).
+     */
     function lock() {
         console.log('Lock');
+        var overlay = document.getElementById('lockOverlay');
+        if (overlay) overlay.style.display = 'block';
     }
 
+    /**
+     * Bridge function: desbloqueia a interação com a tela.
+     */
     function unlock() {
         console.log('Unlock');
+        var overlay = document.getElementById('lockOverlay');
+        if (overlay) overlay.style.display = 'none';
     }
 
+    /**
+     * Bridge function: envia os registros de ponto coletados offline para a API.
+     * @param {string} dados - registros serializados
+     * @param {string} codAtivacao - código de ativação da Estação
+     * @returns {Promise} promise da requisição fetch
+     */
     function sincronizaPonto(dados, codAtivacao) {
         console.log('Sincronizando: ' + dados);
-        fetch('/presenca/ajax/SincronizarRegistrosPonto', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: 'registros=' + encodeURIComponent(dados) + '&codAtivacao=' + encodeURIComponent(codAtivacao)
-        })
-        .then(response => response.text())
-        .then(data => {
-            console.log('Resposta: ' + data);
-            if (data === 'sincronizado') {
-                alert('Sincronizando');
-            } else {
+
+        // Usa XMLHttpRequest (não fetch()) por compatibilidade com o WebKit
+        // antigo do WebView JavaFX, que não implementa a Fetch API.
+        return new Promise(function(resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/presenca/ajax/SincronizarRegistrosPonto', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+            xhr.onload = function() {
+                var data = xhr.responseText;
+                console.log('Resposta: ' + data);
+                if (data === 'sincronizado') {
+                    alert('Sincronizando');
+                } else {
+                    alert('naosincronizado');
+                }
+                resolve(data);
+            };
+
+            xhr.onerror = function() {
+                console.error('Error: falha de rede na sincronização');
                 alert('naosincronizado');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('naosincronizado');
+                reject(new Error('Falha de rede'));
+            };
+
+            xhr.send('registros=' + encodeURIComponent(dados) + '&codAtivacao=' + encodeURIComponent(codAtivacao));
         });
     }
 
+    /**
+     * Bridge function: retorna a tela ao modo de espera pela digital.
+     */
     function aguardarDigital() {
         var msg = document.getElementById('waitingMessage');
         if (msg) msg.textContent = 'Aguardando digital...';
@@ -78,38 +134,77 @@
         if (spinner) spinner.style.display = '';
     }
 
+    /**
+     * Bridge function: processa comandos vindos da Estação JavaFX.
+     * @param {string} acao - ex: 'DIGITAL_RECONHECIDA'
+     * @param {string} dadosJson - payload JSON com dados do frequentador reconhecido
+     */
     function process(acao, dadosJson) {
         console.log('Process: ' + acao + ' - ' + dadosJson);
         if (acao === 'DIGITAL_RECONHECIDA') {
             var dados = JSON.parse(dadosJson);
+
             var nomeEl = document.getElementById('nomeFrequentador');
             if (!nomeEl) {
-                nomeEl = document.createElement('div');
+                nomeEl = document.createElement('p');
                 nomeEl.id = 'nomeFrequentador';
-                nomeEl.style.cssText = 'font-size: 1.2em; font-weight: bold; margin-bottom: 10px;';
-                var card = document.getElementById('statusCard');
-                var badge = card.querySelector('.status-badge');
-                if (badge) badge.parentNode.insertBefore(nomeEl, badge.nextSibling);
+                nomeEl.className = 'frequentador-nome';
+                var info = document.getElementById('frequentadorInfo');
+                if (info) info.appendChild(nomeEl);
             }
             nomeEl.textContent = dados.nome || 'Frequentador reconhecido';
+
+            var badge = document.getElementById('statusBadge');
+            if (badge && dados.punchType) {
+                var isEntry = dados.punchType === 'entry';
+                badge.className = 'status-badge ' + (isEntry ? 'entry' : 'exit');
+                badge.textContent = (isEntry ? 'Entrada ✅' : 'Saída ⬆️') + (dados.horario ? ' às ' + dados.horario : '');
+            }
+
             aguardarDigital();
         }
     }
 
+    <% if Rails.env.development? %>
+    /**
+     * [DEV/TESTE] Simula o leitor biométrico reconhecendo uma digital:
+     * monta um registro no mesmo formato que a Estação envia
+     * (user_id-dd:MM:yyyy:HH:mm:ss), sincroniza com o backend (que atribui
+     * punch_type via PunchTypeService, igual a uma batida real) e recarrega
+     * a tela para refletir o novo status. Só é renderizado em development.
+     */
+    function simularDigitalTeste() {
+        var btn = document.getElementById('btnSimularDigital');
+        if (btn) btn.disabled = true;
+        lock();
+
+        var codAtivacao = document.getElementById('codigoAtivacao') ? document.getElementById('codigoAtivacao').value : 'poc-ativacao-001';
+        var userId = 1; // usuário demo, mesmo padrão já usado no controller
+        var agora = new Date();
+        var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+        var dados = userId + '-' + pad(agora.getDate()) + ':' + pad(agora.getMonth() + 1) + ':' + agora.getFullYear()
+            + ':' + pad(agora.getHours()) + ':' + pad(agora.getMinutes()) + ':' + pad(agora.getSeconds());
+
+        sincronizaPonto(dados, codAtivacao)
+            .then(function() {
+                changeInfoDigital('ok', 'Digital simulada com sucesso. Atualizando tela...');
+                setTimeout(function() { window.location.reload(); }, 800);
+            })
+            .catch(function() {
+                changeInfoDigital('erro', 'Falha ao simular digital.');
+                if (btn) btn.disabled = false;
+                unlock();
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var btn = document.getElementById('btnSimularDigital');
+        if (btn) btn.addEventListener('click', simularDigitalTeste);
+    });
+    <% end %>
+
     $(document).ready(function() {
         alert('downloadFrequentadores');
-
-        var now = new Date();
-        var day = now.getDate();
-        var month = now.getMonth() + 1;
-        var year = now.getFullYear();
-        var hours = now.getHours();
-        var minutes = ('0' + now.getMinutes()).slice(-2);
-        alert('horarioServidorAtual:' + day + ':' + month + ':' + year + ':' + hours + ':' + minutes);
-
-        setInterval(function() {
-            alert('atualizarRelogioLocal');
-        }, 1000);
     });
 </script>
 
@@ -122,11 +217,18 @@
         text-align: center;
         max-width: 400px;
         margin: 20px auto;
+        position: relative;
     }
     .status-card h1 {
         font-size: 1.5em;
         color: #333;
         margin-bottom: 20px;
+    }
+    .frequentador-nome {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
     }
     .status-badge {
         display: inline-block;
@@ -147,6 +249,15 @@
     .status-badge.none {
         background: #e2e3e5;
         color: #383d41;
+    }
+    .status-badge.error {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .no-record-message {
+        color: #666;
+        font-style: italic;
+        margin-top: -10px;
     }
     .waiting {
         margin-top: 30px;
@@ -169,5 +280,46 @@
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
+    }
+    .feedback-toast {
+        margin-top: 15px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.9em;
+    }
+    .feedback-toast.feedback-ok {
+        background: #d4edda;
+        color: #155724;
+    }
+    .feedback-toast.feedback-error {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .lock-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255,255,255,0.4);
+        z-index: 1000;
+        cursor: wait;
+    }
+    .btn-simular-digital {
+        margin-top: 20px;
+        padding: 10px 16px;
+        border: 2px dashed #6c757d;
+        border-radius: 8px;
+        background: #f8f9fa;
+        color: #495057;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .btn-simular-digital:hover {
+        background: #e2e6ea;
+    }
+    .btn-simular-digital:disabled {
+        opacity: 0.6;
+        cursor: wait;
     }
 </style>

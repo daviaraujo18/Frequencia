@@ -40,5 +40,13 @@ module ApiPonto
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+
+    # Reabilita cookies, sessão e flash — necessários para as views HTML
+    # servidas pelo layout compartilhado (Sprint A: IniciarPonto, InicializarPonto,
+    # PontoDePresenca). ApplicationController já inclui ActionController::Flash,
+    # mas o método request.flash só existe com este middleware no stack.
+    config.middleware.use ActionDispatch::Cookies
+    config.middleware.use ActionDispatch::Session::CookieStore
+    config.middleware.use ActionDispatch::Flash
   end
 end

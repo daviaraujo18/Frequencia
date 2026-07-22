@@ -190,6 +190,79 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
     assert_equal "entry", record.punch_type
   end
 
+  # --- Testes de Navbar e Sidebar (Task A.8) ---
+
+  test "GET PontoDePresenca includes sidebar state persistence JS" do
+    get presenca_PontoDePresenca_url
+    assert_response :success
+    assert_includes @response.body, "localStorage.getItem('sidebar-collapsed')"
+    assert_includes @response.body, "localStorage.setItem('sidebar-collapsed'"
+  end
+
+  test "GET PontoDePresenca includes bridge function atualizaRelogioLocal" do
+    get presenca_PontoDePresenca_url
+    assert_response :success
+    assert_includes @response.body, "function atualizaRelogioLocal"
+  end
+
+  test "GET PontoDePresenca includes bridge function atualizaStatusConexao" do
+    get presenca_PontoDePresenca_url
+    assert_response :success
+    assert_includes @response.body, "function atualizaStatusConexao"
+  end
+
+  test "GET PontoDePresenca includes TJPI logo in navbar" do
+    get presenca_PontoDePresenca_url
+    assert_response :success
+    assert_includes @response.body, "TJPI"
+  end
+
+  test "GET PontoDePresenca includes version in sidebar footer" do
+    get presenca_PontoDePresenca_url
+    assert_response :success
+    assert_includes @response.body, "v1.0.0"
+  end
+
+  test "GET PontoDePresenca includes connection status indicator" do
+    get presenca_PontoDePresenca_url
+    assert_response :success
+    assert_includes @response.body, "status-conexao"
+    assert_includes @response.body, "text-success"
+  end
+
+  test "GET PontoDePresenca highlights active menu item" do
+    get presenca_PontoDePresenca_url
+    assert_response :success
+    # O JS de highlight está presente
+    assert_includes @response.body, "classList.add('active')"
+  end
+
+  test "GET PontoDePresenca includes layout-fixed class" do
+    get presenca_PontoDePresenca_url
+    assert_response :success
+    assert_includes @response.body, "layout-fixed"
+  end
+
+  test "GET PontoDePresenca includes Inicio link in sidebar" do
+    get presenca_PontoDePresenca_url
+    assert_response :success
+    assert_includes @response.body, "Início"
+  end
+
+  test "GET IniciarPonto includes sidebar and navbar components" do
+    get presenca_IniciarPonto_url(codigoAtivacao: "test")
+    assert_response :success
+    assert_includes @response.body, "sidebar-collapsed"
+    assert_includes @response.body, "function atualizaRelogioLocal"
+  end
+
+  test "GET InicializarPonto includes sidebar and navbar components" do
+    get presenca_InicializarPonto_url(codigoAtivacao: "test", codigoUnicoMaquina: "test")
+    assert_response :success
+    assert_includes @response.body, "sidebar-collapsed"
+    assert_includes @response.body, "status-conexao"
+  end
+
   test "POST SincronizarRegistrosPonto nil punch_type does not break sync when service fails" do
     # Simula falha do service substituindo o método temporariamente
     original = PunchTypeService.method(:determine)
