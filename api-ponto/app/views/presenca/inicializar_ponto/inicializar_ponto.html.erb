@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Inicializar</title>
+</head>
+<body>
+  <input type="hidden" id="codigoAtivacao" value="<%= @codigo_ativacao %>">
+  <input type="hidden" id="codigoUnicoMaquina" value="<%= @codigo_unico_maquina %>">
+
+  <% if @codigo_ativacao.present? %>
+    <div id="loading">Inicializando...</div>
+
+    <script>
+      window.onload = function() {
+        alert('recuperarFrequentadores');
+
+        setTimeout(function() {
+          window.location.href = '/presenca/PontoDePresenca';
+        }, 2000);
+      };
+    </script>
+  <% else %>
+    <div id="error" style="color: red; text-align: center; margin-top: 50px; font-family: sans-serif;">
+      <h2>Erro de Ativação</h2>
+      <p>Código de ativação não informado. Verifique a configuração da estação.</p>
+    </div>
+  <% end %>
+</body>
+</html>

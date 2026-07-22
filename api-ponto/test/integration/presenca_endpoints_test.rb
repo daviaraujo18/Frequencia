@@ -77,10 +77,11 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
     assert_includes @response.body, "PontoDePresenca"
   end
 
-  test "GET InicializarPonto returns redirect HTML even without params" do
+  test "GET InicializarPonto returns error HTML when codigoAtivacao is missing" do
     get presenca_InicializarPonto_url
     assert_response :success
-    assert_includes @response.body, "PontoDePresenca"
+    assert_includes @response.body, "Erro de Ativação"
+    assert_includes @response.body, "Código de ativação não informado"
   end
 
   test "GET DynHashFrequentadoresEstacao returns 32-char uppercase MD5" do
