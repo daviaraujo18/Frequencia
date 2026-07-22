@@ -1,0 +1,31 @@
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Rails
+log/
+tmp/
+vendor/bundle/
+vendor/cache/
+node_modules/
+storage/
+
+# Rails credentials
+config/master.key
+config/credentials/*.key
+config/credentials/*.pem
+
+# Rails secrets
+.env
+.env.local
+.env.production
+.env.development
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# OS
+Thumbs.db
