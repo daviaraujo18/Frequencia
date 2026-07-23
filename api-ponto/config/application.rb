@@ -36,9 +36,11 @@ module ApiPonto
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
 
-    # Only loads a smaller set of middleware suitable for API only apps.
-    # Middleware like session, flash, cookies can be added back manually.
-    # Skip views, helpers and assets when generating a new resource.
-    config.api_only = true
+    # Remove API-only mode to support views, sessions, cookies, and assets
+    # for the admin frontend. API endpoints under /presenca continue working.
+    config.api_only = false
+
+    # Session store for admin authentication
+    config.session_store :cookie_store, key: "_api_ponto_session", expire_after: 8.hours
   end
 end

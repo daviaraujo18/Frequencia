@@ -1,5 +1,5 @@
 module Presenca
-  class SincronizarRegistrosPontoController < ApplicationController
+  class SincronizarRegistrosPontoController < ApiController
     def create
       unless params[:codAtivacao].present? && %w[poc-ativacao-001 SistemaOperacionalNaoSuportado].include?(params[:codAtivacao])
         return render plain: "sincronizado"

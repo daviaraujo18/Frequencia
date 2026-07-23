@@ -1,5 +1,5 @@
 module Presenca
-  class AdicioneEstacaoController < ApplicationController
+  class AdicioneEstacaoController < ApiController
     def show
       render plain: "OK"
     end

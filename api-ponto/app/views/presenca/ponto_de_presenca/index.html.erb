@@ -1,86 +1,266 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Ponto de Presenca</title>
-    <script>
-        // Minimal jQuery stub for station compatibility
-        window.jQuery = function(selector) {
-            var el = document.querySelector(selector);
-            return {
-                val: function(v) {
-                    if (v === undefined) return el ? el.value : undefined;
-                    if (el) el.value = v;
-                    return this;
-                },
-                hide: function() { if (el) el.style.display = 'none'; return this; },
-                show: function() { if (el) el.style.display = ''; return this; }
-            };
-        };
-        window.$ = window.jQuery;
-    </script>
+<meta charset="UTF-8">
+<title>Estação Ponto de Presença</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Georgia, 'Times New Roman', serif;
+    background: #eceff1;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: #263238;
+    color: #fff;
+    text-align: center;
+    padding: 10px 0 8px;
+    letter-spacing: 3px;
+  }
+  header .titulo {
+    font-size: 15px;
+    font-weight: bold;
+  }
+  header .subtitulo {
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-top: 2px;
+    color: #cfd8dc;
+  }
+  .sub-info {
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #37474f;
+    margin-top: 18px;
+  }
+  main {
+    flex: 1;
+    position: relative;
+  }
+  .mensagem {
+    text-align: center;
+    color: #1a3d8f;
+    font-size: 34px;
+    margin-top: 25px;
+  }
+  .conteudo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 130px;
+    margin-top: 40px;
+  }
+  .leitor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .sensor {
+    width: 22px;
+    height: 30px;
+    background: #263238;
+    border-radius: 3px;
+    position: relative;
+  }
+  .sensor::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 5px;
+    width: 12px;
+    height: 3px;
+    background: #d32f2f;
+  }
+  .sensor::after {
+    content: "";
+    position: absolute;
+    top: 12px;
+    left: 5px;
+    width: 12px;
+    height: 3px;
+    background: #d32f2f;
+  }
+  .mao {
+    font-size: 70px;
+    color: #263238;
+    margin-top: 10px;
+    line-height: 1;
+  }
+  .relogio {
+    text-align: center;
+    color: #1a3d8f;
+  }
+  .hora {
+    font-size: 55px;
+    font-weight: 500;
+  }
+  .data {
+    font-size: 16px;
+    margin-top: 4px;
+  }
+  .login-box {
+    position: absolute;
+    left: 15px;
+    bottom: 90px;
+    font-size: 11px;
+    color: #263238;
+  }
+  .login-box .campo {
+    margin-bottom: 6px;
+  }
+  .login-box label {
+    display: block;
+    margin-bottom: 2px;
+  }
+  .login-box input[type="text"],
+  .login-box input[type="password"] {
+    width: 110px;
+    height: 14px;
+    border: 1px solid #90a4ae;
+    background: #fff;
+  }
+  .login-box button {
+    font-size: 10px;
+    padding: 2px 8px;
+    border: 1px solid #90a4ae;
+    background: #eceff1;
+    cursor: pointer;
+  }
+  #loading {
+    display: none;
+  }
+</style>
+<script>
+  window.jQuery = function(selector) {
+    var el = document.querySelector(selector);
+    return {
+      val: function(v) {
+        if (v === undefined) return el ? el.value : undefined;
+        if (el) el.value = v;
+        return this;
+      },
+      hide: function() { if (el) el.style.display = 'none'; return this; },
+      show: function() { if (el) el.style.display = ''; return this; }
+    };
+  };
+  window.$ = window.jQuery;
+</script>
 </head>
 <body>
-    <input type="hidden" id="codigoAtivacao" value="">
-    <input type="hidden" id="codigoUnicoMaquina" value="">
-    <input type="hidden" id="digitaisHash" value="">
-    <div id="loading">Carregando...</div>
 
-    <script>
-        window.comando = "NADA";
+<input type="hidden" id="codigoAtivacao" value="">
+<input type="hidden" id="codigoUnicoMaquina" value="">
+<input type="hidden" id="digitaisHash" value="">
 
-        function removeLoading() {
-            $('#loading').hide();
-        }
+<header>
+  <div class="titulo">ESTAÇÃO PONTO DE PRESENÇA</div>
+  <div class="subtitulo">TRIBUNAL DE JUSTIÇA DO PIAUÍ</div>
+</header>
 
-        function changeInfoDigital(status, message) {
-            console.log('Digital: ' + status + ' - ' + message);
-        }
+<div class="sub-info">598 - STIC - COORDENAÇÃO DE SOFT</div>
 
-        function atualizaRelogioLocal(horario) {
-            console.log('Horario: ' + horario);
-        }
+<main>
+  <div class="mensagem">Coloque a digital no leitor.</div>
 
-        function lock() {
-            console.log('Lock');
-        }
+  <div class="conteudo">
+    <div class="leitor">
+      <div class="sensor"></div>
+      <div class="mao">&#9756;</div>
+    </div>
 
-        function unlock() {
-            console.log('Unlock');
-        }
+    <div class="relogio">
+      <div class="hora" id="hora">16:54</div>
+      <div class="data" id="data">Quarta, 22 de Julho de 2026</div>
+    </div>
+  </div>
 
-        function sincronizaPonto(dados, codAtivacao) {
-            console.log('Sincronizando: ' + dados);
-            fetch('/presenca/ajax/SincronizarRegistrosPonto', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'registros=' + encodeURIComponent(dados) + '&codAtivacao=' + encodeURIComponent(codAtivacao)
-            })
-            .then(response => response.text())
-            .then(data => {
-                console.log('Resposta: ' + data);
-                if (data === 'sincronizado') {
-                    alert('Sincronizando');
-                } else {
-                    alert('naosincronizado');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('naosincronizado');
-            });
-        }
+  <div class="login-box">
+    <div class="campo">
+      <label for="accessKey">login</label>
+      <input type="text" id="accessKey" name="accessKey">
+    </div>
+    <div class="campo">
+      <label for="plainPassword">senha</label>
+      <input type="password" id="plainPassword" name="plainPassword">
+    </div>
+    <button type="button" onclick="alert('loginManual')">Registrar</button>
+  </div>
+</main>
 
-        $(document).ready(function() {
-            alert('downloadFrequentadores');
-            alert('horarioServidorAtual:<%= Time.current.day %>:<%= Time.current.month %>:<%= Time.current.year %>:<%= Time.current.hour %>:<%= "%02d" % Time.current.min %>');
+<div id="loading">Carregando...</div>
 
-            setInterval(function() {
-                alert('atualizarRelogioLocal');
-            }, 1000);
-        });
-    </script>
+<script>
+  window.comando = "NADA";
+
+  function removeLoading() {
+    $('#loading').hide();
+  }
+
+  function changeInfoDigital(status, message) {
+    console.log('Digital: ' + status + ' - ' + message);
+  }
+
+  function atualizaRelogioLocal(dataCompleta) {
+    var parts = dataCompleta.split(',');
+    if (parts.length >= 5) {
+      document.getElementById('hora').textContent = parts[4];
+      document.getElementById('data').textContent = parts[0] + ', ' + parts[1] + ' de ' + parts[2] + ' de ' + parts[3];
+    }
+  }
+
+  function lock() {
+    console.log('Lock');
+  }
+
+  function unlock() {
+    console.log('Unlock');
+  }
+
+  function sincronizaPonto(dados, codAtivacao) {
+    console.log('Sincronizando: ' + dados);
+    fetch('/presenca/ajax/SincronizarRegistrosPonto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'registros=' + encodeURIComponent(dados) + '&codAtivacao=' + encodeURIComponent(codAtivacao)
+    })
+    .then(function(r) { return r.text(); })
+    .then(function(data) {
+      if (data === 'sincronizado') {
+        alert('Sincronizando');
+      } else {
+        alert('naosincronizado');
+      }
+    })
+    .catch(function() {
+      alert('naosincronizado');
+    });
+  }
+
+  function preencherDataLocal() {
+    var agora = new Date();
+    var dias = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+    var meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    var h = String(agora.getHours()).padStart(2, "0");
+    var m = String(agora.getMinutes()).padStart(2, "0");
+    document.getElementById("hora").textContent = h + ":" + m;
+    document.getElementById("data").textContent =
+      dias[agora.getDay()] + ", " + agora.getDate() + " de " + meses[agora.getMonth()] + " de " + agora.getFullYear();
+  }
+  preencherDataLocal();
+
+  document.addEventListener('DOMContentLoaded', function() {
+    alert('downloadFrequentadores');
+    alert('horarioServidorAtual:<%= Time.current.day %>:<%= Time.current.month %>:<%= Time.current.year %>:<%= Time.current.hour %>:<%= "%02d" % Time.current.min %>');
+
+    setInterval(function() {
+      alert('atualizarRelogioLocal');
+    }, 1000);
+  });
+</script>
+
 </body>
 </html>

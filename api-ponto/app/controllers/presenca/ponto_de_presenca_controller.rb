@@ -1,7 +1,7 @@
 require 'erb'
 
 module Presenca
-  class PontoDePresencaController < ApplicationController
+  class PontoDePresencaController < ApiController
     def show
       erb_content = File.read(Rails.root.join('app', 'views', 'presenca', 'ponto_de_presenca', 'index.html.erb'))
       html = ERB.new(erb_content).result(binding)

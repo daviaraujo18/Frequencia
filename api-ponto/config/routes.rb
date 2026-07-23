@@ -1,6 +1,15 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
+  # Admin frontend
+  root to: "dashboard#index"
+  get "login", to: "sessions#new"
+  post "login", to: "sessions#create"
+  delete "logout", to: "sessions#destroy"
+  get "dashboard", to: "dashboard#index"
+  resources :users, except: [:show]
+  resources :time_records, only: [:index]
+
   namespace :presenca do
     get "ValidarFrequentador", to: "validar_frequentador#show"
     get "DynFrequentadoresEstacao", to: "dyn_frequentadores_estacao#index"
