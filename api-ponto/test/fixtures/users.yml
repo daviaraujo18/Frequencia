@@ -1,0 +1,11 @@
+one:
+  nome_completo: "Usuario Teste Um"
+  username: "usuario.teste.um"
+  password_digest: <%= BCrypt::Password.create("123456") %>
+  status: 1
+
+two:
+  nome_completo: "Usuario Teste Dois"
+  username: "usuario.teste.dois"
+  password_digest: <%= BCrypt::Password.create("123456") %>
+  status: 1

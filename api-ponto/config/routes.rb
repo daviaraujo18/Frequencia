@@ -1,14 +1,25 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Admin frontend
-  root to: "dashboard#index"
-  get "login", to: "sessions#new"
-  post "login", to: "sessions#create"
-  delete "logout", to: "sessions#destroy"
-  get "dashboard", to: "dashboard#index"
-  resources :users, except: [:show]
-  resources :time_records, only: [:index]
+  # Admin frontend (R.2 — controllers vivem em Admin::, paths preservados via
+  # `module:` para não quebrar login_path/dashboard_path/users_path/etc.
+  # já usados pelos testes e pelas views — ver ADR-001, Seção 4)
+  scope module: "admin" do
+    root to: "dashboard#index"
+    get "login", to: "sessions#new"
+    post "login", to: "sessions#create"
+    delete "logout", to: "sessions#destroy"
+    get "dashboard", to: "dashboard#index"
+    # NOTE (R.2): `config.api_only = true` (ver application.rb) faz o Rails
+    # excluir `:new`/`:edit` das rotas padrão de `resources` (ações que só
+    # existem para servir formulário HTML). O módulo administrativo precisa
+    # delas — adicionadas explicitamente via `concerns`/`except` combinado a
+    # rotas extras.
+    get "users/new", to: "users#new", as: :new_user
+    get "users/:id/edit", to: "users#edit", as: :edit_user
+    resources :users, except: [:show, :new, :edit]
+    resources :time_records, only: [:index]
+  end
 
   namespace :presenca do
     get "ValidarFrequentador", to: "validar_frequentador#show"

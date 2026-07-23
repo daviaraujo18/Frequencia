@@ -36,11 +36,23 @@ module ApiPonto
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
 
-    # Remove API-only mode to support views, sessions, cookies, and assets
-    # for the admin frontend. API endpoints under /presenca continue working.
-    config.api_only = false
+    # Only loads a smaller set of middleware suitable for API only apps.
+    # Middleware like session, flash, cookies can be added back manually.
+    # Skip views, helpers and assets when generating a new resource.
+    config.api_only = true
 
-    # Session store for admin authentication
-    config.session_store :cookie_store, key: "_api_ponto_session", expire_after: 8.hours
+    # Reabilita cookies, sessão e flash — necessários para as views HTML
+    # servidas pelo layout compartilhado (Sprint A: IniciarPonto, InicializarPonto,
+    # PontoDePresenca). ApplicationController já inclui ActionController::Flash,
+    # mas o método request.flash só existe com este middleware no stack.
+    #
+    # NOTE (R.1 — merge, ver ADR-001): `config.api_only` permanece `true`
+    # (comportamento local) para não alterar o pipeline de middleware usado
+    # pelas rotas de presença/WebView. O session_store nomeado do fork foi
+    # incorporado abaixo para que os controllers administrativos (login) do
+    # módulo trazido pelo merge funcionem com uma chave de sessão dedicada.
+    config.middleware.use ActionDispatch::Cookies
+    config.middleware.use ActionDispatch::Session::CookieStore, key: "_api_ponto_session", expire_after: 8.hours
+    config.middleware.use ActionDispatch::Flash
   end
 end

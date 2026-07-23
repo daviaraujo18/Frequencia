@@ -1,0 +1,63 @@
+<%# Preenche os campos ocultos definidos no layout compartilhado (evita IDs duplicados no DOM) %>
+<% content_for :codigo_ativacao, @codigo_ativacao %>
+<% content_for :codigo_unico_maquina, @codigo_unico_maquina %>
+
+<% if @codigo_ativacao.present? %>
+  <div class="loading-card" id="loading">
+    <div class="spinner"></div>
+    <p class="loading-message">Inicializando...</p>
+  </div>
+
+  <script>
+    window.onload = function() {
+      alert('recuperarFrequentadores');
+
+      setTimeout(function() {
+        window.location.href = '/presenca/PontoDePresenca';
+      }, 2000);
+    };
+  </script>
+<% else %>
+  <div class="error-card" id="error">
+    <h2>Erro de Ativação</h2>
+    <p>Código de ativação não informado. Verifique a configuração da estação.</p>
+  </div>
+<% end %>
+
+<style>
+  .loading-card,
+  .error-card {
+    background: white;
+    border-radius: 12px;
+    padding: 40px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    text-align: center;
+    max-width: 400px;
+    margin: 60px auto;
+  }
+  .loading-card .spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e0e0e0;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .loading-message {
+    margin-top: 20px;
+    color: #666;
+    font-style: italic;
+  }
+  .error-card h2 {
+    color: #721c24;
+    font-size: 1.3em;
+  }
+  .error-card p {
+    color: #333;
+  }
+</style>

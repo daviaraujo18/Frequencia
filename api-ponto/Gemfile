@@ -15,6 +15,12 @@ gem "bcrypt", "~> 3.1.7"
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
+# Asset pipeline for Rails (AdminLTE 4 + Bootstrap 5.3)
+gem "propshaft"
+
+# JavaScript with import maps (CDN-based, no Node.js)
+gem "importmap-rails"
+
 # Use the database-backed adapters for Rails.cache and Active Job
 gem "solid_cache"
 gem "solid_queue"
@@ -31,7 +37,6 @@ gem "thruster", require: false
 # Hotwire for the admin frontend
 gem "turbo-rails"
 gem "stimulus-rails"
-gem "importmap-rails"
 
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 # gem "rack-cors"

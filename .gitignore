@@ -1,0 +1,32 @@
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Rails (api-ponto subdirectory)
+api-ponto/log/
+api-ponto/tmp/
+api-ponto/public/assets/
+api-ponto/vendor/bundle/
+api-ponto/vendor/cache/
+api-ponto/node_modules/
+api-ponto/storage/
+
+# Rails credentials
+api-ponto/config/master.key
+api-ponto/config/credentials/*.key
+api-ponto/config/credentials/*.pem
+
+# Rails secrets
+api-ponto/.env
+api-ponto/.env.local
+api-ponto/.env.production
+api-ponto/.env.development
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# OS
+Thumbs.db

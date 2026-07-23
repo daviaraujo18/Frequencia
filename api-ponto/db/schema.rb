@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_23_121710) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_23_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -21,6 +21,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_23_121710) do
     t.string "authentication_mode"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "punch_type"
+    t.boolean "punch_type_explicit", default: false, null: false
     t.index ["punched_at"], name: "index_time_records_on_punched_at"
     t.index ["user_id"], name: "index_time_records_on_user_id"
   end

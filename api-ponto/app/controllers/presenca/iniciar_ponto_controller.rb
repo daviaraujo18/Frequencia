@@ -1,7 +1,19 @@
 module Presenca
-  class IniciarPontoController < ApiController
+  class IniciarPontoController < ApplicationController
+    layout "application"
+
     def show
-      render html: "<html><body>OK</body></html>".html_safe
+      @codigo_ativacao = params[:codigoAtivacao]
+      @codigo_unico_maquina = params[:codigoUnicoMaquina]
+      @digitais_hash = params[:digitaisHash]
+      @ultimo_registro = TimeRecord.last_today(1) # user_id=1 for demo
+    rescue StandardError => e
+      # NOTE: se a consulta ao último registro falhar, seguimos exibindo a tela
+      # sem status (tratamento de erro exigido pelo critério de aceite A.9)
+      Rails.logger.error("[IniciarPonto] Falha ao carregar status: #{e.message}")
+      @erro_status = true
+    ensure
+      render :iniciar_ponto, layout: "application"
     end
   end
 end

@@ -1,3 +1,9 @@
-// Configure your import map in config/importmap.rb. Read more: https://github.com/rails/importmap-rails
-import "@hotwired/turbo-rails"
-import "controllers"
+// Application JavaScript entry point
+// Carrega jQuery, Bootstrap JS e AdminLTE JS via importmap (CDN)
+//
+// Nota: jQuery é carregado como side-effect — expõe window.$ e window.jQuery
+// globalmente para compatibilidade com scripts legados da Estação JavaFX.
+
+import "jquery"
+import "bootstrap"
+import "admin-lte"
