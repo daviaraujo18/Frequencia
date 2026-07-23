@@ -1,5 +1,5 @@
 module Presenca
-  class ProblemaRegistroController < ApplicationController
+  class ProblemaRegistroController < ApiController
     def show
       render plain: "OK"
     end

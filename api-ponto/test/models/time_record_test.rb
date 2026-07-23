@@ -86,6 +86,31 @@ class TimeRecordTest < ActiveSupport::TestCase
     assert record.valid?
   end
 
+  # --- Column punch_type_explicit (Task R.5) ---
+
+  test "punch_type_explicit defaults to false for historical/new records" do
+    record = TimeRecord.create!(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.now,
+      authentication_mode: "biometric",
+      punch_type: "entry"
+    )
+    assert_equal false, record.punch_type_explicit
+  end
+
+  test "punch_type_explicit can be set to true" do
+    record = TimeRecord.create!(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.now,
+      authentication_mode: "biometric",
+      punch_type: "exit",
+      punch_type_explicit: true
+    )
+    assert_equal true, record.punch_type_explicit
+  end
+
   # --- Scope by_date ---
 
   test "scope by_date returns records for the given date" do

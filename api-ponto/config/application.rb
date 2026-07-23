@@ -45,8 +45,14 @@ module ApiPonto
     # servidas pelo layout compartilhado (Sprint A: IniciarPonto, InicializarPonto,
     # PontoDePresenca). ApplicationController já inclui ActionController::Flash,
     # mas o método request.flash só existe com este middleware no stack.
+    #
+    # NOTE (R.1 — merge, ver ADR-001): `config.api_only` permanece `true`
+    # (comportamento local) para não alterar o pipeline de middleware usado
+    # pelas rotas de presença/WebView. O session_store nomeado do fork foi
+    # incorporado abaixo para que os controllers administrativos (login) do
+    # módulo trazido pelo merge funcionem com uma chave de sessão dedicada.
     config.middleware.use ActionDispatch::Cookies
-    config.middleware.use ActionDispatch::Session::CookieStore
+    config.middleware.use ActionDispatch::Session::CookieStore, key: "_api_ponto_session", expire_after: 8.hours
     config.middleware.use ActionDispatch::Flash
   end
 end

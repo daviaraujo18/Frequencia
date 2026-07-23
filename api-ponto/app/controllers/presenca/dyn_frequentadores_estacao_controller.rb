@@ -1,5 +1,5 @@
 module Presenca
-  class DynFrequentadoresEstacaoController < ApplicationController
+  class DynFrequentadoresEstacaoController < ApiController
     def index
       users = User.ativos.com_digitais
       render plain: FrequentadoresSerializer.serialize(users)

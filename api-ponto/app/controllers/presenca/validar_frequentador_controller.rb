@@ -1,5 +1,5 @@
 module Presenca
-  class ValidarFrequentadorController < ApplicationController
+  class ValidarFrequentadorController < ApiController
     def show
       unless params[:codAtivacao].present? && %w[poc-ativacao-001 SistemaOperacionalNaoSuportado].include?(params[:codAtivacao])
         return render plain: "USUARIO_SENHA_INVALIDOS"

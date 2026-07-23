@@ -1,5 +1,10 @@
 module Presenca
-  class SincronizarRegistrosPontoController < ApplicationController
+  class SincronizarRegistrosPontoController < ApiController
+    # Sprint R (R.4): compatibilidade retroativa ADR-08/ADR-001 — a Estação
+    # ainda não envia `punch_type` na prática (sem cadastro/biometria real),
+    # então este valor segue sendo o caminho de fallback, não o primário.
+    VALID_PUNCH_TYPES = %w[entry exit].freeze
+
     def create
       unless params[:codAtivacao].present? && %w[poc-ativacao-001 SistemaOperacionalNaoSuportado].include?(params[:codAtivacao])
         return render plain: "sincronizado"
@@ -9,36 +14,124 @@ module Presenca
       registros_decrypted = decrypt_registros(registros_raw)
       linhas = registros_decrypted.split("\n").map(&:strip).reject(&:empty?)
 
+      registros_aceitos = []
+      registros_rejeitados = []
+
       linhas.each do |linha|
-        parts = linha.match(/\A(\d+)-(\d{2}:\d{2}:\d{4}:\d{2}:\d{2}:\d{2})\z/)
-        next unless parts
+        # Campo `punch_type` explícito opcional (ADR-001, Seção 3), separado
+        # por "-" ao final da linha, ex: "1-15:07:2026:14:30:45-entry".
+        parts = linha.match(/\A(\d+)-(\d{2}:\d{2}:\d{4}:\d{2}:\d{2}:\d{2})(?:-(\w+))?\z/)
+        unless parts
+          registros_rejeitados << { linha: linha, erro: "Formato de linha inválido" }
+          next
+        end
 
         user_id = parts[1].to_i
         punched_at = DateTime.strptime(parts[2], "%d:%m:%Y:%H:%M:%S")
-        next unless User.exists?(user_id)
+        explicit_punch_type = parts[3]
 
-        punch_type = begin
-          PunchTypeService.determine(user_id, punched_at)
-        rescue => e
-          Rails.logger.warn "[PunchTypeService] Erro para user #{user_id}: #{e.message}"
-          nil
+        # Sprint R (R.6): o matching biométrico em si (hash MD5, download de
+        # digitais) já foi feito do lado da Estação/DynFrequentadoresEstacao
+        # (Sprint 3/4) antes do envio — o `user_id` na linha É o resultado
+        # desse matching. Aqui apenas garantimos o vínculo com um cadastro
+        # válido (FK não nula); não reimplementamos o matching biométrico.
+        user = User.find_by(id: user_id)
+        unless user
+          registros_rejeitados << {
+            linha: linha,
+            erro: "Usuário não encontrado para o identificador #{user_id}"
+          }
+          next
         end
 
-        TimeRecord.create!(
-          user_id: user_id,
+        punch_type_is_explicit = VALID_PUNCH_TYPES.include?(explicit_punch_type)
+
+        punch_type = if punch_type_is_explicit
+          # Fonte de verdade explícita: não consulta o PunchTypeService (ADR-001).
+          explicit_punch_type
+        else
+          # Fallback (ADR-08): valor ausente ou inválido é tratado como ausente.
+          begin
+            PunchTypeService.determine(user_id, punched_at)
+          rescue => e
+            Rails.logger.warn "[PunchTypeService] Erro para user #{user_id}: #{e.message}"
+            nil
+          end
+        end
+
+        record = TimeRecord.create!(
+          user_id: user.id,
           raw_data: linha,
           punched_at: punched_at,
           authentication_mode: "biometric",
-          punch_type: punch_type
+          punch_type: punch_type,
+          # Sprint R (R.5): auditoria — true quando o valor veio do payload,
+          # false quando foi inferido pelo PunchTypeService (fallback ADR-08).
+          punch_type_explicit: punch_type_is_explicit
         )
+
+        registros_aceitos << {
+          user_id: user.id,
+          nome: user.nome_completo,
+          foto: foto_payload(user),
+          horario: record.punched_at.strftime("%d/%m/%Y %H:%M:%S")
+        }
       end
 
-      render plain: "sincronizado"
+      # Sprint R (R.6-ajuste): a lógica de aceite/rejeição roda sempre, de
+      # forma idêntica, independente do formato de saída — apenas a
+      # representação da resposta muda a seguir (content negotiation).
+      if formato_rico_solicitado?
+        # Sprint R (R.6): sinaliza rejeição de forma explícita para a Estação
+        # (ADR-001, Seção 3) em vez de descartar silenciosamente — segue o
+        # padrão de status já usado pelos controllers administrativos do
+        # projeto (`Admin::UsersController`/`Admin::SessionsController`).
+        status = registros_rejeitados.any? ? :unprocessable_entity : :ok
+
+        render json: {
+          status: "sincronizado",
+          registros_aceitos: registros_aceitos,
+          registros_rejeitados: registros_rejeitados
+        }, status: status
+      else
+        # Sprint R (R.6-ajuste): compatibilidade retroativa — o client Java
+        # da Estação (fora deste repositório) ainda espera o texto puro
+        # "sincronizado" desde a Sprint 5. Sem sinalização explícita de que
+        # quer o formato rico, a resposta e o status HTTP permanecem
+        # idênticos ao comportamento anterior a R.6 (sempre 200/"sincronizado"),
+        # mesmo que existam registros rejeitados no lote — a rejeição
+        # silenciosa de itens individuais já era o comportamento pré-R.6.
+        render plain: "sincronizado"
+      end
     rescue
       render plain: "sincronizado"
     end
 
     private
+
+    # Sprint R (R.6-ajuste): content negotiation — o client sinaliza que
+    # quer o contrato JSON rico (nome/foto/horario) via header HTTP padrão
+    # `Accept: application/json` OU via parâmetro explícito `confirmacaoVisual=1`,
+    # seguindo a convenção de nomenclatura em português já usada pelos demais
+    # parâmetros do módulo Presença (`codAtivacao`, `codigoUnicoMaquina`).
+    # Sem nenhuma das duas sinalizações, o padrão é sempre o texto puro
+    # legado, preservando o client Java existente.
+    def formato_rico_solicitado?
+      request.format.json? || params[:confirmacaoVisual] == "1"
+    end
+
+    # Sprint R (R.6): o schema atual (`db/schema.rb`) não possui coluna de
+    # foto/avatar em `users` nem ActiveStorage configurado no projeto — não
+    # inventamos esse campo. A resposta apenas sinaliza explicitamente a
+    # ausência, conforme critério de aceite de R.6, para a Estação tratar o
+    # caso graciosamente na confirmação visual.
+    def foto_payload(user)
+      {
+        disponivel: false,
+        url: nil,
+        motivo: "Foto não cadastrada para o usuário #{user.id}"
+      }
+    end
 
     def decrypt_registros(raw)
       return raw if raw.blank?
