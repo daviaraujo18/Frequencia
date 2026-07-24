@@ -11,34 +11,34 @@ class UserTest < ActiveSupport::TestCase
   test "invalid without nome_completo" do
     user = User.new(username: "sem.nome", password: "123456")
     assert_not user.valid?
-    assert_includes user.errors[:nome_completo], "can't be blank"
+    assert_includes user.errors[:nome_completo], "não pode ficar em branco"
   end
 
   test "invalid without username" do
     user = User.new(nome_completo: "Sem Username", username: nil, password: "123456")
     user.define_singleton_method(:generate_username) { } # impede a geração automática
     assert_not user.valid?
-    assert_includes user.errors[:username], "can't be blank"
+    assert_includes user.errors[:username], "não pode ficar em branco"
   end
 
   test "invalid with duplicated username (case insensitive)" do
     existing = users(:one)
     user = User.new(nome_completo: "Duplicado", username: existing.username.upcase, password: "123456")
     assert_not user.valid?
-    assert_includes user.errors[:username], "has already been taken"
+    assert_includes user.errors[:username], "já está em uso"
   end
 
   test "invalid without status" do
     user = User.new(nome_completo: "Sem Status", password: "123456")
     user.status = nil
     assert_not user.valid?
-    assert_includes user.errors[:status], "can't be blank"
+    assert_includes user.errors[:status], "não pode ficar em branco"
   end
 
   test "invalid with password shorter than 6 characters" do
     user = User.new(nome_completo: "Senha Curta", password: "123")
     assert_not user.valid?
-    assert_includes user.errors[:password], "is too short (minimum is 6 characters)"
+    assert_includes user.errors[:password], "é muito curto (mínimo: 6 caracteres)"
   end
 
   test "valid without password when updating existing record" do

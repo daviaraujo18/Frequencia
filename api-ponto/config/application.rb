@@ -33,7 +33,8 @@ module ApiPonto
     # These settings can be overridden in specific environments using the files
     # in config/environments, which are processed later.
     #
-    # config.time_zone = "Central Time (US & Canada)"
+    config.time_zone = "America/Sao_Paulo"
+    config.i18n.default_locale = :"pt-BR"
     # config.eager_load_paths << Rails.root.join("extras")
 
     # Only loads a smaller set of middleware suitable for API only apps.
@@ -51,6 +52,7 @@ module ApiPonto
     # pelas rotas de presença/WebView. O session_store nomeado do fork foi
     # incorporado abaixo para que os controllers administrativos (login) do
     # módulo trazido pelo merge funcionem com uma chave de sessão dedicada.
+    config.middleware.use Rack::MethodOverride
     config.middleware.use ActionDispatch::Cookies
     config.middleware.use ActionDispatch::Session::CookieStore, key: "_api_ponto_session", expire_after: 8.hours
     config.middleware.use ActionDispatch::Flash

@@ -40,6 +40,8 @@
               <%= link_to "Editar", edit_user_path(user), class: "btn btn-sm btn-outline-primary" %>
               <% if user.status == 1 %>
                 <%= button_to "Inativar", user_path(user), method: :delete, class: "btn btn-sm btn-outline-danger", data: { turbo_confirm: "Tem certeza?" } %>
+              <% else %>
+                <%= button_to "Excluir", purge_user_path(user), method: :delete, class: "btn btn-sm btn-danger", data: { turbo_confirm: "Tem certeza que deseja excluir definitivamente este usuário?" } %>
               <% end %>
             </td>
           </tr>

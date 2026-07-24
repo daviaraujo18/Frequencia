@@ -5,6 +5,10 @@ module Admin
     def index
       @records = TimeRecord.includes(:user).order(punched_at: :desc)
 
+      if params[:id].present?
+        @records = @records.where(id: params[:id])
+      end
+
       if params[:user_id].present?
         @records = @records.where(user_id: params[:user_id])
         @user = User.find(params[:user_id])

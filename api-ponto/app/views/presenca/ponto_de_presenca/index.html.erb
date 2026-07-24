@@ -5,7 +5,7 @@
 
 <div class="clock-box" id="clockBox">
   <span class="clock-label">Horário Local</span>
-  <span class="clock-digital" id="clockDigital"><%= Time.current.strftime("%H:%M:%S") %></span>
+  <span class="clock-digital" id="clockDigital"><%= l(Time.current, format: :time_only) %></span>
 </div>
 
 <div class="status-card" id="statusCard">
@@ -59,7 +59,7 @@
             <% tipo_label = entrada ? "Entrada" : (registro.punch_type == "exit" ? "Saída" : "—") %>
             <tr>
               <td><%= index + 1 %></td>
-              <td><%= registro.punched_at.strftime("%H:%M") %></td>
+              <td><%= l(registro.punched_at, format: :short) %></td>
               <td><%= tipo_label %></td>
               <td>
                 <% if entrada %>

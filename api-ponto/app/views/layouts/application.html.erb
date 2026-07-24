@@ -34,7 +34,7 @@
           </span>
         </li>
         <li class="nav-item">
-          <span id="relogio" class="nav-link"><%= Time.current.strftime("%H:%M:%S") %></span>
+          <span id="relogio" class="nav-link"><%= l(Time.current, format: :time_only) %></span>
         </li>
       </ul>
     </nav>

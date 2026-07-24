@@ -23,7 +23,7 @@
         <% tipo_label = @ultimo_registro.punch_type == "entry" ? "Entrada ✅" : "Saída ⬆️" %>
         <% css_class = @ultimo_registro.punch_type == "entry" ? "entry" : "exit" %>
         <div class="status-badge <%= css_class %>" id="statusBadge">
-          <%= tipo_label %> às <%= @ultimo_registro.punched_at.strftime("%d/%m/%Y %H:%M") %>
+          <%= tipo_label %> às <%= l(@ultimo_registro.punched_at, format: :datetime) %>
         </div>
       <% else %>
         <div class="status-badge none" id="statusBadge">

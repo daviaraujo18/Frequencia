@@ -7,6 +7,10 @@
   <div class="card-body">
     <%= form_tag time_records_path, method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
       <div class="col-auto">
+        <%= label_tag :id, "ID", class: "form-label" %>
+        <%= text_field_tag :id, params[:id], class: "form-control form-control-sm", placeholder: "ID" %>
+      </div>
+      <div class="col-auto">
         <%= label_tag :start_date, "De", class: "form-label" %>
         <%= date_field_tag :start_date, params[:start_date], class: "form-control form-control-sm" %>
       </div>

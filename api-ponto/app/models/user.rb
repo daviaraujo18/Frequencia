@@ -1,6 +1,8 @@
 class User < ApplicationRecord
   has_secure_password
 
+  has_many :time_records, dependent: :restrict_with_exception
+
   before_validation :generate_username, on: :create
 
   validates :nome_completo, presence: true

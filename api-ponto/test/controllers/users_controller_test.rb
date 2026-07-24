@@ -43,4 +43,27 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to users_path
     assert_equal 0, user.reload.status
   end
+
+  test "deve excluir usuario inativo sem registros" do
+    user = User.create!(nome_completo: "Excluível", password: "123456", status: 0)
+    assert_difference("User.count", -1) do
+      delete purge_user_path(user)
+    end
+    assert_redirected_to users_path
+  end
+
+  test "nao deve excluir usuario ativo" do
+    user = User.create!(nome_completo: "Ativo", password: "123456")
+    delete purge_user_path(user)
+    assert_redirected_to users_path
+    assert_not_nil User.find_by(id: user.id)
+  end
+
+  test "nao deve excluir usuario inativo com registros de ponto" do
+    user = User.create!(nome_completo: "Com Registro", password: "123456", status: 0)
+    TimeRecord.create!(user: user, raw_data: "abc", punched_at: Time.zone.now, authentication_mode: "manual")
+    delete purge_user_path(user)
+    assert_redirected_to users_path
+    assert_not_nil User.find_by(id: user.id)
+  end
 end

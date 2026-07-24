@@ -1,6 +1,6 @@
 module Admin
   class UsersController < Admin::ApplicationController
-    before_action :set_user, only: [:edit, :update, :destroy]
+    before_action :set_user, only: [:edit, :update, :destroy, :purge]
 
     def index
       @users = User.order(:nome_completo)
@@ -33,6 +33,17 @@ module Admin
     def destroy
       @user.update!(status: 0)
       redirect_to users_path, notice: "Usuário inativado com sucesso"
+    end
+
+    def purge
+      if @user.status == 1
+        redirect_to users_path, alert: "Apenas usuários inativos podem ser excluídos"
+      elsif @user.time_records.exists?
+        redirect_to users_path, alert: "Não é possível excluir usuário com registros de ponto vinculados"
+      else
+        @user.destroy
+        redirect_to users_path, notice: "Usuário excluído com sucesso"
+      end
     end
 
     private

@@ -163,7 +163,7 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
     aceito = body["registros_aceitos"].first
     assert_equal @user.id, aceito["user_id"]
     assert_equal @user.nome_completo, aceito["nome"]
-    assert_equal "15/07/2026 14:30:45", aceito["horario"]
+    assert_equal "15/07/2026 11:30:45", aceito["horario"]
     assert_equal false, aceito["foto"]["disponivel"]
   end
 

@@ -17,7 +17,11 @@ Rails.application.routes.draw do
     # rotas extras.
     get "users/new", to: "users#new", as: :new_user
     get "users/:id/edit", to: "users#edit", as: :edit_user
-    resources :users, except: [:show, :new, :edit]
+    resources :users, except: [:show, :new, :edit] do
+      member do
+        delete :purge
+      end
+    end
     resources :time_records, only: [:index]
   end
 

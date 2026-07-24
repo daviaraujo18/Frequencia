@@ -50,7 +50,7 @@ class TimeRecordTest < ActiveSupport::TestCase
       punch_type: "invalid"
     )
     assert_not record.valid?
-    assert_includes record.errors[:punch_type], "is not included in the list"
+    assert_includes record.errors[:punch_type], "não está incluído na lista"
   end
 
   test "validates punch_type allows nil" do
