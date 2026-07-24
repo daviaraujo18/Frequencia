@@ -224,6 +224,67 @@ Sincroniza via SincronizarRegistrosPonto (mesmo fluxo do biométrico)
 
 ---
 
+## Sprint 7 — Login Manual na Interface de Ponto (View PontoDePresenca)
+
+**Objetivo:** Adicionar o formulário de login manual (username + senha) na view `PontoDePresenca` para que um usuário cadastrado consiga marcar ponto sem biometria, usando o fluxo de login manual da Estação JavaFX (Operacao.LOGINMANUAL).
+
+**Contexto:** A API Rails já possui todos os endpoints necessários (`ValidarFrequentador`, `SincronizarRegistrosPonto`, `CarregaRelogioAtual`, etc.) e a Estação JavaFX já possui todo o código de captura (`Operacao.LOGINMANUAL` lê `input[name=accessKey]` e `input[name=plainPassword]` via jQuery, criptografa em DES, chama a API). O único gap é a ausência do botão "Login Manual" e do formulário de credenciais na view `ponto_de_presenca/index.html.erb`.
+
+**Fluxo completo do login manual (referência):**
+
+```
+Usuário clica em "Login Manual" na view PontoDePresenca
+    ↓
+JavaScript dispara alert('LOGINMANUAL')
+    ↓
+Estação JavaFX: OnAlertListener → Operacao.LOGINMANUAL.execute()
+    ↓
+Estação lê jQuery('input[name=accessKey]').val() e jQuery('input[name=plainPassword]').val()
+    ↓
+Estação criptografa em DES (chave "cryp:gpf") e chama GET /presenca/ValidarFrequentador
+    ↓
+API Rails: descriptografa, busca User por username (status=ativo), valida senha (bcrypt)
+    ↓
+Retorna "<id>" (sucesso) ou "USUARIO_SENHA_INVALIDOS" (falha)
+    ↓
+Se sucesso: Estação gera registro local "id-dd:MM:yyyy:HH:mm:ss"
+    ↓
+Estação chama process('DIGITAL_RECONHECIDA', dados) via JS → view atualiza cartão de status e tabela
+    ↓
+Estação sincroniza via POST /presenca/ajax/SincronizarRegistrosPonto
+    ↓
+API Rails: armazena TimeRecord com punch_type (auto-alternado por PunchTypeService)
+```
+
+**Pré-requisitos já atendidos:**
+
+| Componente | Sprint | Status |
+|-----------|--------|--------|
+| `User` model (username, senha bcrypt, status ativo) | Sprint 1 | ✅ |
+| `ValidarFrequentadorController` (autentica username+senha via DES) | Sprint 3 | ✅ |
+| `SincronizarRegistrosPontoController` (recebe e armazena batidas) | Sprint 5 | ✅ |
+| `PunchTypeService` (auto-alternação entry/exit) | Sprint A | ✅ |
+| `PontoDePresencaController` + view (relógio, status, tabela, funções JS bridge) | Sprint A | ✅ |
+| CRUD admin de usuários (`Admin::UsersController`) | Sprint R | ✅ |
+| Layout AdminLTE 4 + Bootstrap 5.3 | Sprint A | ✅ |
+| Estação JavaFX: `Operacao.LOGINMANUAL` (lê campos via jQuery) | Estação | ✅ |
+| Estação JavaFX: `ValidarBatidaManualService` (criptografia DES + chamada à API) | Estação | ✅ |
+| Estação JavaFX: `EventoLeitura.DIGITAL_RECONHECIDA` (registro + `process()` via JS) | Estação | ✅ |
+
+| # | Task | Responsabilidade | Critério de Aceitação |
+|---|------|------------------|----------------------|
+| 7.1 | Adicionar botão "Login Manual" na view `ponto_de_presenca/index.html.erb` que alterna entre a tela principal (biometria) e o formulário de login manual | Frontend | Botão visível na tela principal; ao clicar, exibe o formulário de login e oculta a área de biometria; botão "Cancelar" no formulário volta para a tela principal |
+| 7.2 | Adicionar formulário de login manual com campos `input[name=accessKey]` (username) e `input[name=plainPassword]` (senha) na view `ponto_de_presenca/index.html.erb` | Frontend | Campos com os atributos `name` exatos (`accessKey` e `plainPassword`) que a Estação JavaFX lê via `jQuery('input[name=accessKey]').val()` e `jQuery('input[name=plainPassword]').val()` (ver `core/leitura/Operacao.java:53-54`); campo de senha com `type="password"`; labels em português |
+| 7.3 | Implementar JavaScript que dispara `alert('LOGINMANUAL')` ao submeter o formulário de login manual | Frontend | `alert('LOGINMANUAL')` disparado ao clicar em "Registrar Ponto" ou ao pressionar Enter; campos não são enviados via form submit (a Estação captura via alert e lê via jQuery); formulário tem `onsubmit="return false"` para evitar POST |
+| 7.4 | Implementar função JS `changeMensagemStatus(mensagem)` na view para feedback de erro de login | Frontend | Função global `changeMensagemStatus(mensagem)` exibe mensagem de erro na tela (ex: "Usuário ou Senha Inválidos!"); compatível com a linha comentada em `EventoLeitura.USUARIO_SENHA_INVALIDOS` (Estação JavaFX) que pode ser descomentada para chamar esta função; estilizada com AdminLTE (alert vermelho) |
+| 7.5 | Garantir que a função `process('DIGITAL_RECONHECIDA', dados)` já existente lide corretamente com o resultado do login manual bem-sucedido | Frontend | Após login manual bem-sucedido, a Estação chama `process('DIGITAL_RECONHECIDA', dados)` via JS; a função já existe (Sprint A, tarefa A.11) e atualiza o cartão de status e a tabela de batidas; verificar que o formato dos dados enviados pela Estação (matrícula, nome, foto) é compatível com o que a função espera |
+| 7.6 | Adicionar estilos CSS para o formulário de login manual (AdminLTE/Bootstrap 5.3) | Frontend | Formulário centralizado, responsivo, com cards do AdminLTE; campos com ícones (user, lock); botão "Registrar Ponto" destacado; botão "Cancelar" secundário; formulário oculto por padrão (display:none) e exibido apenas ao clicar em "Login Manual" |
+| 7.7 | Testes de view: renderizar formulário de login manual, verificar presença dos campos com os `name` corretos, verificar botões, verificar toggle | Testes | `rails test` passa; testes cobrem: presença do botão "Login Manual", presença de `input[name=accessKey]` e `input[name=plainPassword]`, presença do botão "Cancelar", função `changeMensagemStatus` definida |
+| 7.8 | Teste de integração: cadastrar usuário via admin → chamar `ValidarFrequentador` com credenciais DES → verificar retorno do ID → verificar sincronização da batida com o ID retornado | Testes | Fluxo completo validado: `User.create` → `GET /presenca/ValidarFrequentador?loginAccessKey=DES(user)&plainPassword=DES(senha)&codAtivacao=poc-ativacao-001` → retorna `user.id` → `POST /presenca/ajax/SincronizarRegistrosPonto` com registro `id-dd:MM:yyyy:HH:mm:ss` → `TimeRecord` criado com `user_id` correto |
+| 7.9 | Atualizar documentação de integração (`relatorio-interacao-presenca-estacao.md`) descrevendo o formulário de login manual, os campos esperados pela Estação (`accessKey`, `plainPassword`), o fluxo JS (`alert('LOGINMANUAL')`) e a função `changeMensagemStatus` | Documentação | Seção atualizada com IDs dos campos, fluxo JS, e referência ao código da Estação (`Operacao.java:53-54`, `EventoLeitura.java:69-76`) |
+
+---
+
 ## Resumo do Cronograma Estimado
 
 | Sprint | Tema | Tasks | Status |
@@ -233,18 +294,22 @@ Sincroniza via SincronizarRegistrosPonto (mesmo fluxo do biométrico)
 | 3 | Endpoints de Autenticação e Relógio | 7 | ✅ |
 | 4 | Endpoints de Dados Biométricos | 6 | ✅ |
 | 5 | Registro de Batidas e Finalização | 10 | ✅ |
-| **6** | **Integração com Estação de Ponto (JavaFX)** | **10** | **✅ Parcial** |
+| 6 | Integração com Estação de Ponto (JavaFX) | 10 | ✅ Parcial |
+| A | Layout + Views Iniciais + Auto-Alternação | 11 | ✅ |
+| R | Reconciliação Estação/Frequência | 7 | ✅ |
+| **7** | **Login Manual na Interface de Ponto** | **9** | **📋 Planejada** |
 
-**Total: 48 tasks**
+**Total: 75 tasks**
 
 ---
 
 ## Observações
 
-- **Ordem recomendada:** Seguir a numeração das sprints (1 → 2 → 3 → 4 → 5 → 6), pois há dependências (Sprint 2 é pré-requisito para 3 e 5).
+- **Ordem recomendada:** Seguir a numeração das sprints (1 → 2 → 3 → 4 → 5 → 6 → 7), pois há dependências (Sprint 2 é pré-requisito para 3 e 5).
 - **Sprint 2** pode ser parallelizada com a Sprint 1 se houver mais de um desenvolvedor.
 - **Sprint 6** depende da conclusão das Sprints 1 a 5 e do acesso à Estação de Ponto real (cliente JavaFX).
+- **Sprint 7** depende das Sprints A (view PontoDePresenca) e R (CRUD admin de usuários). A Sprint 7 é o último passo para que o fluxo de login manual funcione ponta a ponta.
 - **Testes:** Cada sprint deve incluir testes unitários e/ou de integração. Não postergar testes para o final.
 - **Validação:** Ao final de cada sprint, rodar `rails test` completo e garantir que não há regressão.
-- **Status geral:** Sprints 1-5 concluídas (25 testes, 0 falhas). Sprint 6 parcialmente concluída — API validada via curl, mas testes com estação JavaFX real pendentes (Maven não disponível).
+- **Status geral:** Sprints 1-5 concluídas (25 testes, 0 falhas). Sprint 6 parcialmente concluída — API validada via curl, mas testes com estação JavaFX real pendentes (Maven não disponível). Sprint A e R concluídas (127 testes, 0 falhas). Sprint 7 planejada.
 
