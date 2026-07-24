@@ -127,5 +127,12 @@ module Presenca
       # Sem punch_type reconhecido como "entry", o status permanece "Fora"
       assert_includes @response.body, "Status: Fora"
     end
+
+    test "GET show contains login manual button" do
+      get "/presenca/PontoDePresenca"
+      assert_includes @response.body, 'id="btnLoginManual"'
+      assert_includes @response.body, 'Login Manual'
+      assert_includes @response.body, 'fas fa-user'
+    end
   end
 end

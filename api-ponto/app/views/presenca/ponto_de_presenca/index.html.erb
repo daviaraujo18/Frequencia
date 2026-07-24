@@ -5,9 +5,10 @@
 
 <div class="clock-box" id="clockBox">
   <span class="clock-label">Horário Local</span>
-  <span class="clock-digital" id="clockDigital"><%= l(Time.current, format: :time_only) %></span>
+  <span class="clock-digital" id="clockDigital"><%= l(Time.current, format: :time_only) %>  </span>
 </div>
 
+<div id="biometriaArea">
 <div class="status-card" id="statusCard">
   <h1>Controle de Ponto</h1>
 
@@ -76,6 +77,17 @@
       </table>
     <% end %>
   </div>
+</div>
+</div> <!-- fecha #biometriaArea -->
+
+<div class="login-manual-container" style="text-align: center; margin: 20px auto; max-width: 400px;">
+  <button type="button" id="btnLoginManual" class="btn btn-primary">
+    <i class="fas fa-user"></i> Login Manual
+  </button>
+</div>
+
+<div id="loginManualForm" style="display: none;">
+  <!-- Formulário será adicionado na tarefa 7.2 -->
 </div>
 
 <div id="feedbackToast" class="feedback-toast" style="display: none;"></div>
@@ -318,6 +330,21 @@
     $(document).ready(function() {
         alert('downloadFrequentadores');
         alert('horarioServidorAtual:<%= Time.current.day %>:<%= Time.current.month %>:<%= Time.current.year %>:<%= Time.current.hour %>:<%= "%02d" % Time.current.min %>');
+        
+        // Toggle entre biometria e login manual
+        $('#btnLoginManual').on('click', function() {
+            $('#biometriaArea').fadeOut(300, function() {
+                $('#loginManualForm').fadeIn(300);
+            });
+        });
+        
+        // Botão cancelar dentro do formulário (será adicionado na tarefa 7.2)
+        // Por enquanto, adicionar evento de clique para voltar à biometria
+        $(document).on('click', '#btnCancelarLogin', function() {
+            $('#loginManualForm').fadeOut(300, function() {
+                $('#biometriaArea').fadeIn(300);
+            });
+        });
     });
 </script>
 
@@ -461,5 +488,34 @@
         background: rgba(255,255,255,0.4);
         z-index: 1000;
         cursor: wait;
+    }
+    
+    /* Estilos para login manual */
+    .login-manual-container {
+        margin: 20px auto;
+        max-width: 400px;
+        text-align: center;
+    }
+    
+    #loginManualForm {
+        max-width: 400px;
+        margin: 20px auto;
+        padding: 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    #loginManualForm .form-group {
+        margin-bottom: 15px;
+    }
+    
+    #loginManualForm .btn-block {
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    .login-manual-container .btn {
+        min-width: 200px;
     }
 </style>
