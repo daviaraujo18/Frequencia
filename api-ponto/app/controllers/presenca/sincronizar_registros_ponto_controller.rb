@@ -17,7 +17,12 @@ module Presenca
       registros_aceitos = []
       registros_rejeitados = []
 
-      linhas.each do |linha|
+      # B1 (Code Review Iteration 7): loop envolto em transação para garantir
+      # que nenhum registro seja persistido parcialmente se uma linha falhar.
+      # O `create!` dentro do loop levanta exceção em caso de erro, o que
+      # aciona o rollback automático da transação.
+      ApplicationRecord.transaction do
+        linhas.each do |linha|
         # Campo `punch_type` explícito opcional (ADR-001, Seção 3), separado
         # por "-" ao final da linha, ex: "1-15:07:2026:14:30:45-entry".
         parts = linha.match(/\A(\d+)-(\d{2}:\d{2}:\d{4}:\d{2}:\d{2}:\d{2})(?:-(\w+))?\z/)
@@ -63,7 +68,7 @@ module Presenca
           user_id: user.id,
           raw_data: linha,
           punched_at: punched_at,
-          authentication_mode: "biometric",
+          authentication_mode: params[:authenticationMode] == "manual" ? "manual" : "biometric",
           punch_type: punch_type,
           # Sprint R (R.5): auditoria — true quando o valor veio do payload,
           # false quando foi inferido pelo PunchTypeService (fallback ADR-08).
@@ -74,9 +79,11 @@ module Presenca
           user_id: user.id,
           nome: user.nome_completo,
           foto: foto_payload(user),
-          horario: record.punched_at.strftime("%d/%m/%Y %H:%M:%S")
+          horario: record.punched_at.strftime("%d/%m/%Y %H:%M:%S"),
+          punch_type: record.punch_type
         }
-      end
+      end # each
+    end # transaction
 
       # Sprint R (R.6-ajuste): a lógica de aceite/rejeição roda sempre, de
       # forma idêntica, independente do formato de saída — apenas a
@@ -103,8 +110,17 @@ module Presenca
         # silenciosa de itens individuais já era o comportamento pré-R.6.
         render plain: "sincronizado"
       end
-    rescue
-      render plain: "sincronizado"
+    rescue StandardError => e
+      # B1 (Code Review Iteration 7): loga o erro real, retorna formato
+      # adequado conforme content negotiation, e garante rollback da
+      # transação (nenhum registro persistido parcialmente).
+      Rails.logger.error "[SincronizarRegistrosPonto] Erro no lote: #{e.message}"
+
+      if formato_rico_solicitado?
+        render json: { status: "erro", message: e.message }, status: :unprocessable_entity
+      else
+        render plain: "sincronizado"
+      end
     end
 
     private

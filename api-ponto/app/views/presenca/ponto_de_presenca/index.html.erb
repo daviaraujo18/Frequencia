@@ -49,6 +49,7 @@
         <thead>
           <tr>
             <th>#</th>
+            <th>Usuário</th>
             <th>Horário</th>
             <th>Tipo</th>
             <th>Status</th>
@@ -60,6 +61,7 @@
             <% tipo_label = entrada ? "Entrada" : (registro.punch_type == "exit" ? "Saída" : "—") %>
             <tr>
               <td><%= index + 1 %></td>
+              <td><%= registro.user.nome_completo %></td>
               <td><%= l(registro.punched_at, format: :short) %></td>
               <td><%= tipo_label %></td>
               <td>
@@ -80,14 +82,36 @@
 </div>
 </div> <!-- fecha #biometriaArea -->
 
-<div class="login-manual-container" style="text-align: center; margin: 20px auto; max-width: 400px;">
-  <button type="button" id="btnLoginManual" class="btn btn-primary">
-    <i class="fas fa-user"></i> Login Manual
-  </button>
-</div>
-
-<div id="loginManualForm" style="display: none;">
-  <!-- Formulário será adicionado na tarefa 7.2 -->
+<div id="loginManualForm">
+  <div class="card card-primary">
+    <div class="card-header">
+      <h3 class="card-title">Login Manual</h3>
+    </div>
+    <div class="card-body">
+      <form onsubmit="registrarPontoManual(); return false;">
+        <div class="form-group">
+          <label for="accessKey">Usuário</label>
+          <div class="input-group">
+            <div class="input-group-prepend">
+              <span class="input-group-text"><i class="fas fa-user"></i></span>
+            </div>
+            <input type="text" name="accessKey" id="accessKey" class="form-control" placeholder="Digite seu usuário">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="plainPassword">Senha</label>
+          <div class="input-group">
+            <div class="input-group-prepend">
+              <span class="input-group-text"><i class="fas fa-lock"></i></span>
+            </div>
+            <input type="password" name="plainPassword" id="plainPassword" class="form-control" placeholder="Digite sua senha">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-success btn-block">Registrar Ponto</button>
+        <div id="loginFeedback" style="display: none; margin-top: 12px;"></div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <div id="feedbackToast" class="feedback-toast" style="display: none;"></div>
@@ -138,6 +162,25 @@
         var overlay = document.getElementById('lockOverlay');
         if (overlay) overlay.style.display = 'none';
     }
+
+    /**
+     * Bridge function: chamada pela Estação (DadosFrequentadores.init) depois
+     * de baixar os dados de frequentadores. Esta página não tem o spinner
+     * dedicado de "aguardando digital" (ver iniciar_ponto.html.erb) — no-op
+     * aqui só pra existir e não lançar ReferenceError. Sem essa função, a
+     * chamada quebrava e travava o código de limpeza logo em seguida
+     * (esconder a barra de progresso, restaurar o layout), deixando a barra
+     * de progresso visível para sempre.
+     */
+    function aguardarDigital() {}
+
+    /**
+     * Bridge function: chamada pela Estação (Operacao#RECUPERAR_FREQUENTADORES)
+     * logo após iniciar o download de frequentadores. Mesma situação de
+     * aguardarDigital() acima — não existia nesta página, quebrava a cadeia
+     * de execução e impedia RECUPERAR_PREDIOS_PERMITIDOS de rodar em seguida.
+     */
+    function removeLoading() {}
 
     /**
      * Bridge function: envia os registros de ponto coletados offline para a API.
@@ -258,7 +301,7 @@
             if (noRecords) noRecords.remove();
             wrapper.insertAdjacentHTML('beforeend',
                 '<table class="table table-striped table-hover" id="batidasTable">' +
-                '<thead><tr><th>#</th><th>Horário</th><th>Tipo</th><th>Status</th></tr></thead>' +
+                '<thead><tr><th>#</th><th>Usuário</th><th>Horário</th><th>Tipo</th><th>Status</th></tr></thead>' +
                 '<tbody id="batidasTableBody"></tbody></table>');
             tbody = document.getElementById('batidasTableBody');
         }
@@ -270,6 +313,7 @@
         var badgeLabel = isEntry ? 'Entrada ✅' : 'Saída ⬆️';
 
         row.innerHTML = '<td>' + index + '</td>' +
+            '<td>' + (dados.nome || '') + '</td>' +
             '<td>' + (dados.horario || '') + '</td>' +
             '<td>' + tipoLabel + '</td>' +
             '<td><span class="badge-punch ' + badgeClass + '">' + badgeLabel + '</span></td>';
@@ -277,21 +321,28 @@
         tbody.appendChild(row);
     }
 
+    // atualizaRelogioLocal() foi centralizada em application.html.erb (layout)
+    // — atualiza navbar + #clockDigital numa função só, evitando o conflito
+    // de ordem de scripts que fazia o relógio grande parar de atualizar.
+
     /**
-     * Bridge function: atualiza o relógio digital grande do topo da tela.
-     * Sobrescreve (estende) a função global definida no layout compartilhado:
-     * mantém a atualização do relógio da navbar (`#relogio`) e adiciona a do
-     * relógio grande (`#clockDigital`). O ping periódico que aciona esta função
-     * ('atualizarRelogioLocal') já é disparado pelo layout compartilhado.
-     * @param {string} horario - horário formatado (ex: HH:MM:SS)
+     * Bridge function: exibe mensagem de feedback no formulário de login manual.
+     * Chamado pela Estação JavaFX via The.inserirJavascript.
+     * Referência: EventoLeitura.USUARIO_SENHA_INVALIDOS / SEM_CONEXAO_TIMEOUT (Estação)
+     * @param {string} mensagem - texto da mensagem (ex: "Usuário ou Senha Inválidos!")
      */
-    var atualizaRelogioLocalNavbar = atualizaRelogioLocal;
-    function atualizaRelogioLocal(horario) {
-        console.log('Horario: ' + horario);
-        atualizaRelogioLocalNavbar(horario);
-        var el = document.getElementById('clockDigital');
-        if (el) el.textContent = horario;
-    }
+    var feedbackTimeout;
+    window.changeMensagemStatus = function(mensagem) {
+        var el = document.getElementById('loginFeedback');
+        if (!el) return;
+        if (feedbackTimeout) clearTimeout(feedbackTimeout);
+        el.textContent = mensagem;
+        el.className = 'alert alert-danger';
+        el.style.display = 'block';
+        feedbackTimeout = setTimeout(function() {
+            el.style.display = 'none';
+        }, 5000);
+    };
 
     <% if Rails.env.development? %>
     /**
@@ -327,24 +378,25 @@
     });
     <% end %>
 
-    $(document).ready(function() {
+    // JS puro (sem jQuery): o WebView do JavaFX (WebKit anterior a 2017) não
+    // suporta <script type="module"> — o import map que carrega jQuery é
+    // silenciosamente ignorado nesse motor, então `$` nunca existe de verdade
+    // na Estação real. Qualquer código daqui pra baixo precisa ser JS puro,
+    // igual ao padrão já usado em simularDigitalTeste()/btnSimularDigital.
+    // Submit do formulário de login manual: dispara alert para Estação JavaFX
+    // interceptar (OnAlertListener -> Operacao.LOGINMANUAL). Usado via
+    // onsubmit="registrarPontoManual(); return false;" no <form> — padrão
+    // inline mais compatível possível, sem depender de addEventListener('submit')
+    // + event.preventDefault(), que pode falhar silenciosamente neste WebKit
+    // antigo e deixar o submit nativo (GET pra própria URL) acontecer,
+    // recarregando a página em vez de acionar a ponte com a Estação.
+    function registrarPontoManual() {
+        alert('loginManual');
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
         alert('downloadFrequentadores');
         alert('horarioServidorAtual:<%= Time.current.day %>:<%= Time.current.month %>:<%= Time.current.year %>:<%= Time.current.hour %>:<%= "%02d" % Time.current.min %>');
-        
-        // Toggle entre biometria e login manual
-        $('#btnLoginManual').on('click', function() {
-            $('#biometriaArea').fadeOut(300, function() {
-                $('#loginManualForm').fadeIn(300);
-            });
-        });
-        
-        // Botão cancelar dentro do formulário (será adicionado na tarefa 7.2)
-        // Por enquanto, adicionar evento de clique para voltar à biometria
-        $(document).on('click', '#btnCancelarLogin', function() {
-            $('#loginManualForm').fadeOut(300, function() {
-                $('#biometriaArea').fadeIn(300);
-            });
-        });
     });
 </script>
 
@@ -491,31 +543,13 @@
     }
     
     /* Estilos para login manual */
-    .login-manual-container {
-        margin: 20px auto;
-        max-width: 400px;
-        text-align: center;
-    }
-    
     #loginManualForm {
         max-width: 400px;
         margin: 20px auto;
-        padding: 20px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    
-    #loginManualForm .form-group {
-        margin-bottom: 15px;
-    }
-    
-    #loginManualForm .btn-block {
+
+    #loginManualForm .card-body .btn-block {
         width: 100%;
         margin-top: 10px;
-    }
-    
-    .login-manual-container .btn {
-        min-width: 200px;
     }
 </style>

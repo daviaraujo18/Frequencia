@@ -128,11 +128,14 @@ module Presenca
       assert_includes @response.body, "Status: Fora"
     end
 
-    test "GET show contains login manual button" do
+    test "GET show contains login manual form always visible (no toggle button)" do
       get "/presenca/PontoDePresenca"
-      assert_includes @response.body, 'id="btnLoginManual"'
+      assert_includes @response.body, 'id="loginManualForm"'
       assert_includes @response.body, 'Login Manual'
-      assert_includes @response.body, 'fas fa-user'
+      assert_includes @response.body, 'name="accessKey"'
+      assert_includes @response.body, 'name="plainPassword"'
+      assert_includes @response.body, 'Registrar Ponto'
+      refute_includes @response.body, 'id="btnLoginManual"'
     end
   end
 end

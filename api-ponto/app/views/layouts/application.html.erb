@@ -7,6 +7,15 @@
   <%= csp_meta_tag %>
   <%= stylesheet_link_tag "application" %>
   <title>Estação Ponto</title>
+  <!-- DIAGNÓSTICO TEMPORÁRIO — primeiro script do documento, registrado antes
+       de qualquer outro código rodar, pra capturar até erros que acontecem
+       no <script> da própria página (que executa antes dos scripts do layout). -->
+  <script>
+  window.onerror = function(message, source, lineno, colno) {
+    alert('jserror:' + message + ' @ ' + source + ':' + lineno + ':' + colno);
+    return false;
+  };
+  </script>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
   <div class="wrapper">
@@ -130,13 +139,20 @@
     });
 
     /**
-     * Bridge function: atualiza o relógio digital na navbar.
+     * Bridge function: atualiza o relógio digital na navbar e, se existir
+     * nesta página, o relógio grande (#clockDigital). Única definição desta
+     * função no app inteiro — antes havia uma segunda declaração dentro de
+     * ponto_de_presenca/index.html.erb, mas como o <script> da página roda
+     * antes dos scripts do layout, a versão daqui sempre sobrescrevia aquela
+     * (só a navbar era atualizada, #clockDigital ficava parado).
      * Chamado pela Estação JavaFX via The.inserirJavascript.
      * @param {string} horario - Horário formatado (HH:MM:SS)
      */
     function atualizaRelogioLocal(horario) {
       var el = document.getElementById('relogio');
       if (el) el.textContent = horario;
+      var big = document.getElementById('clockDigital');
+      if (big) big.textContent = horario;
     }
 
     /**
