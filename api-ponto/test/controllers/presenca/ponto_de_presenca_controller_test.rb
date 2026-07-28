@@ -17,10 +17,15 @@ module Presenca
       assert_response :ok
     end
 
-    test "GET show extends application layout" do
+    test "GET show uses kiosk layout (visual da Estação real, sem AdminLTE)" do
       get "/presenca/PontoDePresenca"
       assert_includes @response.body, "Estação Ponto"
-      assert_includes @response.body, 'class="main-header'
+      assert_includes @response.body, "598 - STIC- COORDENAÇÃO DE SOFT"
+      refute_includes @response.body, 'class="main-header'
+      # O cabeçalho "ESTAÇÃO PONTO DE PRESENÇA / TRIBUNAL DE JUSTIÇA DO PIAUÍ"
+      # é renderizado nativamente pelo JavaFX (imagem topo.png, fora do
+      # WebView) — não deve ser duplicado no HTML desta página.
+      refute_includes @response.body, "ESTAÇÃO PONTO DE PRESENÇA"
     end
 
     test "GET show contains hidden bridge fields without duplicate ids" do
@@ -36,6 +41,9 @@ module Presenca
       assert_includes @response.body, "function sincronizaPonto"
       assert_includes @response.body, "function process"
       assert_includes @response.body, "function atualizaRelogioLocal"
+      assert_includes @response.body, "function aguardarDigital"
+      assert_includes @response.body, "function removeLoading"
+      assert_includes @response.body, "window.changeMensagemStatus"
     end
 
     test "GET show contains digital clock" do
@@ -43,14 +51,27 @@ module Presenca
       assert_includes @response.body, 'id="clockDigital"'
     end
 
-    test "GET show displays no records message when there are no punches today" do
+    test "GET show contains waiting message" do
       get "/presenca/PontoDePresenca"
-      assert_includes @response.body, "Nenhum registro hoje"
-      assert_includes @response.body, "Status: Fora"
-      assert_includes @response.body, "Fora ⚪"
+      assert_includes @response.body, "Coloque a digital no leitor."
     end
 
-    test "GET show displays a single punch record" do
+    test "GET show contains login manual form always visible (no toggle button)" do
+      get "/presenca/PontoDePresenca"
+      assert_includes @response.body, 'id="loginManualForm"'
+      assert_includes @response.body, 'name="accessKey"'
+      assert_includes @response.body, 'name="plainPassword"'
+      assert_includes @response.body, 'Registrar'
+      refute_includes @response.body, 'id="btnLoginManual"'
+    end
+
+    test "GET show submit handler is inline onsubmit, not jQuery" do
+      get "/presenca/PontoDePresenca"
+      assert_includes @response.body, 'onsubmit="registrarPontoManual(); return false;"'
+      refute_includes @response.body, "jQuery("
+    end
+
+    test "GET show does not crash when there are punches today (data still loaded, just not rendered in this layout)" do
       punched_at = Time.zone.now.beginning_of_day + 8.hours + 1.minute
       TimeRecord.create!(
         user: @user,
@@ -61,81 +82,7 @@ module Presenca
       )
 
       get "/presenca/PontoDePresenca"
-      assert_includes @response.body, "Entrada ✅"
-      assert_includes @response.body, "08:01"
-      assert_includes @response.body, "Status: Dentro"
-      assert_includes @response.body, "Dentro 🟢"
-      assert_includes @response.body, "Demo User (demo.user)"
-    end
-
-    test "GET show displays multiple punches ordered chronologically with alternating entry/exit" do
-      base = Time.zone.now.beginning_of_day
-      entry1 = TimeRecord.create!(
-        user: @user,
-        raw_data: "1-#{(base + 8.hours + 1.minute).strftime('%d:%m:%Y:%H:%M:%S')}",
-        punched_at: base + 8.hours + 1.minute,
-        authentication_mode: "biometric",
-        punch_type: "entry"
-      )
-      exit1 = TimeRecord.create!(
-        user: @user,
-        raw_data: "1-#{(base + 12.hours).strftime('%d:%m:%Y:%H:%M:%S')}",
-        punched_at: base + 12.hours,
-        authentication_mode: "biometric",
-        punch_type: "exit"
-      )
-      entry2 = TimeRecord.create!(
-        user: @user,
-        raw_data: "1-#{(base + 13.hours).strftime('%d:%m:%Y:%H:%M:%S')}",
-        punched_at: base + 13.hours,
-        authentication_mode: "biometric",
-        punch_type: "entry"
-      )
-
-      get "/presenca/PontoDePresenca"
-
       assert_response :ok
-      body = @response.body
-      table_body = body[/<tbody id="batidasTableBody">.*?<\/tbody>/m]
-      assert_equal 2, table_body.scan("Entrada ✅").size
-      assert_equal 1, table_body.scan("Saída ⬆️").size
-
-      pos_entry1 = body.index(entry1.punched_at.strftime("%H:%M"))
-      pos_exit1 = body.index(exit1.punched_at.strftime("%H:%M"))
-      pos_entry2 = body.index(entry2.punched_at.strftime("%H:%M"))
-      assert pos_entry1 < pos_exit1
-      assert pos_exit1 < pos_entry2
-
-      # Última batida do dia é "entry" -> status Dentro
-      assert_includes body, "Status: Dentro"
-    end
-
-    test "GET show handles punch_type nil gracefully (pre-A.3 integration scenario)" do
-      punched_at = Time.zone.now.beginning_of_day + 9.hours
-      TimeRecord.create!(
-        user: @user,
-        raw_data: "1-#{punched_at.strftime('%d:%m:%Y:%H:%M:%S')}",
-        punched_at: punched_at,
-        authentication_mode: "biometric",
-        punch_type: nil
-      )
-
-      get "/presenca/PontoDePresenca"
-      assert_response :ok
-      assert_includes @response.body, "09:00"
-      assert_includes @response.body, '<span class="badge-punch none">—</span>'
-      # Sem punch_type reconhecido como "entry", o status permanece "Fora"
-      assert_includes @response.body, "Status: Fora"
-    end
-
-    test "GET show contains login manual form always visible (no toggle button)" do
-      get "/presenca/PontoDePresenca"
-      assert_includes @response.body, 'id="loginManualForm"'
-      assert_includes @response.body, 'Login Manual'
-      assert_includes @response.body, 'name="accessKey"'
-      assert_includes @response.body, 'name="plainPassword"'
-      assert_includes @response.body, 'Registrar Ponto'
-      refute_includes @response.body, 'id="btnLoginManual"'
     end
   end
 end

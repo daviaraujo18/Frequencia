@@ -1,6 +1,6 @@
 module Presenca
   class PontoDePresencaController < ApplicationController
-    layout "application"
+    layout "kiosk"
 
     def show
       @codigo_ativacao = params[:codigoAtivacao]
@@ -15,7 +15,7 @@ module Presenca
       @erro_registros = true
       @registros_hoje = []
     ensure
-      render :index, layout: "application"
+      render :index, layout: "kiosk"
     end
   end
 end
