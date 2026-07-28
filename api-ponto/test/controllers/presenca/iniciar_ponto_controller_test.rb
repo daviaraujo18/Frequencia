@@ -85,15 +85,15 @@ module Presenca
     end
 
     test "GET show displays error message when status lookup fails" do
-      TimeRecord.singleton_class.send(:alias_method, :original_last_today, :last_today)
-      TimeRecord.define_singleton_method(:last_today) { |_user_id| raise StandardError, "boom" }
+      TimeRecord.singleton_class.send(:alias_method, :original_last_punched_today, :last_punched_today)
+      TimeRecord.define_singleton_method(:last_punched_today) { raise StandardError, "boom" }
 
       get "/presenca/IniciarPonto", params: { codigoAtivacao: "poc-ativacao-001" }
 
       assert_response :ok
       assert_includes @response.body, "Não foi possível carregar o status da última batida."
     ensure
-      TimeRecord.singleton_class.send(:alias_method, :last_today, :original_last_today)
+      TimeRecord.singleton_class.send(:alias_method, :last_punched_today, :original_last_punched_today)
     end
 
     test "GET show contains no duplicate hidden bridge field ids" do

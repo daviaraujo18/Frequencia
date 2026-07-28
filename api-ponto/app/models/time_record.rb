@@ -12,4 +12,12 @@ class TimeRecord < ApplicationRecord
       .order(punched_at: :desc, created_at: :desc)
       .first
   end
+
+  # Última batida do dia entre TODOS os usuários (não filtra por user_id) —
+  # usada nas telas de status da Estação (IniciarPonto/PontoDePresenca) para
+  # refletir quem de fato bateu o ponto por último, seja via biometria,
+  # "Simular digital" ou login manual.
+  def self.last_punched_today
+    by_date(Time.zone.now).order(punched_at: :desc, created_at: :desc).first
+  end
 end

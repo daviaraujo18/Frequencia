@@ -6,7 +6,7 @@ module Presenca
       @codigo_ativacao = params[:codigoAtivacao]
       @codigo_unico_maquina = params[:codigoUnicoMaquina]
       @digitais_hash = params[:digitaisHash]
-      @ultimo_registro = TimeRecord.last_today(1) # user_id=1 for demo
+      @ultimo_registro = TimeRecord.last_punched_today
     rescue StandardError => e
       # NOTE: se a consulta ao último registro falhar, seguimos exibindo a tela
       # sem status (tratamento de erro exigido pelo critério de aceite A.9)

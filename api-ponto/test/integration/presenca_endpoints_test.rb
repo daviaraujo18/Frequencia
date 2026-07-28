@@ -326,13 +326,11 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   # --- Testes de Navbar e Sidebar (Task A.8) ---
-
-  test "GET PontoDePresenca includes sidebar state persistence JS" do
-    get presenca_PontoDePresenca_url
-    assert_response :success
-    assert_includes @response.body, "localStorage.getItem('sidebar-collapsed')"
-    assert_includes @response.body, "localStorage.setItem('sidebar-collapsed'"
-  end
+  # NOTA: PontoDePresenca passou a usar o layout "kiosk" (visual da Estação
+  # real, réplica da tela de produção — sem AdminLTE/navbar/sidebar). Os
+  # testes de sidebar/navbar abaixo não se aplicam mais a essa página
+  # especificamente; continuam cobertos para IniciarPonto/InicializarPonto
+  # (que ainda usam o layout "application") mais abaixo neste arquivo.
 
   test "GET PontoDePresenca includes bridge function atualizaRelogioLocal" do
     get presenca_PontoDePresenca_url
@@ -340,48 +338,12 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
     assert_includes @response.body, "function atualizaRelogioLocal"
   end
 
-  test "GET PontoDePresenca includes bridge function atualizaStatusConexao" do
-    get presenca_PontoDePresenca_url
-    assert_response :success
-    assert_includes @response.body, "function atualizaStatusConexao"
-  end
-
-  test "GET PontoDePresenca includes TJPI logo in navbar" do
+  test "GET PontoDePresenca uses kiosk layout (título TJPI, sem AdminLTE)" do
     get presenca_PontoDePresenca_url
     assert_response :success
     assert_includes @response.body, "TJPI"
-  end
-
-  test "GET PontoDePresenca includes version in sidebar footer" do
-    get presenca_PontoDePresenca_url
-    assert_response :success
-    assert_includes @response.body, "v1.0.0"
-  end
-
-  test "GET PontoDePresenca includes connection status indicator" do
-    get presenca_PontoDePresenca_url
-    assert_response :success
-    assert_includes @response.body, "status-conexao"
-    assert_includes @response.body, "text-success"
-  end
-
-  test "GET PontoDePresenca highlights active menu item" do
-    get presenca_PontoDePresenca_url
-    assert_response :success
-    # O JS de highlight está presente
-    assert_includes @response.body, "classList.add('active')"
-  end
-
-  test "GET PontoDePresenca includes layout-fixed class" do
-    get presenca_PontoDePresenca_url
-    assert_response :success
-    assert_includes @response.body, "layout-fixed"
-  end
-
-  test "GET PontoDePresenca includes Inicio link in sidebar" do
-    get presenca_PontoDePresenca_url
-    assert_response :success
-    assert_includes @response.body, "Início"
+    refute_includes @response.body, "layout-fixed"
+    refute_includes @response.body, "sidebar-mini"
   end
 
   test "GET IniciarPonto includes sidebar and navbar components" do
@@ -396,6 +358,91 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes @response.body, "sidebar-collapsed"
     assert_includes @response.body, "status-conexao"
+  end
+
+  # --- Testes de integração do fluxo de login manual (Task 7.8) ---
+
+  test "fluxo completo login manual: ValidarFrequentador DES + SincronizarRegistrosPonto cria TimeRecord com authentication_mode manual" do
+    # 1. Cria User ativo com username e password
+    user = User.create!(
+      nome_completo: "Login Manual Test",
+      username: "login.manual",
+      password: "senha123",
+      status: 1
+    )
+
+    # 2. Chama ValidarFrequentador com credenciais criptografadas em DES
+    username_enc = CryptoDes.encrypt(user.username)
+    password_enc = CryptoDes.encrypt("senha123")
+    get presenca_ValidarFrequentador_url(
+      loginAccessKey: username_enc,
+      plainPassword: password_enc,
+      codAtivacao: "poc-ativacao-001"
+    )
+    assert_response :success
+    assert_equal user.id.to_s, @response.body
+
+    # 3. Chama SincronizarRegistrosPonto com authenticationMode=manual
+    agora = Time.zone.now
+    registros = "#{user.id}-#{agora.strftime('%d:%m:%Y:%H:%M:%S')}"
+    enc = CryptoDes.encrypt(registros)
+    post presenca_ajax_SincronizarRegistrosPonto_url,
+      params: { registros: enc, codAtivacao: "poc-ativacao-001", authenticationMode: "manual" }
+    assert_response :success
+
+    # 4. Verifica TimeRecord criado com authentication_mode: "manual"
+    record = TimeRecord.last
+    assert_equal user.id, record.user_id
+    assert_equal "manual", record.authentication_mode
+    assert_equal "entry", record.punch_type
+  end
+
+  test "fluxo login manual: credenciais invalidas retorna USUARIO_SENHA_INVALIDOS" do
+    user = User.create!(
+      nome_completo: "Login Invalido",
+      password: "senha123"
+    )
+
+    get presenca_ValidarFrequentador_url(
+      loginAccessKey: CryptoDes.encrypt(user.username),
+      plainPassword: CryptoDes.encrypt("wrong_password"),
+      codAtivacao: "poc-ativacao-001"
+    )
+    assert_response :success
+    assert_equal "USUARIO_SENHA_INVALIDOS", @response.body
+  end
+
+  test "fluxo login manual: usuario inativo retorna USUARIO_SENHA_INVALIDOS" do
+    user = User.create!(
+      nome_completo: "Usuario Inativo",
+      password: "senha123",
+      status: 0
+    )
+
+    get presenca_ValidarFrequentador_url(
+      loginAccessKey: CryptoDes.encrypt(user.username),
+      plainPassword: CryptoDes.encrypt("senha123"),
+      codAtivacao: "poc-ativacao-001"
+    )
+    assert_response :success
+    assert_equal "USUARIO_SENHA_INVALIDOS", @response.body
+  end
+
+  test "fluxo login manual: authentication_mode padrao e biometric quando nao informado manual" do
+    user = User.create!(
+      nome_completo: "Biometric Default",
+      password: "senha123"
+    )
+
+    agora = Time.zone.now
+    registros = "#{user.id}-#{agora.strftime('%d:%m:%Y:%H:%M:%S')}"
+    enc = CryptoDes.encrypt(registros)
+    post presenca_ajax_SincronizarRegistrosPonto_url,
+      params: { registros: enc, codAtivacao: "poc-ativacao-001" }
+    assert_response :success
+
+    record = TimeRecord.last
+    assert_equal "biometric", record.authentication_mode
   end
 
   test "POST SincronizarRegistrosPonto nil punch_type does not break sync when service fails" do

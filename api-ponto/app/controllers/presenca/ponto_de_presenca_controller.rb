@@ -1,13 +1,13 @@
 module Presenca
   class PontoDePresencaController < ApplicationController
-    layout "application"
+    layout "kiosk"
 
     def show
       @codigo_ativacao = params[:codigoAtivacao]
       @codigo_unico_maquina = params[:codigoUnicoMaquina]
       @digitais_hash = params[:digitaisHash]
-      @registros_hoje = TimeRecord.by_date(Time.zone.now).order(punched_at: :asc)
-      @ultimo_registro = TimeRecord.last_today(1) # user_id=1 for demo (mesmo padrão do IniciarPontoController)
+      @registros_hoje = TimeRecord.by_date(Time.zone.now).includes(:user).order(punched_at: :asc)
+      @ultimo_registro = TimeRecord.last_punched_today
     rescue StandardError => e
       # NOTE: se a consulta às batidas do dia falhar, seguimos exibindo a tela
       # sem dados (mesmo tratamento defensivo aplicado em IniciarPontoController na A.9)
@@ -15,7 +15,7 @@ module Presenca
       @erro_registros = true
       @registros_hoje = []
     ensure
-      render :index, layout: "application"
+      render :index, layout: "kiosk"
     end
   end
 end

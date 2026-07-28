@@ -79,19 +79,41 @@
         <tr>
           <th>Usuário</th>
           <th>Data/Hora</th>
+          <th>Status</th>
+          <th>Modo</th>
+          <th>Usuário</th>
+          <th>Data/Hora</th>
+          <th>Status</th>
           <th>Modo</th>
         </tr>
       </thead>
       <tbody>
-        <% @ultimas_batidas.each do |tr| %>
+        <% linhas = [@ultimas_entradas.size, @ultimas_saidas.size].max %>
+        <% (0...linhas).each do |i| %>
           <tr>
-            <td><%= tr.user&.nome_completo %></td>
-            <td><%= l(tr.punched_at, format: :long) %></td>
-            <td><span class="badge bg-<%= tr.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= tr.authentication_mode %></span></td>
+            <% entrada = @ultimas_entradas[i] %>
+            <% if entrada %>
+              <td><%= entrada.user&.nome_completo %></td>
+              <td><%= l(entrada.punched_at, format: :long) %></td>
+              <td><span class="badge bg-success">Entrada</span></td>
+              <td><span class="badge bg-<%= entrada.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= entrada.authentication_mode %></span></td>
+            <% else %>
+              <td colspan="4"></td>
+            <% end %>
+
+            <% saida = @ultimas_saidas[i] %>
+            <% if saida %>
+              <td><%= saida.user&.nome_completo %></td>
+              <td><%= l(saida.punched_at, format: :long) %></td>
+              <td><span class="badge bg-warning text-dark">Saída</span></td>
+              <td><span class="badge bg-<%= saida.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= saida.authentication_mode %></span></td>
+            <% else %>
+              <td colspan="4"></td>
+            <% end %>
           </tr>
         <% end %>
-        <% if @ultimas_batidas.empty? %>
-          <tr><td colspan="3" class="text-muted text-center">Nenhuma batida registrada</td></tr>
+        <% if @ultimas_entradas.empty? && @ultimas_saidas.empty? %>
+          <tr><td colspan="8" class="text-muted text-center">Nenhuma batida registrada</td></tr>
         <% end %>
       </tbody>
     </table>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%= csrf_meta_tags %>
+  <title>Estação Ponto — TJPI</title>
+  <!-- Layout dedicado da tela principal da Estação: sem AdminLTE/Bootstrap/
+       jQuery de propósito. O WebView do JavaFX (WebKit anterior a 2017) não
+       executa <script type="module"> — qualquer dependência carregada via
+       import map falha silenciosamente (ver application.html.erb / histórico
+       de bugs do login manual). Esta tela usa só JS puro e CSS inline. -->
+  <script>
+    window.onerror = function(message, source, lineno, colno) {
+      alert('jserror:' + message + ' @ ' + source + ':' + lineno + ':' + colno);
+      return false;
+    };
+  </script>
+</head>
+<body>
+  <%= yield %>
+
+  <!-- Hidden fields for JavaFX bridge -->
+  <input type="hidden" id="codigoAtivacao" value="<%= yield(:codigo_ativacao).presence || "" %>">
+  <input type="hidden" id="codigoUnicoMaquina" value="<%= yield(:codigo_unico_maquina).presence || "" %>">
+  <input type="hidden" id="digitaisHash" value="<%= yield(:digitais_hash).presence || "" %>">
+</body>
+</html>
