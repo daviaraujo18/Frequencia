@@ -35,6 +35,7 @@ Rails.application.routes.draw do
     get "IniciarPonto", to: "iniciar_ponto#show"
     get "PontoDePresenca", to: "ponto_de_presenca#show"
     get "Frequentador", to: "frequentador#show"
+    post "Frequentador", to: "frequentador#create"
     get "AdicioneEstacao", to: "adicione_estacao#show"
     get "ProblemaRegistro", to: "problema_registro#show"
   end
