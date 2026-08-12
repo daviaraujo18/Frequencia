@@ -168,7 +168,7 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
   end
 
   test "POST SincronizarRegistrosPonto handles multiple records" do
-    registros = "#{@user.id}-15:07:2026:14:30:45\n#{@user.id}-15:07:2026:14:31:00"
+    registros = "#{@user.id}-15:07:2026:14:30:45;#{@user.id}-15:07:2026:14:31:00"
     enc = CryptoDes.encrypt(registros)
     post presenca_ajax_SincronizarRegistrosPonto_url,
       params: { registros: enc, codAtivacao: "poc-ativacao-001", confirmacaoVisual: "1" }
@@ -244,7 +244,7 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
     line1 = "#{@user.id}-#{(now - 2.hours).strftime("%d:%m:%Y:%H:%M:%S")}"
     line2 = "#{@user.id}-#{(now - 1.hour).strftime("%d:%m:%Y:%H:%M:%S")}"
     line3 = "#{@user.id}-#{now.strftime("%d:%m:%Y:%H:%M:%S")}"
-    registros = [line1, line2, line3].join("\n")
+    registros = [line1, line2, line3].join(";")
 
     enc = CryptoDes.encrypt(registros)
     post presenca_ajax_SincronizarRegistrosPonto_url,

@@ -5,6 +5,20 @@ module Presenca
     # então este valor segue sendo o caminho de fallback, não o primário.
     VALID_PUNCH_TYPES = %w[entry exit].freeze
 
+    # Deduplicação: o leitor biométrico captura em loop enquanto o dedo
+    # estiver no sensor (ver PreProcessandoService, lado Estação) — se o
+    # usuário não tirar o dedo a tempo, a mesma passagem física gera duas
+    # requisições de sincronização com o MESMO punched_at (mesmo segundo
+    # exato, herdado do relógio da Estação no momento da captura). Sem essa
+    # checagem, cada uma consultava PunchTypeService.determine antes da
+    # outra terminar de persistir, e as duas liam o mesmo "último registro"
+    # — resultando em duas entradas (ou duas saídas) seguidas.
+    #
+    # Importante: a checagem é por punched_at EXATO, não por proximidade de
+    # created_at — um login manual seguido de uma batida biométrica segundos
+    # depois (ou vice-versa) é uma batida legítima e diferente, com
+    # punched_at próprio, e não pode ser descartada.
+
     def create
       unless params[:codAtivacao].present? && %w[poc-ativacao-001 SistemaOperacionalNaoSuportado].include?(params[:codAtivacao])
         return render plain: "sincronizado"
@@ -12,7 +26,9 @@ module Presenca
 
       registros_raw = params[:registros].to_s
       registros_decrypted = decrypt_registros(registros_raw)
-      linhas = registros_decrypted.split("\n").map(&:strip).reject(&:empty?)
+      # A Estação junta os registros com ";" (ArquivoRegistros.lerArquivo,
+      # não com quebra de linha — nunca houve "\n" nesse payload de verdade.
+      linhas = registros_decrypted.split(";").map(&:strip).reject(&:empty?)
 
       registros_aceitos = []
       registros_rejeitados = []
@@ -45,6 +61,14 @@ module Presenca
           registros_rejeitados << {
             linha: linha,
             erro: "Usuário não encontrado para o identificador #{user_id}"
+          }
+          next
+        end
+
+        if TimeRecord.where(user_id: user.id, punched_at: punched_at).exists?
+          registros_rejeitados << {
+            linha: linha,
+            erro: "Batida duplicada ignorada (mesmo usuário e mesmo instante já registrados)"
           }
           next
         end

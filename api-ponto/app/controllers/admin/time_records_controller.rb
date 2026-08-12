@@ -15,11 +15,13 @@ module Admin
       end
 
       if params[:start_date].present?
-        @records = @records.where("punched_at >= ?", Time.zone.parse(params[:start_date]).beginning_of_day)
+        parsed = Time.zone.parse(params[:start_date])
+        @records = @records.where("punched_at >= ?", parsed.beginning_of_day) if parsed
       end
 
       if params[:end_date].present?
-        @records = @records.where("punched_at <= ?", Time.zone.parse(params[:end_date]).end_of_day)
+        parsed = Time.zone.parse(params[:end_date])
+        @records = @records.where("punched_at <= ?", parsed.end_of_day) if parsed
       end
 
       @records = @records.limit(PER_PAGE)
