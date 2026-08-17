@@ -1,0 +1,97 @@
+<%# Preenche o campo oculto #digitaisHash definido no layout (kiosk.html.erb) —
+    é nele que MainController.cadastrarDigital() (Java) grava o hash capturado
+    via LeitorDigital.enroll(), assim que o operador clica em "Cadastrar
+    Digitais" no rodapé nativo da Estação. %>
+<% content_for :digitais_hash, @digitais_hash %>
+
+<div class="wrap">
+  <h1><%= @type == "update" ? "Atualizar Digital" : "Cadastro de Digital" %></h1>
+
+  <% if @erro %>
+    <div class="msg erro"><%= @erro %></div>
+  <% end %>
+  <% if @sucesso %>
+    <div class="msg sucesso"><%= @sucesso %></div>
+  <% end %>
+
+  <p class="instrucoes">
+    1. Posicione o dedo do frequentador no leitor e clique no botão
+    <strong>"Cadastrar Digitais"</strong> (abaixo da tela, fora do navegador).<br>
+    2. Confirme abaixo que a digital foi capturada.<br>
+    3. Informe o <em>username</em> do frequentador e clique em Salvar.
+  </p>
+
+  <p id="statusCaptura" class="status-captura">Nenhuma digital capturada ainda.</p>
+
+  <form method="post" action="/presenca/Frequentador" onsubmit="return prepararEnvio();">
+    <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+    <input type="hidden" name="digitaisHash" id="digitaisHashForm">
+    <div><input type="text" name="username" placeholder="username do frequentador" required autocomplete="off"></div>
+    <div><button type="submit">Salvar Digital</button></div>
+  </form>
+
+  <p><a href="/presenca/PontoDePresenca">&larr; Voltar</a></p>
+</div>
+
+<script>
+  /**
+   * Bridge function: chamada por MainController#cadastrarDigital (Java) via
+   * The.inserirJavascript logo após capturar a digital com sucesso/erro.
+   * Convenção já usada nas outras telas kiosk — aqui também atualiza o
+   * status visível na própria página, além do alert nativo.
+   */
+  function changeInfoDigital(status, message) {
+    var el = document.getElementById('statusCaptura');
+    if (el) {
+      el.textContent = message;
+      el.className = 'status-captura ' + (status === 'error' ? 'erro' : (status === 'success' ? 'ok' : ''));
+    }
+  }
+
+  /**
+   * Copia o valor do campo oculto #digitaisHash (preenchido pelo Java após
+   * a captura) para o campo do formulário no instante do submit.
+   */
+  function prepararEnvio() {
+    var hidden = document.getElementById('digitaisHash');
+    var valor = hidden ? hidden.value : '';
+    document.getElementById('digitaisHashForm').value = valor;
+    if (!valor) {
+      alert('Capture a digital antes de salvar (botão "Cadastrar Digitais").');
+      return false;
+    }
+    return true;
+  }
+</script>
+
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #fdfdfb;
+    color: #1b2c47;
+  }
+  .wrap {
+    max-width: 480px;
+    margin: 40px auto;
+    padding: 0 20px;
+  }
+  h1 { font-size: 1.5em; margin-bottom: 20px; }
+  .instrucoes { color: #444; line-height: 1.5; }
+  .status-captura {
+    padding: 10px 14px;
+    border-radius: 6px;
+    background: #e2e3e5;
+    color: #383d41;
+    font-weight: bold;
+  }
+  .status-captura.ok { background: #d4edda; color: #155724; }
+  .status-captura.erro { background: #f8d7da; color: #721c24; }
+  .msg { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
+  .msg.erro { background: #f8d7da; color: #721c24; }
+  .msg.sucesso { background: #d4edda; color: #155724; }
+  form div { margin-bottom: 10px; }
+  input[type="text"] { padding: 8px; width: 100%; max-width: 260px; }
+  button { padding: 8px 16px; }
+</style>

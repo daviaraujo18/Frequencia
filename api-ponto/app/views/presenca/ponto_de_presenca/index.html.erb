@@ -46,6 +46,8 @@
 <div id="feedbackToast" class="feedback-toast" style="display:none;"></div>
 <div id="lockOverlay" class="lock-overlay" style="display:none;"></div>
 
+<a href="/presenca/Frequentador?type=create" class="cadastro-digital-link">Cadastrar digital</a>
+
 <script>
     window.comando = "NADA";
     var feedbackTimeout;
@@ -328,5 +330,14 @@
         background: rgba(255,255,255,0.4);
         z-index: 1000;
         cursor: wait;
+    }
+
+    .cadastro-digital-link {
+        position: fixed;
+        right: 10px;
+        bottom: 10px;
+        font-family: Arial, sans-serif;
+        font-size: 0.8em;
+        color: #888;
     }
 </style>
