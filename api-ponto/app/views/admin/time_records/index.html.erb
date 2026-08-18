@@ -37,29 +37,37 @@
     <table class="table table-striped mb-0">
       <thead>
         <tr>
-          <th>ID</th>
+          <% if current_user.admin? %>
+            <th>ID</th>
+          <% end %>
           <th>Usuário</th>
           <th>Username</th>
           <th>Data/Hora Batida</th>
           <th>Modo</th>
-          <th>Raw Data</th>
-          <th>Recebido em</th>
+          <% if current_user.admin? %>
+            <th>Raw Data</th>
+            <th>Recebido em</th>
+          <% end %>
         </tr>
       </thead>
       <tbody>
         <% @records.each do |tr| %>
           <tr>
-            <td><%= tr.id %></td>
+            <% if current_user.admin? %>
+              <td><%= tr.id %></td>
+            <% end %>
             <td><%= tr.user&.nome_completo %></td>
             <td><code><%= tr.user&.username %></code></td>
             <td><%= l(tr.punched_at, format: :long) %></td>
             <td><span class="badge bg-<%= tr.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= tr.authentication_mode %></span></td>
-            <td><small><code><%= tr.raw_data %></code></small></td>
-            <td><%= l(tr.created_at, format: :short) %></td>
+            <% if current_user.admin? %>
+              <td><small><code><%= tr.raw_data %></code></small></td>
+              <td><%= l(tr.created_at, format: :short) %></td>
+            <% end %>
           </tr>
         <% end %>
         <% if @records.empty? %>
-          <tr><td colspan="7" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+          <tr><td colspan="<%= current_user.admin? ? 7 : 4 %>" class="text-muted text-center">Nenhum registro encontrado</td></tr>
         <% end %>
       </tbody>
     </table>
