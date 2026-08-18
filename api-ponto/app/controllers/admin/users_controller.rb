@@ -1,6 +1,7 @@
 module Admin
   class UsersController < Admin::ApplicationController
     before_action :set_user, only: [:edit, :update, :destroy, :purge]
+    before_action -> { require_admin(users_path) }, only: [:index, :new, :create, :edit, :update, :destroy, :purge]
 
     def index
       @users = User.order(:nome_completo)

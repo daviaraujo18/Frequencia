@@ -32,40 +32,66 @@
   </div>
 </div>
 
-<div class="card">
-  <div class="card-body p-0">
-    <table class="table table-striped mb-0">
-      <thead>
-        <tr>
-          <th>Usuário</th>
-          <th>Username</th>
-          <th>Data/Hora Batida</th>
-          <% if current_user.admin? %>
+<% if current_user.admin? %>
+  <div class="card">
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Usuário</th>
+            <th>Username</th>
+            <th>Data/Hora Batida</th>
             <th>ID</th>
             <th>Modo</th>
             <th>Raw Data</th>
             <th>Recebido em</th>
-          <% end %>
-        </tr>
-      </thead>
-      <tbody>
-        <% @records.each do |tr| %>
-          <tr>
-            <td><%= tr.user&.nome_completo %></td>
-            <td><code><%= tr.user&.username %></code></td>
-            <td><%= l(tr.punched_at, format: :long) %></td>
-            <% if current_user.admin? %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @records.each do |tr| %>
+            <tr>
+              <td><%= tr.user&.nome_completo %></td>
+              <td><code><%= tr.user&.username %></code></td>
+              <td><%= l(tr.punched_at, format: :long) %></td>
               <td><%= tr.id %></td>
               <td><span class="badge bg-<%= tr.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= tr.authentication_mode %></span></td>
               <td><small><code><%= tr.raw_data %></code></small></td>
               <td><%= l(tr.created_at, format: :short) %></td>
-            <% end %>
-          </tr>
-        <% end %>
-        <% if @records.empty? %>
-          <tr><td colspan="<%= current_user.admin? ? 7 : 4 %>" class="text-muted text-center">Nenhum registro encontrado</td></tr>
-        <% end %>
-      </tbody>
-    </table>
+            </tr>
+          <% end %>
+          <% if @records.empty? %>
+            <tr><td colspan="7" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
-</div>
+<% else %>
+  <div class="card">
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Entrada</th>
+            <th>Saída</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @daily_records.each do |data, registros| %>
+            <% entrada = registros.find { |r| r.punch_type == "entry" } %>
+            <% saida = registros.find { |r| r.punch_type == "exit" } %>
+            <tr>
+              <td><%= l(data, format: :default) %></td>
+              <td><%= entrada ? l(entrada.punched_at, format: :short) : "-" %></td>
+              <td><%= saida ? l(saida.punched_at, format: :short) : "-" %></td>
+            </tr>
+          <% end %>
+          <% if @daily_records.empty? %>
+            <tr><td colspan="3" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>

@@ -26,5 +26,11 @@ module Admin
         redirect_to login_path
       end
     end
+
+    def require_admin(fallback_path = dashboard_path)
+      return if current_user&.admin?
+
+      redirect_to fallback_path, alert: "Acesso restrito a administradores"
+    end
   end
 end
