@@ -18,10 +18,12 @@
         <%= label_tag :end_date, "Até", class: "form-label" %>
         <%= date_field_tag :end_date, params[:end_date], class: "form-control form-control-sm" %>
       </div>
-      <div class="col-auto">
-        <%= label_tag :user_id, "Usuário", class: "form-label" %>
-        <%= select_tag :user_id, options_from_collection_for_select(User.order(:nome_completo), :id, :nome_completo, params[:user_id]), include_blank: "Todos", class: "form-select form-select-sm" %>
-      </div>
+      <% if current_user.admin? %>
+        <div class="col-auto">
+          <%= label_tag :user_id, "Usuário", class: "form-label" %>
+          <%= select_tag :user_id, options_from_collection_for_select(User.order(:nome_completo), :id, :nome_completo, params[:user_id]), include_blank: "Todos", class: "form-select form-select-sm" %>
+        </div>
+      <% end %>
       <div class="col-auto">
         <%= submit_tag "Filtrar", class: "btn btn-primary btn-sm" %>
         <%= link_to "Limpar", time_records_path, class: "btn btn-outline-secondary btn-sm" %>
