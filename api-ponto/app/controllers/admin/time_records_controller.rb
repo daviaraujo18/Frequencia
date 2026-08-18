@@ -11,12 +11,14 @@ module Admin
 
       # Usuários não-admin (basic) veem apenas os próprios registros,
       # ignorando qualquer filtro de user_id vindo dos params.
-      unless current_user.admin?
+      if current_user.admin?
+        if params[:user_id].present?
+          @records = @records.where(user_id: params[:user_id])
+          @user = User.find(params[:user_id])
+        end
+      else
         @records = @records.where(user_id: current_user.id)
         @user = current_user
-      elsif params[:user_id].present?
-        @records = @records.where(user_id: params[:user_id])
-        @user = User.find(params[:user_id])
       end
 
       if params[:start_date].present?
