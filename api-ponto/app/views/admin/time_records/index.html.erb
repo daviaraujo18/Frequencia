@@ -37,14 +37,12 @@
     <table class="table table-striped mb-0">
       <thead>
         <tr>
-          <% if current_user.admin? %>
-            <th>ID</th>
-          <% end %>
           <th>Usuário</th>
           <th>Username</th>
           <th>Data/Hora Batida</th>
-          <th>Modo</th>
           <% if current_user.admin? %>
+            <th>ID</th>
+            <th>Modo</th>
             <th>Raw Data</th>
             <th>Recebido em</th>
           <% end %>
@@ -53,14 +51,12 @@
       <tbody>
         <% @records.each do |tr| %>
           <tr>
-            <% if current_user.admin? %>
-              <td><%= tr.id %></td>
-            <% end %>
             <td><%= tr.user&.nome_completo %></td>
             <td><code><%= tr.user&.username %></code></td>
             <td><%= l(tr.punched_at, format: :long) %></td>
-            <td><span class="badge bg-<%= tr.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= tr.authentication_mode %></span></td>
             <% if current_user.admin? %>
+              <td><%= tr.id %></td>
+              <td><span class="badge bg-<%= tr.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= tr.authentication_mode %></span></td>
               <td><small><code><%= tr.raw_data %></code></small></td>
               <td><%= l(tr.created_at, format: :short) %></td>
             <% end %>
