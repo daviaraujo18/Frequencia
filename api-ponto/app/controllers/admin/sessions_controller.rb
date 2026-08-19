@@ -5,8 +5,7 @@ module Admin
 
     def new
       if logged_in?
-        destino = current_user.admin? ? dashboard_path : time_records_path
-        redirect_to destino
+        redirect_to dashboard_path
       else
         render layout: "login"
       end
@@ -16,8 +15,7 @@ module Admin
       user = User.find_by(username: params[:username])
       if user&.authenticate(params[:password]) && user.status == 1
         session[:user_id] = user.id
-        destino = user.admin? ? dashboard_path : time_records_path
-        redirect_to destino, notice: "Login realizado com sucesso"
+        redirect_to dashboard_path, notice: "Login realizado com sucesso"
       else
         flash.now[:alert] = "Usuário ou senha inválidos"
         render :new, layout: "login", status: :unprocessable_entity

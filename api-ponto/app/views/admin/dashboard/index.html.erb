@@ -1,123 +1,131 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Dashboard</h2>
-  <div>
-    <% if current_user.admin? %>
+<% if current_user.admin? %>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Dashboard</h2>
+    <div>
       <%= link_to "Usuários", users_path, class: "btn btn-outline-primary btn-sm" %>
-    <% end %>
-    <%= link_to "Registros", time_records_path, class: "btn btn-outline-primary btn-sm" %>
+      <%= link_to "Registros", time_records_path, class: "btn btn-outline-primary btn-sm" %>
+    </div>
   </div>
-</div>
 
-<div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="card text-bg-primary">
-      <div class="card-body">
-        <h5 class="card-title"><%= @total_usuarios %></h5>
-        <p class="card-text">Total de Usuários</p>
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card text-bg-primary">
+        <div class="card-body">
+          <h5 class="card-title"><%= @total_usuarios %></h5>
+          <p class="card-text">Total de Usuários</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-bg-success">
+        <div class="card-body">
+          <h5 class="card-title"><%= @usuarios_ativos %></h5>
+          <p class="card-text">Usuários Ativos</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-bg-warning">
+        <div class="card-body">
+          <h5 class="card-title"><%= @usuarios_com_digitais %></h5>
+          <p class="card-text">Com Digitais</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-bg-info">
+        <div class="card-body">
+          <h5 class="card-title"><%= @registros_hoje %></h5>
+          <p class="card-text">Batidas Hoje</p>
+        </div>
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card text-bg-success">
-      <div class="card-body">
-        <h5 class="card-title"><%= @usuarios_ativos %></h5>
-        <p class="card-text">Usuários Ativos</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card text-bg-warning">
-      <div class="card-body">
-        <h5 class="card-title"><%= @usuarios_com_digitais %></h5>
-        <p class="card-text">Com Digitais</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card text-bg-info">
-      <div class="card-body">
-        <h5 class="card-title"><%= @registros_hoje %></h5>
-        <p class="card-text">Batidas Hoje</p>
-      </div>
-    </div>
-  </div>
-</div>
 
-<div class="row g-3 mb-4">
-  <div class="col-md-4">
-    <div class="card">
-      <div class="card-body text-center">
-        <h3><%= @registros_semana %></h3>
-        <p class="text-muted">Batidas na última semana</p>
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body text-center">
+          <h3><%= @registros_semana %></h3>
+          <p class="text-muted">Batidas na última semana</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body text-center">
+          <h3><%= @registros_mes %></h3>
+          <p class="text-muted">Batidas no último mês</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body text-center">
+          <h3><%= @usuarios_inativos %></h3>
+          <p class="text-muted">Usuários Inativos</p>
+        </div>
       </div>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card">
-      <div class="card-body text-center">
-        <h3><%= @registros_mes %></h3>
-        <p class="text-muted">Batidas no último mês</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card">
-      <div class="card-body text-center">
-        <h3><%= @usuarios_inativos %></h3>
-        <p class="text-muted">Usuários Inativos</p>
-      </div>
-    </div>
-  </div>
-</div>
 
-<div class="card">
-  <div class="card-header d-flex justify-content-between align-items-center">
-    <span>Últimas Batidas</span>
-    <%= link_to "Ver todas", time_records_path, class: "btn btn-sm btn-outline-secondary" %>
-  </div>
-  <div class="card-body p-0">
-    <table class="table table-striped mb-0">
-      <thead>
-        <tr>
-          <th>Usuário</th>
-          <th>Data/Hora</th>
-          <th>Status</th>
-          <th>Modo</th>
-          <th>Usuário</th>
-          <th>Data/Hora</th>
-          <th>Status</th>
-          <th>Modo</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% linhas = [@ultimas_entradas.size, @ultimas_saidas.size].max %>
-        <% (0...linhas).each do |i| %>
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Últimas Batidas</span>
+      <%= link_to "Ver todas", time_records_path, class: "btn btn-sm btn-outline-secondary" %>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <thead>
           <tr>
-            <% entrada = @ultimas_entradas[i] %>
-            <% if entrada %>
-              <td><%= entrada.user&.nome_completo %></td>
-              <td><%= l(entrada.punched_at, format: :long) %></td>
-              <td><span class="badge bg-success">Entrada</span></td>
-              <td><span class="badge bg-<%= entrada.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= entrada.authentication_mode %></span></td>
-            <% else %>
-              <td colspan="4"></td>
-            <% end %>
-
-            <% saida = @ultimas_saidas[i] %>
-            <% if saida %>
-              <td><%= saida.user&.nome_completo %></td>
-              <td><%= l(saida.punched_at, format: :long) %></td>
-              <td><span class="badge bg-warning text-dark">Saída</span></td>
-              <td><span class="badge bg-<%= saida.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= saida.authentication_mode %></span></td>
-            <% else %>
-              <td colspan="4"></td>
-            <% end %>
+            <th>Usuário</th>
+            <th>Data/Hora</th>
+            <th>Status</th>
+            <th>Modo</th>
+            <th>Usuário</th>
+            <th>Data/Hora</th>
+            <th>Status</th>
+            <th>Modo</th>
           </tr>
-        <% end %>
-        <% if @ultimas_entradas.empty? && @ultimas_saidas.empty? %>
-          <tr><td colspan="8" class="text-muted text-center">Nenhuma batida registrada</td></tr>
-        <% end %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% linhas = [@ultimas_entradas.size, @ultimas_saidas.size].max %>
+          <% (0...linhas).each do |i| %>
+            <tr>
+              <% entrada = @ultimas_entradas[i] %>
+              <% if entrada %>
+                <td><%= entrada.user&.nome_completo %></td>
+                <td><%= l(entrada.punched_at, format: :long) %></td>
+                <td><span class="badge" style="background-color: #28a745;">Entrada</span></td>
+                <td><span class="badge bg-<%= entrada.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= entrada.authentication_mode %></span></td>
+              <% else %>
+                <td colspan="4"></td>
+              <% end %>
+
+              <% saida = @ultimas_saidas[i] %>
+              <% if saida %>
+                <td><%= saida.user&.nome_completo %></td>
+                <td><%= l(saida.punched_at, format: :long) %></td>
+                <td><span class="badge" style="background-color: #dc3545;">Saída</span></td>
+                <td><span class="badge bg-<%= saida.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= saida.authentication_mode %></span></td>
+              <% else %>
+                <td colspan="4"></td>
+              <% end %>
+            </tr>
+          <% end %>
+          <% if @ultimas_entradas.empty? && @ultimas_saidas.empty? %>
+            <tr><td colspan="8" class="text-muted text-center">Nenhuma batida registrada</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
-</div>
+<% else %>
+  <div class="text-center py-5">
+    <h2>Bem-vindo, <%= current_user.nome_completo %>!</h2>
+    <p class="text-muted mb-4">Acompanhe seus registros de ponto.</p>
+    <%= link_to time_records_path, class: "btn btn-primary btn-lg" do %>
+      <i class="bi bi-clock-history"></i> Meus Registros de Ponto
+    <% end %>
+  </div>
+<% end %>

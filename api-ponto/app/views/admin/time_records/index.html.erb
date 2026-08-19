@@ -32,66 +32,35 @@
   </div>
 </div>
 
-<% if current_user.admin? %>
-  <div class="card">
-    <div class="card-body p-0">
-      <table class="table table-striped mb-0">
-        <thead>
-          <tr>
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-striped mb-0">
+      <thead>
+        <tr>
+          <% if current_user.admin? %>
             <th>Usuário</th>
-            <th>Username</th>
-            <th>Data/Hora Batida</th>
-            <th>ID</th>
-            <th>Modo</th>
-            <th>Raw Data</th>
-            <th>Recebido em</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @records.each do |tr| %>
-            <tr>
-              <td><%= tr.user&.nome_completo %></td>
-              <td><code><%= tr.user&.username %></code></td>
-              <td><%= l(tr.punched_at, format: :long) %></td>
-              <td><%= tr.id %></td>
-              <td><span class="badge bg-<%= tr.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= tr.authentication_mode %></span></td>
-              <td><small><code><%= tr.raw_data %></code></small></td>
-              <td><%= l(tr.created_at, format: :short) %></td>
-            </tr>
           <% end %>
-          <% if @records.empty? %>
-            <tr><td colspan="7" class="text-muted text-center">Nenhum registro encontrado</td></tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-<% else %>
-  <div class="card">
-    <div class="card-body p-0">
-      <table class="table table-striped mb-0">
-        <thead>
+          <th>Data</th>
+          <th>Marcações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @daily_records.each do |item| %>
           <tr>
-            <th>Data</th>
-            <th>Entrada</th>
-            <th>Saída</th>
+            <% if current_user.admin? %>
+              <% data, usuario, marcacoes = item %>
+              <td><%= usuario.nome_completo %></td>
+            <% else %>
+              <% data, marcacoes = item %>
+            <% end %>
+            <td><%= l(data, format: :default) %></td>
+            <td><%= marcacoes %></td>
           </tr>
-        </thead>
-        <tbody>
-          <% @daily_records.each do |data, registros| %>
-            <% entrada = registros.find { |r| r.punch_type == "entry" } %>
-            <% saida = registros.find { |r| r.punch_type == "exit" } %>
-            <tr>
-              <td><%= l(data, format: :default) %></td>
-              <td><%= entrada ? l(entrada.punched_at, format: :short) : "-" %></td>
-              <td><%= saida ? l(saida.punched_at, format: :short) : "-" %></td>
-            </tr>
-          <% end %>
-          <% if @daily_records.empty? %>
-            <tr><td colspan="3" class="text-muted text-center">Nenhum registro encontrado</td></tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
+        <% end %>
+        <% if @daily_records.empty? %>
+          <tr><td colspan="<%= current_user.admin? ? 3 : 2 %>" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+        <% end %>
+      </tbody>
+    </table>
   </div>
-<% end %>
+</div>
