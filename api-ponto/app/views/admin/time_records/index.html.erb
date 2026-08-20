@@ -6,10 +6,16 @@
 <div class="card mb-3">
   <div class="card-body">
     <%= form_tag time_records_path, method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
-      <div class="col-auto">
-        <%= label_tag :id, "ID", class: "form-label" %>
-        <%= text_field_tag :id, params[:id], class: "form-control form-control-sm", placeholder: "ID" %>
-      </div>
+      <% if current_user.admin? %>
+        <div class="col-auto">
+          <%= label_tag :id, "ID", class: "form-label" %>
+          <%= text_field_tag :id, params[:id], class: "form-control form-control-sm", placeholder: "ID" %>
+        </div>
+        <div class="col-auto">
+          <%= label_tag :user_id, "Usuário", class: "form-label" %>
+          <%= select_tag :user_id, options_from_collection_for_select(User.order(:nome_completo), :id, :nome_completo, params[:user_id]), include_blank: "Todos", class: "form-select form-select-sm" %>
+        </div>
+      <% end %>
       <div class="col-auto">
         <%= label_tag :start_date, "De", class: "form-label" %>
         <%= date_field_tag :start_date, params[:start_date], class: "form-control form-control-sm" %>
@@ -17,10 +23,6 @@
       <div class="col-auto">
         <%= label_tag :end_date, "Até", class: "form-label" %>
         <%= date_field_tag :end_date, params[:end_date], class: "form-control form-control-sm" %>
-      </div>
-      <div class="col-auto">
-        <%= label_tag :user_id, "Usuário", class: "form-label" %>
-        <%= select_tag :user_id, options_from_collection_for_select(User.order(:nome_completo), :id, :nome_completo, params[:user_id]), include_blank: "Todos", class: "form-select form-select-sm" %>
       </div>
       <div class="col-auto">
         <%= submit_tag "Filtrar", class: "btn btn-primary btn-sm" %>
@@ -35,29 +37,28 @@
     <table class="table table-striped mb-0">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Usuário</th>
-          <th>Username</th>
-          <th>Data/Hora Batida</th>
-          <th>Modo</th>
-          <th>Raw Data</th>
-          <th>Recebido em</th>
+          <% if current_user.admin? %>
+            <th>Usuário</th>
+          <% end %>
+          <th>Data</th>
+          <th>Marcações</th>
         </tr>
       </thead>
       <tbody>
-        <% @records.each do |tr| %>
+        <% @daily_records.each do |item| %>
           <tr>
-            <td><%= tr.id %></td>
-            <td><%= tr.user&.nome_completo %></td>
-            <td><code><%= tr.user&.username %></code></td>
-            <td><%= l(tr.punched_at, format: :long) %></td>
-            <td><span class="badge bg-<%= tr.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= tr.authentication_mode %></span></td>
-            <td><small><code><%= tr.raw_data %></code></small></td>
-            <td><%= l(tr.created_at, format: :short) %></td>
+            <% if current_user.admin? %>
+              <% data, usuario, marcacoes = item %>
+              <td><%= usuario.nome_completo %></td>
+            <% else %>
+              <% data, marcacoes = item %>
+            <% end %>
+            <td><%= l(data, format: :default) %></td>
+            <td><%= marcacoes %></td>
           </tr>
         <% end %>
-        <% if @records.empty? %>
-          <tr><td colspan="7" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+        <% if @daily_records.empty? %>
+          <tr><td colspan="<%= current_user.admin? ? 3 : 2 %>" class="text-muted text-center">Nenhum registro encontrado</td></tr>
         <% end %>
       </tbody>
     </table>

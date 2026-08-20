@@ -48,7 +48,7 @@ module Presenca
         end
 
         user_id = parts[1].to_i
-        punched_at = DateTime.strptime(parts[2], "%d:%m:%Y:%H:%M:%S")
+        punched_at = Time.zone.strptime(parts[2], "%d:%m:%Y:%H:%M:%S")
         explicit_punch_type = parts[3]
 
         # Sprint R (R.6): o matching biométrico em si (hash MD5, download de
