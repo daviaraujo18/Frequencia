@@ -1,9 +1,15 @@
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h2>Registros de Ponto</h2>
-  <span class="text-muted">Mostrando até <%= Admin::TimeRecordsController::PER_PAGE %> de <%= @total %> registros</span>
+<% content_for :page_title, "Registros de Ponto" %>
+
+<div class="row mb-3">
+  <div class="col-sm-6">
+    <p class="text-muted mb-0">Mostrando até <%= Admin::TimeRecordsController::PER_PAGE %> de <strong><%= @total %></strong> registros</p>
+  </div>
 </div>
 
-<div class="card mb-3">
+<div class="card card-primary card-outline mb-4">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-funnel me-1"></i> Filtros</h3>
+  </div>
   <div class="card-body">
     <%= form_tag time_records_path, method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
       <% if current_user.admin? %>
@@ -24,43 +30,52 @@
         <%= label_tag :end_date, "Até", class: "form-label" %>
         <%= date_field_tag :end_date, params[:end_date], class: "form-control form-control-sm" %>
       </div>
-      <div class="col-auto">
-        <%= submit_tag "Filtrar", class: "btn btn-primary btn-sm" %>
-        <%= link_to "Limpar", time_records_path, class: "btn btn-outline-secondary btn-sm" %>
+      <div class="col-auto d-flex gap-1">
+        <%= button_tag class: "btn btn-primary btn-sm" do %>
+          <i class="bi bi-search"></i> Filtrar
+        <% end %>
+        <%= link_to time_records_path, class: "btn btn-outline-secondary btn-sm" do %>
+          <i class="bi bi-x-lg"></i> Limpar
+        <% end %>
       </div>
     <% end %>
   </div>
 </div>
 
-<div class="card">
+<div class="card card-primary card-outline">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-table me-1"></i> Registros</h3>
+  </div>
   <div class="card-body p-0">
-    <table class="table table-striped mb-0">
-      <thead>
-        <tr>
-          <% if current_user.admin? %>
-            <th>Usuário</th>
-          <% end %>
-          <th>Data</th>
-          <th>Marcações</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @daily_records.each do |item| %>
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead>
           <tr>
             <% if current_user.admin? %>
-              <% data, usuario, marcacoes = item %>
-              <td><%= usuario.nome_completo %></td>
-            <% else %>
-              <% data, marcacoes = item %>
+              <th>Usuário</th>
             <% end %>
-            <td><%= l(data, format: :default) %></td>
-            <td><%= marcacoes %></td>
+            <th>Data</th>
+            <th>Marcações</th>
           </tr>
-        <% end %>
-        <% if @daily_records.empty? %>
-          <tr><td colspan="<%= current_user.admin? ? 3 : 2 %>" class="text-muted text-center">Nenhum registro encontrado</td></tr>
-        <% end %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% @daily_records.each do |item| %>
+            <tr>
+              <% if current_user.admin? %>
+                <% data, usuario, marcacoes = item %>
+                <td><%= usuario.nome_completo %></td>
+              <% else %>
+                <% data, marcacoes = item %>
+              <% end %>
+              <td><%= l(data, format: :default) %></td>
+              <td><%= marcacoes %></td>
+            </tr>
+          <% end %>
+          <% if @daily_records.empty? %>
+            <tr><td colspan="<%= current_user.admin? ? 3 : 2 %>" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

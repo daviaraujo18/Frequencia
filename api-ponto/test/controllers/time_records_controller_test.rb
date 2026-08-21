@@ -11,7 +11,7 @@ class TimeRecordsControllerTest < ActionDispatch::IntegrationTest
   test "deve listar registros de ponto" do
     get time_records_path
     assert_response :success
-    assert_select "h2", "Registros de Ponto"
+    assert_select ".app-content-header h1", "Registros de Ponto"
   end
 
   test "deve filtrar por usuario" do

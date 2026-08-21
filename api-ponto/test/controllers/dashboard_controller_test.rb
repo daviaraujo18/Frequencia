@@ -9,7 +9,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   test "deve carregar dashboard" do
     get dashboard_path
     assert_response :success
-    assert_select "h2", "Dashboard"
+    assert_select ".app-content-header h1", "Dashboard"
   end
 
   test "deve redirecionar para login se nao autenticado" do
