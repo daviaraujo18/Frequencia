@@ -1,0 +1,46 @@
+<% content_for :page_title, "Frequência Mensal" %>
+
+<div class="card card-primary card-outline mb-4">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-funnel me-1"></i> Filtros</h3>
+  </div>
+  <div class="card-body">
+    <%= form_tag "#", method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
+      <div class="col-auto">
+        <%= label_tag :mes, "Mês", class: "form-label" %>
+        <%
+          meses = I18n.t("date.month_names").each_with_index.drop(1).map { |nome, i| [nome.capitalize, i] }
+        %>
+        <%= select_tag :mes, options_for_select(meses, params[:mes]), include_blank: "Todos", class: "form-select form-select-sm" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :ano, "Ano", class: "form-label" %>
+        <%= select_tag :ano, options_for_select((2020..Time.current.year).to_a.reverse, params[:ano]), include_blank: "Todos", class: "form-select form-select-sm" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :empresa, "Empresa", class: "form-label" %>
+        <%= select_tag :empresa, options_for_select([], params[:empresa]), include_blank: "Selecione uma empresa", class: "form-select form-select-sm", id: "filtro_empresa" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :contrato, "Contrato", class: "form-label" %>
+        <%= select_tag :contrato, options_for_select([], params[:contrato]), include_blank: "Selecione uma empresa primeiro", class: "form-select form-select-sm", id: "filtro_contrato", disabled: true %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  // Contrato só faz sentido depois de escolher a empresa — mantém
+  // desabilitado até lá (a lista de contratos ainda não tem fonte de
+  // dado real, então por enquanto só liga/desliga o campo).
+  (function() {
+    var selectEmpresa = document.getElementById('filtro_empresa');
+    var selectContrato = document.getElementById('filtro_contrato');
+    if (!selectEmpresa || !selectContrato) return;
+
+    selectEmpresa.addEventListener('change', function() {
+      selectContrato.disabled = !selectEmpresa.value;
+      if (!selectEmpresa.value) selectContrato.value = "";
+    });
+  })();
+</script>
