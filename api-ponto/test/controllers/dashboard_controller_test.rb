@@ -2,7 +2,7 @@ require "test_helper"
 
 class DashboardControllerTest < ActionDispatch::IntegrationTest
   setup do
-    @user = User.create!(nome_completo: "Admin Teste", password: "123456")
+    @user = User.create!(nome_completo: "Admin Teste", password: "123456", admin: true)
     post login_path, params: { username: @user.username, password: "123456" }
   end
 

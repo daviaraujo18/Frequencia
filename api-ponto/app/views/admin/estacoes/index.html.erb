@@ -1,0 +1,48 @@
+<% content_for :page_title, "Gerência de Estações de Ponto" %>
+
+<div class="row mb-3">
+  <div class="col-sm-6">
+    <p class="text-muted mb-0"><%= @estacoes.size %> estação(ões)</p>
+  </div>
+</div>
+
+<div class="card card-primary card-outline">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-hdd-network me-1"></i> Lista de Estações</h3>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Descrição</th>
+            <th>Versão</th>
+            <th>Último Contato</th>
+            <th>VNC</th>
+            <th>AnyDesk</th>
+            <th>TeamViewer</th>
+            <th>Observação</th>
+            <th>Editar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @estacoes.each do |estacao| %>
+            <tr>
+              <td><%= estacao[:descricao] %></td>
+              <td><%= estacao[:versao] %></td>
+              <td><%= estacao[:ultimo_contato] %></td>
+              <td><%= estacao[:vnc] %></td>
+              <td><%= estacao[:anydesk] %></td>
+              <td><%= estacao[:teamviewer] %></td>
+              <td><%= estacao[:observacao] %></td>
+              <td><%= link_to "Editar", "#", class: "small" %></td>
+            </tr>
+          <% end %>
+          <% if @estacoes.empty? %>
+            <tr><td colspan="8" class="text-muted text-center">Nenhuma estação cadastrada</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

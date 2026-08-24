@@ -23,6 +23,16 @@ Rails.application.routes.draw do
       end
     end
     resources :time_records, only: [:index]
+    resources :frequentadores, only: [:index]
+    resources :estacoes, only: [:index]
+    resources :versoes, only: [:index]
+    resources :relatorio_terceirizados, only: [:index]
+    get "frequencia_por_orgao", to: "frequencia_por_orgao#index", as: :frequencia_por_orgao
+    get "parcial", to: "parcial#index", as: :parcial
+    get "frequencia", to: "frequencia#index", as: :frequencia
+    resources :regimes, only: [:index]
+    resources :direitos_deveres, only: [:index]
+    resources :gestores_individuais, only: [:index]
   end
 
   namespace :presenca do

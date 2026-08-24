@@ -1,0 +1,107 @@
+<% content_for :page_title, "Gerência de Frequentadores" %>
+<% content_for :page_actions do %>
+  <%= link_to "Cadastrar novo frequentador", "#" %>
+<% end %>
+
+<div class="row mb-3">
+  <div class="col-sm-6">
+    <p class="text-muted mb-0"><%= @frequentadores.size %> frequentador(es)<%= " (incluindo inativos)" if params[:inativos].present? %></p>
+  </div>
+</div>
+
+<div class="card card-primary card-outline mb-4">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-funnel me-1"></i> Filtros</h3>
+  </div>
+  <div class="card-body">
+    <%= form_tag frequentadores_path, method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
+      <div class="col-auto">
+        <%= label_tag :nome, "Nome", class: "form-label" %>
+        <%= text_field_tag :nome, params[:nome], class: "form-control form-control-sm", placeholder: "Buscar por nome" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :orgao, "Órgão", class: "form-label" %>
+        <%= text_field_tag :orgao, params[:orgao], class: "form-control form-control-sm", placeholder: "Buscar por órgão", disabled: true, title: "Disponível quando os dados de órgão forem importados" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :categoria, "Categoria", class: "form-label" %>
+        <%= select_tag :categoria,
+              options_for_select([
+                "Servidor Efetivo",
+                "Servidor Comissionado",
+                "Estagiário",
+                "Residente",
+                "Terceirizado",
+                "Auxiliar da Justiça",
+                "Cedido"
+              ], params[:categoria]),
+              include_blank: "Todos",
+              class: "form-select form-select-sm",
+              disabled: true,
+              title: "Disponível quando os dados de categoria forem importados" %>
+      </div>
+      <div class="col-auto d-flex align-items-center gap-3 pb-1">
+        <div class="form-check">
+          <%= check_box_tag :sem_digital, "1", params[:sem_digital].present?, class: "form-check-input", id: "sem_digital" %>
+          <%= label_tag :sem_digital, "Digital não cadastrada", class: "form-check-label" %>
+        </div>
+        <div class="form-check">
+          <%= check_box_tag :inativos, "1", params[:inativos].present?, class: "form-check-input", id: "inativos" %>
+          <%= label_tag :inativos, "Frequentadores inativos", class: "form-check-label" %>
+        </div>
+      </div>
+      <div class="col-auto d-flex gap-1">
+        <%= button_tag class: "btn btn-primary btn-sm" do %>
+          <i class="bi bi-search"></i> Filtrar
+        <% end %>
+        <%= link_to frequentadores_path, class: "btn btn-outline-secondary btn-sm" do %>
+          <i class="bi bi-x-lg"></i> Limpar
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card card-primary card-outline">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-person-check me-1"></i> Lista de Frequentadores</h3>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Comarca/Órgão</th>
+            <th>Vínculo</th>
+            <th>Digital</th>
+            <th>Gerência</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @frequentadores.each do |user| %>
+            <tr>
+              <td><%= user.nome_completo %></td>
+              <td class="text-muted">—</td>
+              <td class="text-muted">—</td>
+              <td>
+                <% if user.digitais_hash.present? %>
+                  <span class="badge text-bg-info">Cadastrada</span>
+                <% else %>
+                  <span class="badge text-bg-secondary">Não</span>
+                <% end %>
+              </td>
+              <td class="d-flex gap-2">
+                <%= link_to "Editar frequentador", "#", class: "small" %>
+                <%= link_to "Inativar frequentador", "#", class: "small text-danger" %>
+              </td>
+            </tr>
+          <% end %>
+          <% if @frequentadores.empty? %>
+            <tr><td colspan="5" class="text-muted text-center">Nenhum frequentador ativo</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

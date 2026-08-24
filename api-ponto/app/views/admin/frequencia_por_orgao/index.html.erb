@@ -1,0 +1,67 @@
+<% content_for :page_title, "Frequência Mensal" %>
+
+<div class="card card-primary card-outline mb-4">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-funnel me-1"></i> Filtros</h3>
+  </div>
+  <div class="card-body">
+    <%= form_tag frequencia_por_orgao_path, method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
+      <div class="col-auto">
+        <%= label_tag :mes, "Mês", class: "form-label" %>
+        <%
+          meses = I18n.t("date.month_names").each_with_index.drop(1).map { |nome, i| [nome.capitalize, i] }
+        %>
+        <%= select_tag :mes, options_for_select(meses, params[:mes]), include_blank: "Todos", class: "form-select form-select-sm" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :ano, "Ano", class: "form-label" %>
+        <%= select_tag :ano, options_for_select((2020..Time.current.year).to_a.reverse, params[:ano]), include_blank: "Todos", class: "form-select form-select-sm" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :orgao, "Órgão", class: "form-label" %>
+        <%= text_field_tag :orgao, params[:orgao], class: "form-control form-control-sm", placeholder: "Buscar por órgão" %>
+      </div>
+      <div class="col-auto d-flex gap-1">
+        <%= button_tag class: "btn btn-primary btn-sm" do %>
+          <i class="bi bi-search"></i> Filtrar
+        <% end %>
+        <%= link_to frequencia_por_orgao_path, class: "btn btn-outline-secondary btn-sm" do %>
+          <i class="bi bi-x-lg"></i> Limpar
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card card-primary card-outline">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-file-earmark-text me-1"></i> Frequência por Órgão</h3>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Órgão</th>
+            <th>Trabalhado</th>
+            <th>Presenças</th>
+            <th>Ausências</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @registros.each do |registro| %>
+            <tr>
+              <td><%= registro[:orgao] %></td>
+              <td><%= registro[:trabalhado] %></td>
+              <td><%= registro[:presencas] %></td>
+              <td><%= registro[:ausencias] %></td>
+            </tr>
+          <% end %>
+          <% if @registros.empty? %>
+            <tr><td colspan="4" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

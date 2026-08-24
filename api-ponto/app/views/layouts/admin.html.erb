@@ -104,6 +104,105 @@
               <% end %>
             </li>
           <% end %>
+          <li class="nav-item">
+            <a href="#" class="nav-link">
+              <i class="nav-icon bi bi-person-check"></i>
+              <p>
+                Presença
+                <i class="nav-arrow bi bi-chevron-right"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <%= link_to frequentadores_path, class: "nav-link#{" active" if current_page?(frequentadores_path) }" do %>
+                  <i class="nav-icon bi bi-circle"></i>
+                  <p>Frequentadores</p>
+                <% end %>
+              </li>
+              <li class="nav-item">
+                <a href="#" class="nav-link">
+                  <i class="nav-icon bi bi-circle"></i>
+                  <p>
+                    Estação de Ponto
+                    <i class="nav-arrow bi bi-chevron-right"></i>
+                  </p>
+                </a>
+                <ul class="nav nav-treeview">
+                  <li class="nav-item">
+                    <a href="#" class="nav-link">
+                      <i class="nav-icon bi bi-circle"></i>
+                      <p>Inicializar Estação</p>
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <%= link_to estacoes_path, class: "nav-link#{" active" if current_page?(estacoes_path) }" do %>
+                      <i class="nav-icon bi bi-circle"></i>
+                      <p>Explorar Estações</p>
+                    <% end %>
+                  </li>
+                  <li class="nav-item">
+                    <%= link_to versoes_path, class: "nav-link#{" active" if current_page?(versoes_path) }" do %>
+                      <i class="nav-icon bi bi-circle"></i>
+                      <p>Explorar Versões</p>
+                    <% end %>
+                  </li>
+                </ul>
+              </li>
+              <li class="nav-item">
+                <a href="#" class="nav-link">
+                  <i class="nav-icon bi bi-circle"></i>
+                  <p>
+                    Relatório Mensal
+                    <i class="nav-arrow bi bi-chevron-right"></i>
+                  </p>
+                </a>
+                <ul class="nav nav-treeview">
+                  <li class="nav-item">
+                    <%= link_to relatorio_terceirizados_path, class: "nav-link#{" active" if current_page?(relatorio_terceirizados_path) }" do %>
+                      <i class="nav-icon bi bi-circle"></i>
+                      <p>Relatório Terceirizados</p>
+                    <% end %>
+                  </li>
+                  <li class="nav-item">
+                    <%= link_to frequencia_por_orgao_path, class: "nav-link#{" active" if current_page?(frequencia_por_orgao_path) }" do %>
+                      <i class="nav-icon bi bi-circle"></i>
+                      <p>Frequência por Órgão</p>
+                    <% end %>
+                  </li>
+                  <li class="nav-item">
+                    <%= link_to parcial_path, class: "nav-link#{" active" if current_page?(parcial_path) }" do %>
+                      <i class="nav-icon bi bi-circle"></i>
+                      <p>Parcial</p>
+                    <% end %>
+                  </li>
+                </ul>
+              </li>
+              <li class="nav-item">
+                <%= link_to frequencia_path, class: "nav-link#{" active" if current_page?(frequencia_path) }" do %>
+                  <i class="nav-icon bi bi-circle"></i>
+                  <p>Frequência</p>
+                <% end %>
+              </li>
+              <li class="nav-item">
+                <%= link_to regimes_path, class: "nav-link#{" active" if current_page?(regimes_path) }" do %>
+                  <i class="nav-icon bi bi-circle"></i>
+                  <p>Regimes</p>
+                <% end %>
+              </li>
+              <li class="nav-item">
+                <%= link_to direitos_deveres_path, class: "nav-link#{" active" if current_page?(direitos_deveres_path) }" do %>
+                  <i class="nav-icon bi bi-circle"></i>
+                  <p>Direitos &amp; Deveres</p>
+                <% end %>
+              </li>
+              <li class="nav-item">
+                <%= link_to gestores_individuais_path, class: "nav-link#{" active" if current_page?(gestores_individuais_path) }" do %>
+                  <i class="nav-icon bi bi-circle"></i>
+                  <p>Gestores Individuais</p>
+                <% end %>
+              </li>
+            </ul>
+          </li>
         </ul>
       </nav>
     </div>
@@ -119,13 +218,8 @@
           <div class="col-sm-6">
             <h1 class="mb-0 fs-3"><%= yield :page_title %></h1>
           </div>
-          <div class="col-sm-6">
-            <nav aria-label="breadcrumb">
-              <ol class="breadcrumb float-sm-end">
-                <li class="breadcrumb-item"><%= link_to "Dashboard", dashboard_path %></li>
-                <li class="breadcrumb-item active" aria-current="page"><%= yield :page_title %></li>
-              </ol>
-            </nav>
+          <div class="col-sm-6 d-flex align-items-center justify-content-end">
+            <%= yield :page_actions %>
           </div>
         </div>
       </div>
