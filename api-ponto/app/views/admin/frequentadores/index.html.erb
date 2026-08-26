@@ -75,7 +75,7 @@
             <th>Comarca/Órgão</th>
             <th>Vínculo</th>
             <th>Digital</th>
-            <th>Gerência</th>
+            <th class="text-end">Gerência</th>
           </tr>
         </thead>
         <tbody>
@@ -91,9 +91,21 @@
                   <span class="badge text-bg-secondary">Não</span>
                 <% end %>
               </td>
-              <td class="d-flex gap-2">
-                <%= link_to "Editar frequentador", "#", class: "small" %>
-                <%= link_to "Inativar frequentador", "#", class: "small text-danger" %>
+              <td class="text-end">
+                <div class="d-flex gap-1 justify-content-end">
+                  <%= link_to edit_user_path(user), class: "btn btn-xs btn-outline-primary" do %>
+                    <i class="bi bi-pencil"></i>
+                  <% end %>
+                  <% if user.status == 1 %>
+                    <%= button_to user_path(user), method: :delete, class: "btn btn-xs btn-outline-danger", data: { turbo_confirm: "Tem certeza?" } do %>
+                      <i class="bi bi-person-x"></i>
+                    <% end %>
+                  <% else %>
+                    <%= button_to purge_user_path(user), method: :delete, class: "btn btn-xs btn-danger", data: { turbo_confirm: "Tem certeza que deseja excluir definitivamente este usuário?" } do %>
+                      <i class="bi bi-trash"></i>
+                    <% end %>
+                  <% end %>
+                </div>
               </td>
             </tr>
           <% end %>

@@ -12,16 +12,17 @@ module Admin
       # Monta a query base
       registros = TimeRecord.includes(:user).order(punched_at: :asc)
 
-      if params[:id].present?
-        registros = registros.where(id: params[:id])
-      end
-
       # Usuários não-admin (basic) veem apenas os próprios registros,
-      # ignorando qualquer filtro de user_id vindo dos params.
+      # ignorando qualquer filtro de usuário vindo dos params.
       if current_user.admin?
-        if params[:user_id].present?
-          registros = registros.where(user_id: params[:user_id])
-          @user = User.find(params[:user_id])
+        if params[:usuario].present?
+          usuarios_encontrados = User.where("nome_completo ILIKE ?", "%#{params[:usuario]}%")
+          registros = registros.where(user_id: usuarios_encontrados.select(:id))
+
+          # Só entra no modo "um usuário só" (com o card de resumo mensal)
+          # quando a busca resolve pra exatamente um usuário — com vários
+          # resultados, continua na visão agregada (Usuário/Data/Marcações).
+          @user = usuarios_encontrados.first if usuarios_encontrados.count == 1
         end
       else
         registros = registros.where(user_id: current_user.id)
@@ -67,7 +68,7 @@ module Admin
       # vê os próprios registros (sempre "um usuário só"); um admin só entra
       # nesse modo depois de filtrar por um usuário específico. Sem isso,
       # o admin continua na visão agregada (Usuário/Data/Marcações).
-      @modo_usuario_unico = !current_user.admin? || params[:user_id].present?
+      @modo_usuario_unico = !current_user.admin? || @user.present?
 
       if @modo_usuario_unico
         agrupado = registros.group_by { |r| r.punched_at.to_date }

@@ -14,12 +14,8 @@
     <%= form_tag time_records_path, method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
       <% if current_user.admin? %>
         <div class="col-auto">
-          <%= label_tag :id, "ID", class: "form-label" %>
-          <%= text_field_tag :id, params[:id], class: "form-control form-control-sm", placeholder: "ID" %>
-        </div>
-        <div class="col-auto">
-          <%= label_tag :user_id, "Usuário", class: "form-label" %>
-          <%= select_tag :user_id, options_from_collection_for_select(User.order(:nome_completo), :id, :nome_completo, params[:user_id]), include_blank: "Todos", class: "form-select form-select-sm" %>
+          <%= label_tag :usuario, "Usuário", class: "form-label" %>
+          <%= text_field_tag :usuario, params[:usuario], class: "form-control form-control-sm", placeholder: "Buscar por usuário" %>
         </div>
       <% end %>
       <div class="col-auto">
@@ -148,52 +144,58 @@
   </div>
 <% end %>
 
-<div class="card">
-  <div class="card-body p-0">
-    <table class="table table-striped mb-0">
-      <% if @modo_usuario_unico %>
-        <thead>
-          <tr>
-            <th>Dia</th>
-            <th>Trabalhado</th>
-            <th>Registro</th>
-            <th>Informações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @daily_records.each do |dia_label, trabalhado, registro, informacoes| %>
+<% if !current_user.admin? || params[:usuario].present? %>
+  <div class="card">
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <% if @modo_usuario_unico %>
+          <thead>
             <tr>
-              <td><%= dia_label %></td>
-              <td><%= trabalhado %></td>
-              <td><%= registro %></td>
-              <td><%= informacoes %></td>
+              <th>Dia</th>
+              <th>Trabalhado</th>
+              <th>Registro</th>
+              <th>Informações</th>
             </tr>
-          <% end %>
-          <% if @daily_records.empty? %>
-            <tr><td colspan="4" class="text-muted text-center">Nenhum registro encontrado</td></tr>
-          <% end %>
-        </tbody>
-      <% else %>
-        <thead>
-          <tr>
-            <th>Usuário</th>
-            <th>Data</th>
-            <th>Marcações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @daily_records.each do |data, usuario, marcacoes| %>
+          </thead>
+          <tbody>
+            <% @daily_records.each do |dia_label, trabalhado, registro, informacoes| %>
+              <tr>
+                <td><%= dia_label %></td>
+                <td><%= trabalhado %></td>
+                <td><%= registro %></td>
+                <td><%= informacoes %></td>
+              </tr>
+            <% end %>
+            <% if @daily_records.empty? %>
+              <tr><td colspan="4" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+            <% end %>
+          </tbody>
+        <% else %>
+          <thead>
             <tr>
-              <td><%= usuario.nome_completo %></td>
-              <td><%= l(data, format: :default) %></td>
-              <td><%= marcacoes %></td>
+              <th>Usuário</th>
+              <th>Data</th>
+              <th>Marcações</th>
             </tr>
-          <% end %>
-          <% if @daily_records.empty? %>
-            <tr><td colspan="3" class="text-muted text-center">Nenhum registro encontrado</td></tr>
-          <% end %>
-        </tbody>
-      <% end %>
-    </table>
+          </thead>
+          <tbody>
+            <% @daily_records.each do |data, usuario, marcacoes| %>
+              <tr>
+                <td><%= usuario.nome_completo %></td>
+                <td><%= l(data, format: :default) %></td>
+                <td><%= marcacoes %></td>
+              </tr>
+            <% end %>
+            <% if @daily_records.empty? %>
+              <tr><td colspan="3" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+            <% end %>
+          </tbody>
+        <% end %>
+      </table>
+    </div>
   </div>
-</div>
+<% else %>
+  <div class="alert alert-info mb-0">
+    <i class="bi bi-info-circle me-1"></i> Busque um usuário para ver os registros de ponto.
+  </div>
+<% end %>

@@ -20,7 +20,6 @@
       <table class="table table-striped mb-0">
         <thead>
           <tr>
-            <th>ID</th>
             <th>Nome Completo</th>
             <th>Username</th>
             <th>Status</th>
@@ -31,7 +30,6 @@
         <tbody>
           <% @users.each do |user| %>
             <tr>
-              <td><%= user.id %></td>
               <td><%= user.nome_completo %></td>
               <td><code><%= user.username %></code></td>
               <td>

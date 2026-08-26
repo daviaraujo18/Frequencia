@@ -22,7 +22,7 @@
             <th>AnyDesk</th>
             <th>TeamViewer</th>
             <th>Observação</th>
-            <th>Editar</th>
+            <th class="text-end">Editar</th>
           </tr>
         </thead>
         <tbody>
@@ -35,7 +35,13 @@
               <td><%= estacao[:anydesk] %></td>
               <td><%= estacao[:teamviewer] %></td>
               <td><%= estacao[:observacao] %></td>
-              <td><%= link_to "Editar", "#", class: "small" %></td>
+              <td class="text-end">
+                <div class="d-flex gap-1 justify-content-end">
+                  <%= link_to "#", class: "btn btn-xs btn-outline-primary" do %>
+                    <i class="bi bi-pencil"></i>
+                  <% end %>
+                </div>
+              </td>
             </tr>
           <% end %>
           <% if @estacoes.empty? %>
