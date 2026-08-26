@@ -24,7 +24,9 @@ Rails.application.routes.draw do
     end
     resources :time_records, only: [:index]
     resources :frequentadores, only: [:index]
-    resources :estacoes, only: [:index]
+    get "estacoes/new", to: "estacoes#new", as: :new_estacao
+    get "estacoes/:id/edit", to: "estacoes#edit", as: :edit_estacao
+    resources :estacoes, only: [:index, :create, :update, :destroy]
     resources :versoes, only: [:index]
     resources :relatorio_terceirizados, only: [:index]
     get "frequencia_por_orgao", to: "frequencia_por_orgao#index", as: :frequencia_por_orgao

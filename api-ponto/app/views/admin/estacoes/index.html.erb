@@ -4,6 +4,11 @@
   <div class="col-sm-6">
     <p class="text-muted mb-0"><%= @estacoes.size %> estação(ões)</p>
   </div>
+  <div class="col-sm-6 text-sm-end">
+    <%= link_to new_estacao_path, class: "btn btn-primary" do %>
+      <i class="bi bi-plus-lg me-1"></i> Nova Estação
+    <% end %>
+  </div>
 </div>
 
 <div class="card card-primary card-outline">
@@ -22,7 +27,7 @@
             <th>AnyDesk</th>
             <th>TeamViewer</th>
             <th>Observação</th>
-            <th class="text-end">Editar</th>
+            <th class="text-end">Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -37,8 +42,11 @@
               <td><%= estacao[:observacao] %></td>
               <td class="text-end">
                 <div class="d-flex gap-1 justify-content-end">
-                  <%= link_to "#", class: "btn btn-xs btn-outline-primary" do %>
+                  <%= link_to edit_estacao_path(estacao), class: "btn btn-xs btn-outline-primary" do %>
                     <i class="bi bi-pencil"></i>
+                  <% end %>
+                  <%= button_to estacao_path(estacao), method: :delete, class: "btn btn-xs btn-outline-danger", data: { turbo_confirm: "Tem certeza que deseja excluir esta estação?" } do %>
+                    <i class="bi bi-trash"></i>
                   <% end %>
                 </div>
               </td>

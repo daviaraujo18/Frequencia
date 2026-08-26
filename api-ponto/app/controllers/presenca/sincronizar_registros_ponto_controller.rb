@@ -20,7 +20,11 @@ module Presenca
     # punched_at próprio, e não pode ser descartada.
 
     def create
-      unless params[:codAtivacao].present? && %w[poc-ativacao-001 SistemaOperacionalNaoSuportado].include?(params[:codAtivacao])
+      # Sprint 1 (Task 1.4): antes validava contra uma whitelist hardcoded de
+      # códigos de ativação; agora valida contra estações reais cadastradas
+      # em `EstacaoPonto` (mesma resposta/formato do protocolo, apenas a
+      # fonte do dado mudou — ver ADR-0003).
+      unless EstacaoPonto.codigo_ativacao_valido?(params[:codAtivacao])
         return render plain: "sincronizado"
       end
 

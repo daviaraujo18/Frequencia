@@ -14,3 +14,10 @@
 # ActiveSupport::Inflector.inflections(:en) do |inflect|
 #   inflect.acronym "RESTful"
 # end
+
+# NOTE: "estacoes" é plural irregular em português (estação/estações) — o
+# inflector padrão (locale :en) singulariza para "estaco", quebrando o path
+# helper `estacao_path` usado pelas rotas de `admin/estacoes` (Task 1.3).
+ActiveSupport::Inflector.inflections(:en) do |inflect|
+  inflect.irregular "estacao", "estacoes"
+end

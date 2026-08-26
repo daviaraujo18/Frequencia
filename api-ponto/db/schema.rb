@@ -10,9 +10,23 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_08_18_175954) do
+ActiveRecord::Schema[8.0].define(version: 2026_08_26_151000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "estacoes_ponto", force: :cascade do |t|
+    t.string "descricao", null: false
+    t.string "versao"
+    t.datetime "ultimo_contato"
+    t.string "vnc"
+    t.string "anydesk"
+    t.string "teamviewer"
+    t.text "observacao"
+    t.string "cod_ativacao", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cod_ativacao"], name: "index_estacoes_ponto_on_cod_ativacao", unique: true
+  end
 
   create_table "time_records", force: :cascade do |t|
     t.bigint "user_id", null: false
