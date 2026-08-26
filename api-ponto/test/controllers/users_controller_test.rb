@@ -14,7 +14,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
   test "deve mostrar formulario de novo usuario" do
     get new_user_path
     assert_response :success
-    assert_select "h2", "Novo Usuário"
+    assert_select ".app-content-header h1", "Novo Usuário"
   end
 
   test "deve criar usuario" do

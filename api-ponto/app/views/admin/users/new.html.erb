@@ -1,49 +1,57 @@
+<% content_for :page_title, "Novo Usuário" %>
+
 <div class="row justify-content-center">
-  <div class="col-md-6">
-    <h2 class="mb-3">Novo Usuário</h2>
-
-    <%= form_with(model: @user, local: true) do |f| %>
-      <% if @user.errors.any? %>
-        <div class="alert alert-danger">
-          <ul class="mb-0">
-            <% @user.errors.full_messages.each do |msg| %>
-              <li><%= msg %></li>
-            <% end %>
-          </ul>
-        </div>
-      <% end %>
-
-      <div class="mb-3">
-        <%= f.label :nome_completo, class: "form-label" %>
-        <%= f.text_field :nome_completo, class: "form-control", autofocus: true, oninput: "previewUsername(this.value)" %>
+  <div class="col-md-10 col-lg-8">
+    <div class="card card-primary card-outline">
+      <div class="card-header">
+        <h3 class="card-title"><i class="bi bi-person-plus me-1"></i> Novo Usuário</h3>
       </div>
+      <div class="card-body">
+        <%= form_with(model: @user, local: true) do |f| %>
+          <% if @user.errors.any? %>
+            <div class="alert alert-danger">
+              <h6><%= pluralize(@user.errors.count, "erro") %> ao salvar:</h6>
+              <ul class="mb-0">
+                <% @user.errors.full_messages.each do |msg| %>
+                  <li><%= msg %></li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
 
-      <div class="mb-3">
-        <%= f.label :username, class: "form-label" %>
-        <%= f.text_field :username, class: "form-control", disabled: true, id: "username_preview" %>
-        <div class="form-text">Gerado automaticamente a partir do nome completo.</div>
-      </div>
+          <div class="mb-3">
+            <%= f.label :nome_completo, class: "form-label" %>
+            <%= f.text_field :nome_completo, class: "form-control", autofocus: true, oninput: "previewUsername(this.value)" %>
+          </div>
 
-      <div class="mb-3">
-        <%= f.label :password, class: "form-label" %>
-        <%= f.password_field :password, class: "form-control" %>
-      </div>
+          <div class="mb-3">
+            <%= f.label :username, class: "form-label" %>
+            <%= f.text_field :username, class: "form-control", disabled: true, id: "username_preview" %>
+            <div class="form-text">Gerado automaticamente a partir do nome completo.</div>
+          </div>
 
-      <div class="mb-3">
-        <%= f.label :password_confirmation, class: "form-label" %>
-        <%= f.password_field :password_confirmation, class: "form-control" %>
-      </div>
+          <div class="mb-3">
+            <%= f.label :password, class: "form-label" %>
+            <%= f.password_field :password, class: "form-control" %>
+          </div>
 
-      <div class="mb-3">
-        <%= f.label :status, class: "form-label" %>
-        <%= f.select :status, [["Ativo", 1], ["Inativo", 0]], {}, class: "form-select" %>
-      </div>
+          <div class="mb-3">
+            <%= f.label :password_confirmation, class: "form-label" %>
+            <%= f.password_field :password_confirmation, class: "form-control" %>
+          </div>
 
-      <div class="d-flex gap-2">
-        <%= f.submit "Criar", class: "btn btn-primary" %>
-        <%= link_to "Cancelar", users_path, class: "btn btn-outline-secondary" %>
+          <div class="mb-3">
+            <%= f.label :status, class: "form-label" %>
+            <%= f.select :status, [["Ativo", 1], ["Inativo", 0]], {}, class: "form-select" %>
+          </div>
+
+          <div class="d-flex gap-2">
+            <%= f.submit "Criar", class: "btn btn-primary" %>
+            <%= link_to "Cancelar", users_path, class: "btn btn-outline-secondary" %>
+          </div>
+        <% end %>
       </div>
-    <% end %>
+    </div>
   </div>
 </div>
 
@@ -64,3 +72,4 @@ function previewUsername(nome) {
   }
 }
 </script>
+

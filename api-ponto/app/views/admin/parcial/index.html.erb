@@ -1,0 +1,128 @@
+<% content_for :page_title, "Frequência Mensal" %>
+<% content_for :page_actions do %>
+  <%= link_to "Relação do Filtro Realizado", "#" %>
+<% end %>
+
+<div class="card card-primary card-outline mb-4">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-funnel me-1"></i> Filtros</h3>
+  </div>
+  <div class="card-body">
+    <%= form_tag parcial_path, method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
+      <div class="col-auto">
+        <%= label_tag :mes, "Mês", class: "form-label" %>
+        <%
+          meses = I18n.t("date.month_names").each_with_index.drop(1).map { |nome, i| [nome.capitalize, i] }
+        %>
+        <%= select_tag :mes, options_for_select(meses, params[:mes]), include_blank: "Todos", class: "form-select form-select-sm" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :ano, "Ano", class: "form-label" %>
+        <%= select_tag :ano, options_for_select((2020..Time.current.year).to_a.reverse, params[:ano]), include_blank: "Todos", class: "form-select form-select-sm" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :categoria, "Categoria", class: "form-label" %>
+        <%= select_tag :categoria,
+              options_for_select([
+                "Servidor Efetivo",
+                "Servidor Comissionado",
+                "Estagiário",
+                "Residente",
+                "Terceirizado",
+                "Auxiliar da Justiça",
+                "Cedido"
+              ], params[:categoria]),
+              include_blank: "Todos",
+              class: "form-select form-select-sm",
+              disabled: true,
+              title: "Disponível quando os dados de categoria forem importados" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :frequentador, "Frequentador", class: "form-label" %>
+        <%= text_field_tag :frequentador, params[:frequentador], class: "form-control form-control-sm", placeholder: "Buscar por frequentador" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :orgao, "Órgão", class: "form-label" %>
+        <%= text_field_tag :orgao, params[:orgao], class: "form-control form-control-sm", placeholder: "Buscar por órgão" %>
+      </div>
+      <div class="col-auto d-flex align-items-center gap-3 pb-1">
+        <div class="form-check">
+          <%= check_box_tag :com_falta, "1", params[:com_falta].present?, class: "form-check-input", id: "com_falta" %>
+          <%= label_tag :com_falta, "Apenas registros com falta", class: "form-check-label" %>
+        </div>
+        <div class="form-check">
+          <%= check_box_tag :dia_em_aberto, "1", params[:dia_em_aberto].present?, class: "form-check-input", id: "dia_em_aberto" %>
+          <%= label_tag :dia_em_aberto, "Apenas registros com dia em aberto", class: "form-check-label" %>
+        </div>
+        <div class="form-check">
+          <%= check_box_tag :falta_a_descontar, "1", params[:falta_a_descontar].present?, class: "form-check-input", id: "falta_a_descontar" %>
+          <%= label_tag :falta_a_descontar, "Apenas com falta a descontar", class: "form-check-label" %>
+        </div>
+      </div>
+      <div class="col-auto d-flex gap-1">
+        <%= button_tag class: "btn btn-primary btn-sm" do %>
+          <i class="bi bi-search"></i> Filtrar
+        <% end %>
+        <%= link_to parcial_path, class: "btn btn-outline-secondary btn-sm" do %>
+          <i class="bi bi-x-lg"></i> Limpar
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card card-primary card-outline">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-file-earmark-text me-1"></i> Parcial</h3>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th rowspan="2" class="align-middle">Frequentador</th>
+            <th rowspan="2" class="align-middle">Categoria</th>
+            <th rowspan="2" class="align-middle">Setor</th>
+            <th rowspan="2" class="align-middle">Frequência</th>
+            <th rowspan="2" class="align-middle">Saldo Inicial</th>
+            <th rowspan="2" class="align-middle">Saldo do Mês</th>
+            <th rowspan="2" class="align-middle">Retificado</th>
+            <th rowspan="2" class="align-middle">Acumulado</th>
+            <th colspan="6" class="text-center">Dias</th>
+          </tr>
+          <tr>
+            <th>Presente(s)</th>
+            <th>Ausente(s)</th>
+            <th>Em Aberto</th>
+            <th>A Compensar</th>
+            <th>A Descontar</th>
+            <th>A Devolver</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @registros.each do |registro| %>
+            <tr>
+              <td><%= registro[:frequentador] %></td>
+              <td><%= registro[:categoria] %></td>
+              <td><%= registro[:setor] %></td>
+              <td><%= registro[:frequencia] %></td>
+              <td><%= registro[:saldo_inicial] %></td>
+              <td><%= registro[:saldo_do_mes] %></td>
+              <td><%= registro[:retificado] %></td>
+              <td><%= registro[:acumulado] %></td>
+              <td><%= registro.dig(:dias, :presentes) %></td>
+              <td><%= registro.dig(:dias, :ausentes) %></td>
+              <td><%= registro.dig(:dias, :em_aberto) %></td>
+              <td><%= registro.dig(:dias, :a_compensar) %></td>
+              <td><%= registro.dig(:dias, :a_descontar) %></td>
+              <td><%= registro.dig(:dias, :a_devolver) %></td>
+            </tr>
+          <% end %>
+          <% if @registros.empty? %>
+            <tr><td colspan="14" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

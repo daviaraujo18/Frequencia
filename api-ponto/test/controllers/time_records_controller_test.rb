@@ -2,7 +2,7 @@ require "test_helper"
 
 class TimeRecordsControllerTest < ActionDispatch::IntegrationTest
   setup do
-    @admin = User.create!(nome_completo: "Admin Teste", password: "123456")
+    @admin = User.create!(nome_completo: "Admin Teste", password: "123456", admin: true)
     @user = User.create!(nome_completo: "Frequentador", password: "123456")
     @record = TimeRecord.create!(user: @user, raw_data: "#{@user.id}-15:07:2026:14:30:45", punched_at: Time.current, authentication_mode: "biometric")
     post login_path, params: { username: @admin.username, password: "123456" }
@@ -11,16 +11,129 @@ class TimeRecordsControllerTest < ActionDispatch::IntegrationTest
   test "deve listar registros de ponto" do
     get time_records_path
     assert_response :success
-    assert_select "h2", "Registros de Ponto"
+    assert_select ".app-content-header h1", "Registros de Ponto"
   end
 
   test "deve filtrar por usuario" do
-    get time_records_path, params: { user_id: @user.id }
+    get time_records_path, params: { usuario: @user.nome_completo }
     assert_response :success
   end
 
-  test "deve filtrar por data" do
-    get time_records_path, params: { start_date: Date.yesterday, end_date: Date.tomorrow }
+  test "deve filtrar por ano e mes" do
+    hoje = Time.current
+    get time_records_path, params: { usuario: @user.nome_completo, ano: hoje.year, mes: hoje.month }
     assert_response :success
+    assert_select "th", "Dia"
+    assert_select "td", { count: 0, text: "Nenhum registro encontrado" }
+  end
+
+  test "nao deve retornar registro de mes diferente do filtrado" do
+    outro_mes = 1.month.ago
+    get time_records_path, params: { usuario: @user.nome_completo, ano: outro_mes.year, mes: outro_mes.month }
+    assert_response :success
+    assert_select "td", text: "Nenhum registro encontrado"
+  end
+
+  test "ano/mes futuro na URL nao trava a página (clamp pro presente)" do
+    get time_records_path, params: { ano: Time.current.year + 5, mes: 12 }
+    assert_response :success
+  end
+
+  test "sem filtro de usuario, admin nao ve a tabela de registros" do
+    get time_records_path
+    assert_response :success
+    assert_select "th", { count: 0, text: "Usuário" }
+    assert_select ".alert", text: /Busque um usuário/
+  end
+
+  test "com filtro de usuario que retorna varios resultados, admin ve o formato agregado (Usuario/Data/Marcacoes)" do
+    get time_records_path, params: { usuario: "a" }
+    assert_response :success
+    assert_select "th", "Usuário"
+    assert_select "th", "Data"
+    assert_select "th", "Marcações"
+    assert_select "th", { count: 0, text: "Trabalhado" }
+  end
+
+  test "com filtro de usuario, admin ve o card Dia/Trabalhado/Registro/Informacoes" do
+    get time_records_path, params: { usuario: @user.nome_completo }
+    assert_response :success
+    assert_select "th", "Dia"
+    assert_select "th", "Trabalhado"
+    assert_select "th", "Registro"
+    assert_select "th", "Informações"
+  end
+
+  test "usuario basico sempre ve o card Dia/Trabalhado/Registro, mesmo sem filtro" do
+    delete logout_path
+    post login_path, params: { username: @user.username, password: "123456" }
+
+    get time_records_path
+    assert_response :success
+    assert_select "th", "Dia"
+    assert_select "th", "Trabalhado"
+    assert_select "th", { count: 0, text: "Usuário" }
+  end
+
+  test "Trabalhado soma so pares completos, ignorando marcacao impar" do
+    dia = Time.zone.local(2026, 8, 18, 8, 0, 0)
+    TimeRecord.create!(user: @user, raw_data: "x", punched_at: dia, authentication_mode: "manual", punch_type: "entry")
+    TimeRecord.create!(user: @user, raw_data: "x", punched_at: dia + 4.hours + 30.minutes, authentication_mode: "manual", punch_type: "exit")
+    TimeRecord.create!(user: @user, raw_data: "x", punched_at: dia + 9.hours, authentication_mode: "manual", punch_type: "entry")
+
+    get time_records_path, params: { usuario: @user.nome_completo, ano: 2026, mes: 8 }
+    assert_response :success
+    assert_select "td", "18 ter"
+    assert_select "td", "04:30:00"
+  end
+
+  test "dia sem par completo mostra Trabalhado 00:00:00" do
+    dia = Time.zone.local(2026, 8, 19, 9, 0, 0)
+    TimeRecord.create!(user: @user, raw_data: "x", punched_at: dia, authentication_mode: "manual", punch_type: "entry")
+
+    get time_records_path, params: { usuario: @user.nome_completo, ano: 2026, mes: 8 }
+    assert_response :success
+    assert_select "td", "19 qua"
+    assert_select "td", "00:00:00"
+  end
+
+  test "card Registro Mensal so aparece com usuario filtrado" do
+    get time_records_path
+    assert_response :success
+    assert_select "h5", { count: 0, text: /Registro Mensal/ }
+
+    get time_records_path, params: { usuario: @user.nome_completo }
+    assert_response :success
+    assert_select "h5", text: /Registro Mensal - \d{2}\/\d{4}/
+  end
+
+  test "Registro Mensal: Trabalhadas e Presencas somam so pares completos do mes" do
+    hoje = Date.current
+    dia = Time.zone.local(hoje.year, hoje.month, 1, 8, 0, 0)
+    TimeRecord.create!(user: @user, raw_data: "x", punched_at: dia, authentication_mode: "manual", punch_type: "entry")
+    TimeRecord.create!(user: @user, raw_data: "x", punched_at: dia + 8.hours, authentication_mode: "manual", punch_type: "exit")
+
+    get time_records_path, params: { usuario: @user.nome_completo }
+    assert_response :success
+    assert_select "div.fw-bold", text: "08:00:00"
+    assert_select "div.fw-bold", text: "1"
+  end
+
+  test "Registro Mensal: marcacao solta hoje conta como Em Aberto, dias passados sem marcacao contam como Ausencia" do
+    hoje = Date.current
+    skip "precisa de pelo menos 1 dia anterior no mes" if hoje.day < 2
+
+    TimeRecord.create!(
+      user: @user, raw_data: "x",
+      punched_at: Time.zone.local(hoje.year, hoje.month, hoje.day, 9, 0, 0),
+      authentication_mode: "manual", punch_type: "entry"
+    )
+
+    get time_records_path, params: { usuario: @user.nome_completo }
+    assert_response :success
+
+    dias_passados_sem_marcacao = hoje.day - 1
+    assert_select "div.fw-bold", text: dias_passados_sem_marcacao.to_s
+    assert_select "div.fw-bold", text: "1" # em aberto
   end
 end
