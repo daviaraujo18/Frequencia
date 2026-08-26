@@ -1,66 +1,201 @@
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h2>Registros de Ponto</h2>
-  <span class="text-muted">Mostrando até <%= Admin::TimeRecordsController::PER_PAGE %> de <%= @total %> registros</span>
+<% content_for :page_title, "Registros de Ponto" %>
+
+<div class="row mb-3">
+  <div class="col-sm-6">
+    <p class="text-muted mb-0">Mostrando até <%= Admin::TimeRecordsController::PER_PAGE %> de <strong><%= @total %></strong> registros</p>
+  </div>
 </div>
 
-<div class="card mb-3">
+<div class="card card-primary card-outline mb-4">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-funnel me-1"></i> Filtros</h3>
+  </div>
   <div class="card-body">
     <%= form_tag time_records_path, method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
       <% if current_user.admin? %>
         <div class="col-auto">
-          <%= label_tag :id, "ID", class: "form-label" %>
-          <%= text_field_tag :id, params[:id], class: "form-control form-control-sm", placeholder: "ID" %>
-        </div>
-        <div class="col-auto">
-          <%= label_tag :user_id, "Usuário", class: "form-label" %>
-          <%= select_tag :user_id, options_from_collection_for_select(User.order(:nome_completo), :id, :nome_completo, params[:user_id]), include_blank: "Todos", class: "form-select form-select-sm" %>
+          <%= label_tag :usuario, "Usuário", class: "form-label" %>
+          <%= text_field_tag :usuario, params[:usuario], class: "form-control form-control-sm", placeholder: "Buscar por usuário" %>
         </div>
       <% end %>
       <div class="col-auto">
-        <%= label_tag :start_date, "De", class: "form-label" %>
-        <%= date_field_tag :start_date, params[:start_date], class: "form-control form-control-sm" %>
+        <%= label_tag :ano, "Ano", class: "form-label" %>
+        <%= select_tag :ano, options_for_select(@anos_disponiveis, params[:ano]), include_blank: "Todos", class: "form-select form-select-sm", id: "filtro_ano" %>
       </div>
       <div class="col-auto">
-        <%= label_tag :end_date, "Até", class: "form-label" %>
-        <%= date_field_tag :end_date, params[:end_date], class: "form-control form-control-sm" %>
+        <%= label_tag :mes, "Mês", class: "form-label" %>
+        <%
+          meses = I18n.t("date.month_names").each_with_index.drop(1).map { |nome, i| [nome.capitalize, i] }
+        %>
+        <%= select_tag :mes, options_for_select(meses, params[:mes]), include_blank: "Todos", class: "form-select form-select-sm", id: "filtro_mes" %>
       </div>
-      <div class="col-auto">
-        <%= submit_tag "Filtrar", class: "btn btn-primary btn-sm" %>
-        <%= link_to "Limpar", time_records_path, class: "btn btn-outline-secondary btn-sm" %>
+      <div class="col-auto d-flex gap-1">
+        <%= button_tag class: "btn btn-primary btn-sm" do %>
+          <i class="bi bi-search"></i> Filtrar
+        <% end %>
+        <%= link_to time_records_path, class: "btn btn-outline-secondary btn-sm" do %>
+          <i class="bi bi-x-lg"></i> Limpar
+        <% end %>
       </div>
     <% end %>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-body p-0">
-    <table class="table table-striped mb-0">
-      <thead>
-        <tr>
-          <% if current_user.admin? %>
-            <th>Usuário</th>
+<script>
+  // Esconde meses futuros no dropdown quando o ano selecionado é o ano
+  // atual — não faz sentido filtrar por um mês que ainda não aconteceu.
+  (function() {
+    var anoAtual = <%= Time.current.year %>;
+    var mesAtual = <%= Time.current.month %>;
+    var selectAno = document.getElementById('filtro_ano');
+    var selectMes = document.getElementById('filtro_mes');
+    if (!selectAno || !selectMes) return;
+
+    function atualizarMesesDisponiveis() {
+      var anoSelecionado = parseInt(selectAno.value, 10);
+      var mesMaximo = (anoSelecionado === anoAtual) ? mesAtual : 12;
+
+      Array.prototype.forEach.call(selectMes.options, function(opcao) {
+        if (!opcao.value) return; // mantém "Todos" sempre visível
+        var mes = parseInt(opcao.value, 10);
+        var oculto = mes > mesMaximo;
+        opcao.hidden = oculto;
+        opcao.disabled = oculto;
+        if (oculto && selectMes.value === opcao.value) {
+          selectMes.value = "";
+        }
+      });
+    }
+
+    selectAno.addEventListener('change', atualizarMesesDisponiveis);
+    atualizarMesesDisponiveis();
+  })();
+</script>
+
+<% if @modo_usuario_unico && @resumo_mensal %>
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">Registro Mensal - <%= format("%02d", @mes_titulo) %>/<%= @ano_titulo %></h5>
+      <div class="row g-2 mt-1">
+        <% [
+          ["Saldo Inicial", @resumo_mensal[:saldo_inicial], "Saldo de horas acumuladas até o mês anterior. Ainda não implementado — depende da meta mensal (regra a definir)."],
+          ["Saldo do Mês", @resumo_mensal[:saldo_do_mes], "Saldo (previsto − trabalhado) somente deste mês. Ainda não implementado — depende da meta mensal (regra a definir)."],
+          ["Saldo Acumulado", @resumo_mensal[:saldo_acumulado], "Saldo inicial + saldo do mês + retificadores. Ainda não implementado."],
+          ["Meta Mensal", @resumo_mensal[:meta_mensal], "Total de horas a cumprir no mês. Regra de negócio ainda não definida."],
+          ["A Cumprir", @resumo_mensal[:a_cumprir], "Total de horas a cumprir no mês até o momento. Ainda não implementado — depende da meta mensal (regra a definir)."],
+          ["Trabalhadas", @resumo_mensal[:trabalhadas], "Total de horas trabalhadas no mês (soma dos pares completos de entrada+saída)."],
+          ["Presença(s)", @resumo_mensal[:presencas], "Cada par de entrada + saída conta como uma presença."],
+          ["Ausência(s)", @resumo_mensal[:ausencias], "Dias já encerrados sem nenhum par completo de entrada + saída."],
+          ["Em Aberto", @resumo_mensal[:em_aberto], "Dia de hoje com entrada registrada sem saída ainda. Após a virada do dia, passa a contar como ausência."],
+        ].each_slice(3) do |linha| %>
+          <% linha.each do |label, valor, tooltip| %>
+            <div class="col-6 col-md-2">
+              <div class="border rounded px-2 py-1 small text-muted text-center" title="<%= tooltip %>">
+                <%= label %> <span aria-hidden="true">&#9432;</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-2">
+              <div class="border rounded px-2 py-1 text-center fw-bold bg-light">
+                <%= valor %>
+              </div>
+            </div>
           <% end %>
-          <th>Data</th>
-          <th>Marcações</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @daily_records.each do |item| %>
-          <tr>
-            <% if current_user.admin? %>
-              <% data, usuario, marcacoes = item %>
-              <td><%= usuario.nome_completo %></td>
-            <% else %>
-              <% data, marcacoes = item %>
-            <% end %>
-            <td><%= l(data, format: :default) %></td>
-            <td><%= marcacoes %></td>
-          </tr>
         <% end %>
-        <% if @daily_records.empty? %>
-          <tr><td colspan="<%= current_user.admin? ? 3 : 2 %>" class="text-muted text-center">Nenhum registro encontrado</td></tr>
-        <% end %>
-      </tbody>
-    </table>
+      </div>
+    </div>
   </div>
-</div>
+
+  <p class="mb-3">
+    <a href="#formJustificarPonto" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="formJustificarPonto">
+      Justificar ponto ausente
+    </a>
+  </p>
+
+  <div class="collapse mb-3" id="formJustificarPonto">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="card-title">Justificar ponto ausente</h6>
+        <p class="text-muted small">
+          Estrutura provisória — ainda não salva nada; a regra de negócio (o que
+          acontece com a justificativa, quem aprova, etc.) será implementada depois.
+        </p>
+        <div class="row g-2 align-items-end">
+          <div class="col-auto">
+            <%= label_tag :tipo_justificativa, "Tipo", class: "form-label" %>
+            <%= select_tag :tipo_justificativa,
+                  options_for_select(["Justificativa de entrada", "Justificativa de saída", "Justificativa de entrada e saída"]),
+                  class: "form-select form-select-sm" %>
+          </div>
+          <div class="col-auto">
+            <%= label_tag :data_justificativa, "Data", class: "form-label" %>
+            <%= date_field_tag :data_justificativa, nil, class: "form-control form-control-sm" %>
+          </div>
+        </div>
+        <div class="mt-2">
+          <%= label_tag :texto_justificativa, "Texto de justificativa", class: "form-label" %>
+          <%= text_area_tag :texto_justificativa, nil, class: "form-control form-control-sm", rows: 3 %>
+        </div>
+        <div class="mt-2">
+          <button type="button" class="btn btn-primary btn-sm" disabled title="Ainda não implementado">Salvar</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#formJustificarPonto" aria-expanded="true" aria-controls="formJustificarPonto">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<% if !current_user.admin? || params[:usuario].present? %>
+  <div class="card">
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <% if @modo_usuario_unico %>
+          <thead>
+            <tr>
+              <th>Dia</th>
+              <th>Trabalhado</th>
+              <th>Registro</th>
+              <th>Informações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @daily_records.each do |dia_label, trabalhado, registro, informacoes| %>
+              <tr>
+                <td><%= dia_label %></td>
+                <td><%= trabalhado %></td>
+                <td><%= registro %></td>
+                <td><%= informacoes %></td>
+              </tr>
+            <% end %>
+            <% if @daily_records.empty? %>
+              <tr><td colspan="4" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+            <% end %>
+          </tbody>
+        <% else %>
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>Data</th>
+              <th>Marcações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @daily_records.each do |data, usuario, marcacoes| %>
+              <tr>
+                <td><%= usuario.nome_completo %></td>
+                <td><%= l(data, format: :default) %></td>
+                <td><%= marcacoes %></td>
+              </tr>
+            <% end %>
+            <% if @daily_records.empty? %>
+              <tr><td colspan="3" class="text-muted text-center">Nenhum registro encontrado</td></tr>
+            <% end %>
+          </tbody>
+        <% end %>
+      </table>
+    </div>
+  </div>
+<% else %>
+  <div class="alert alert-info mb-0">
+    <i class="bi bi-info-circle me-1"></i> Busque um usuário para ver os registros de ponto.
+  </div>
+<% end %>

@@ -1,52 +1,71 @@
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h2>Usuários</h2>
-  <%= link_to "Novo Usuário", new_user_path, class: "btn btn-primary" %>
+<% content_for :page_title, "Usuários" %>
+
+<div class="row mb-3">
+  <div class="col-sm-6">
+    <p class="text-muted mb-0"><%= @users.size %> usuário(s) cadastrado(s)</p>
+  </div>
+  <div class="col-sm-6 text-sm-end">
+    <%= link_to new_user_path, class: "btn btn-primary" do %>
+      <i class="bi bi-person-plus me-1"></i> Novo Usuário
+    <% end %>
+  </div>
 </div>
 
-<div class="card">
+<div class="card card-primary card-outline">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-people me-1"></i> Lista de Usuários</h3>
+  </div>
   <div class="card-body p-0">
-    <table class="table table-striped mb-0">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Nome Completo</th>
-          <th>Username</th>
-          <th>Status</th>
-          <th>Digitais</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @users.each do |user| %>
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead>
           <tr>
-            <td><%= user.id %></td>
-            <td><%= user.nome_completo %></td>
-            <td><code><%= user.username %></code></td>
-            <td>
-              <% if user.status == 1 %>
-                <span class="badge bg-success">Ativo</span>
-              <% else %>
-                <span class="badge bg-danger">Inativo</span>
-              <% end %>
-            </td>
-            <td>
-              <% if user.digitais_hash.present? %>
-                <span class="badge bg-info">Cadastrada</span>
-              <% else %>
-                <span class="badge bg-secondary">Não</span>
-              <% end %>
-            </td>
-            <td>
-              <%= link_to "Editar", edit_user_path(user), class: "btn btn-sm btn-outline-primary" %>
-              <% if user.status == 1 %>
-                <%= button_to "Inativar", user_path(user), method: :delete, class: "btn btn-sm btn-outline-danger", data: { turbo_confirm: "Tem certeza?" } %>
-              <% else %>
-                <%= button_to "Excluir", purge_user_path(user), method: :delete, class: "btn btn-sm btn-danger", data: { turbo_confirm: "Tem certeza que deseja excluir definitivamente este usuário?" } %>
-              <% end %>
-            </td>
+            <th>Nome Completo</th>
+            <th>Username</th>
+            <th>Status</th>
+            <th>Digitais</th>
+            <th class="text-end">Ações</th>
           </tr>
-        <% end %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% @users.each do |user| %>
+            <tr>
+              <td><%= user.nome_completo %></td>
+              <td><code><%= user.username %></code></td>
+              <td>
+                <% if user.status == 1 %>
+                  <span class="badge text-bg-success">Ativo</span>
+                <% else %>
+                  <span class="badge text-bg-danger">Inativo</span>
+                <% end %>
+              </td>
+              <td>
+                <% if user.digitais_hash.present? %>
+                  <span class="badge text-bg-info">Cadastrada</span>
+                <% else %>
+                  <span class="badge text-bg-secondary">Não</span>
+                <% end %>
+              </td>
+              <td class="text-end">
+                <div class="d-flex gap-1 justify-content-end">
+                  <%= link_to edit_user_path(user), class: "btn btn-xs btn-outline-primary" do %>
+                    <i class="bi bi-pencil"></i>
+                  <% end %>
+                  <% if user.status == 1 %>
+                    <%= button_to user_path(user), method: :delete, class: "btn btn-xs btn-outline-danger", data: { turbo_confirm: "Tem certeza?" } do %>
+                      <i class="bi bi-person-x"></i>
+                    <% end %>
+                  <% else %>
+                    <%= button_to purge_user_path(user), method: :delete, class: "btn btn-xs btn-danger", data: { turbo_confirm: "Tem certeza que deseja excluir definitivamente este usuário?" } do %>
+                      <i class="bi bi-trash"></i>
+                    <% end %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

@@ -1,131 +1,192 @@
+<% content_for :page_title, "Dashboard" %>
+
 <% if current_user.admin? %>
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Dashboard</h2>
-    <div>
-      <%= link_to "Usuários", users_path, class: "btn btn-outline-primary btn-sm" %>
-      <%= link_to "Registros", time_records_path, class: "btn btn-outline-primary btn-sm" %>
+  <!-- Small Boxes (metric cards) -->
+  <style>
+    .small-box { height: 100%; }
+    .small-box .inner { min-height: 6rem; }
+  </style>
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
+    <div class="col">
+      <div class="small-box text-bg-primary">
+        <div class="inner">
+          <h3><%= @total_usuarios %></h3>
+          <p>Total de Usuários</p>
+        </div>
+        <svg class="small-box-icon" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8zm-7.978-1h7.956a.274.274 0 0 0 .014-.002l.008-.002c-.003-.064-.025-.134-.062-.218a3.748 3.748 0 0 0-.592-.712c-.366-.36-1.002-.803-2.29-1.066C10.905 10.692 9.762 10.5 8.5 10.5s-2.405.192-3.048.424c-1.288.263-1.924.706-2.29 1.066a3.747 3.747 0 0 0-.654.93c-.037.084-.059.154-.062.218l.008.002a.276.276 0 0 0 .014.002h7.956zM8.5 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/>
+        </svg>
+        <%= link_to users_path, class: "small-box-footer" do %>
+          Ver detalhes <i class="bi bi-arrow-right"></i>
+        <% end %>
+      </div>
     </div>
-  </div>
 
-  <div class="row g-3 mb-4">
-    <div class="col-md-3">
-      <div class="card text-bg-primary">
-        <div class="card-body">
-          <h5 class="card-title"><%= @total_usuarios %></h5>
-          <p class="card-text">Total de Usuários</p>
+    <div class="col">
+      <div class="small-box text-bg-success">
+        <div class="inner">
+          <h3><%= @usuarios_ativos %></h3>
+          <p>Usuários Ativos</p>
         </div>
+        <svg class="small-box-icon" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0-8a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm7 17c0-3.31-3.13-6-7-6s-7 2.69-7 6v1h14v-1z"/>
+        </svg>
+        <span class="small-box-footer">Usuários ativos no sistema</span>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card text-bg-success">
-        <div class="card-body">
-          <h5 class="card-title"><%= @usuarios_ativos %></h5>
-          <p class="card-text">Usuários Ativos</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card text-bg-warning">
-        <div class="card-body">
-          <h5 class="card-title"><%= @usuarios_com_digitais %></h5>
-          <p class="card-text">Com Digitais</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card text-bg-info">
-        <div class="card-body">
-          <h5 class="card-title"><%= @registros_hoje %></h5>
-          <p class="card-text">Batidas Hoje</p>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="row g-3 mb-4">
-    <div class="col-md-4">
-      <div class="card">
-        <div class="card-body text-center">
-          <h3><%= @registros_semana %></h3>
-          <p class="text-muted">Batidas na última semana</p>
+    <div class="col">
+      <div class="small-box text-bg-warning">
+        <div class="inner">
+          <h3><%= @usuarios_com_digitais %></h3>
+          <p>Com Digitais</p>
         </div>
+        <svg class="small-box-icon" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M6.625 10.5a1.125 1.125 0 1 0 0-2.25 1.125 1.125 0 0 0 0 2.25zm4.5 0a1.125 1.125 0 1 0 0-2.25 1.125 1.125 0 0 0 0 2.25zm4.5 0a1.125 1.125 0 1 0 0-2.25 1.125 1.125 0 0 0 0 2.25zM12 3a9 9 0 0 0-9 9c0 .93.14 1.82.4 2.66L2 18l3.36-.66A9 9 0 1 0 12 3z"/>
+        </svg>
+        <span class="small-box-footer">Usuários com biometria cadastrada</span>
       </div>
     </div>
-    <div class="col-md-4">
-      <div class="card">
-        <div class="card-body text-center">
-          <h3><%= @registros_mes %></h3>
-          <p class="text-muted">Batidas no último mês</p>
+
+    <div class="col">
+      <div class="small-box text-bg-info">
+        <div class="inner">
+          <h3><%= @registros_hoje %></h3>
+          <p>Batidas Hoje</p>
         </div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="card">
-        <div class="card-body text-center">
-          <h3><%= @usuarios_inativos %></h3>
-          <p class="text-muted">Usuários Inativos</p>
-        </div>
+        <svg class="small-box-icon" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>
+        </svg>
+        <%= link_to time_records_path(start_date: Date.current), class: "small-box-footer" do %>
+          Ver registros de hoje <i class="bi bi-arrow-right"></i>
+        <% end %>
       </div>
     </div>
   </div>
 
-  <div class="card">
+  <!-- Secondary metrics row -->
+  <style>
+    .card.h-100 .card-body { height: 100%; }
+  </style>
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 mb-4">
+    <div class="col">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-secondary mb-1">Batidas na última semana</p>
+              <h3 class="mb-0"><%= @registros_semana %></h3>
+            </div>
+            <div class="text-secondary">
+              <i class="bi bi-calendar-week fs-1"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-secondary mb-1">Batidas no último mês</p>
+              <h3 class="mb-0"><%= @registros_mes %></h3>
+            </div>
+            <div class="text-secondary">
+              <i class="bi bi-calendar-month fs-1"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-secondary mb-1">Usuários Inativos</p>
+              <h3 class="mb-0"><%= @usuarios_inativos %></h3>
+            </div>
+            <div class="text-secondary">
+              <i class="bi bi-person-slash fs-1"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Últimas Batidas -->
+  <div class="card card-primary card-outline">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <span>Últimas Batidas</span>
-      <%= link_to "Ver todas", time_records_path, class: "btn btn-sm btn-outline-secondary" %>
+      <h3 class="card-title mb-0"><i class="bi bi-clock-history me-1"></i> Últimas Batidas</h3>
+      <%= link_to time_records_path, class: "btn btn-sm btn-outline-secondary" do %>
+        Ver todas <i class="bi bi-arrow-right"></i>
+      <% end %>
     </div>
     <div class="card-body p-0">
-      <table class="table table-striped mb-0">
-        <thead>
-          <tr>
-            <th>Usuário</th>
-            <th>Data/Hora</th>
-            <th>Status</th>
-            <th>Modo</th>
-            <th>Usuário</th>
-            <th>Data/Hora</th>
-            <th>Status</th>
-            <th>Modo</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% linhas = [@ultimas_entradas.size, @ultimas_saidas.size].max %>
-          <% (0...linhas).each do |i| %>
+      <div class="table-responsive">
+        <table class="table table-striped mb-0">
+          <thead>
             <tr>
-              <% entrada = @ultimas_entradas[i] %>
-              <% if entrada %>
-                <td><%= entrada.user&.nome_completo %></td>
-                <td><%= l(entrada.punched_at, format: :long) %></td>
-                <td><span class="badge" style="background-color: #28a745;">Entrada</span></td>
-                <td><span class="badge bg-<%= entrada.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= entrada.authentication_mode %></span></td>
-              <% else %>
-                <td colspan="4"></td>
-              <% end %>
-
-              <% saida = @ultimas_saidas[i] %>
-              <% if saida %>
-                <td><%= saida.user&.nome_completo %></td>
-                <td><%= l(saida.punched_at, format: :long) %></td>
-                <td><span class="badge" style="background-color: #dc3545;">Saída</span></td>
-                <td><span class="badge bg-<%= saida.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= saida.authentication_mode %></span></td>
-              <% else %>
-                <td colspan="4"></td>
-              <% end %>
+              <th colspan="4" class="text-center text-success">Entradas</th>
+              <th colspan="4" class="text-center text-danger">Saídas</th>
             </tr>
-          <% end %>
-          <% if @ultimas_entradas.empty? && @ultimas_saidas.empty? %>
-            <tr><td colspan="8" class="text-muted text-center">Nenhuma batida registrada</td></tr>
-          <% end %>
-        </tbody>
-      </table>
+            <tr>
+              <th>Usuário</th>
+              <th>Data/Hora</th>
+              <th>Status</th>
+              <th>Modo</th>
+              <th>Usuário</th>
+              <th>Data/Hora</th>
+              <th>Status</th>
+              <th>Modo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% linhas = [@ultimas_entradas.size, @ultimas_saidas.size].max %>
+            <% (0...linhas).each do |i| %>
+              <tr>
+                <% entrada = @ultimas_entradas[i] %>
+                <% if entrada %>
+                  <td><%= entrada.user&.nome_completo %></td>
+                  <td><%= l(entrada.punched_at, format: :long) %></td>
+                  <td><span class="badge text-bg-success">Entrada</span></td>
+                  <td><span class="badge text-bg-<%= entrada.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= entrada.authentication_mode %></span></td>
+                <% else %>
+                  <td colspan="4"></td>
+                <% end %>
+
+                <% saida = @ultimas_saidas[i] %>
+                <% if saida %>
+                  <td><%= saida.user&.nome_completo %></td>
+                  <td><%= l(saida.punched_at, format: :long) %></td>
+                  <td><span class="badge text-bg-danger">Saída</span></td>
+                  <td><span class="badge text-bg-<%= saida.authentication_mode == "biometric" ? "success" : "secondary" %>"><%= saida.authentication_mode %></span></td>
+                <% else %>
+                  <td colspan="4"></td>
+                <% end %>
+              </tr>
+            <% end %>
+            <% if @ultimas_entradas.empty? && @ultimas_saidas.empty? %>
+              <tr><td colspan="8" class="text-muted text-center">Nenhuma batida registrada</td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 <% else %>
-  <div class="text-center py-5">
-    <h2>Bem-vindo, <%= current_user.nome_completo %>!</h2>
-    <p class="text-muted mb-4">Acompanhe seus registros de ponto.</p>
-    <%= link_to time_records_path, class: "btn btn-primary btn-lg" do %>
-      <i class="bi bi-clock-history"></i> Meus Registros de Ponto
-    <% end %>
+  <div class="row justify-content-center py-5">
+    <div class="col-md-6 text-center">
+      <i class="bi bi-person-circle fs-1 text-muted mb-3 d-block"></i>
+      <h2>Bem-vindo, <%= current_user.nome_completo %>!</h2>
+      <p class="text-muted mb-4">Acompanhe seus registros de ponto.</p>
+      <%= link_to time_records_path, class: "btn btn-primary btn-lg" do %>
+        <i class="bi bi-clock-history"></i> Meus Registros de Ponto
+      <% end %>
+    </div>
   </div>
 <% end %>

@@ -1,0 +1,91 @@
+<% content_for :page_title, "Gerência de Licença, Férias, Afastamento ou Viagem a Serviço" %>
+
+<div class="row mb-3">
+  <div class="col-sm-6">
+    <p class="text-muted mb-0"><%= @registros.size %> registro(s) cadastrado(s)</p>
+  </div>
+</div>
+
+<div class="card card-primary card-outline mb-4">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-funnel me-1"></i> Filtros</h3>
+  </div>
+  <div class="card-body">
+    <%= form_tag direitos_deveres_path, method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
+      <div class="col-auto">
+        <%= label_tag :tipo, "Tipo", class: "form-label" %>
+        <%= select_tag :tipo,
+              options_for_select(["Licença", "Férias", "Afastamento", "Viagem a Serviço"], params[:tipo]),
+              include_blank: "Todos",
+              class: "form-select form-select-sm" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :data, "Data", class: "form-label" %>
+        <%= date_field_tag :data, params[:data], class: "form-control form-control-sm" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :ano, "Ano", class: "form-label" %>
+        <%= select_tag :ano, options_for_select((2020..Time.current.year).to_a.reverse, params[:ano]), include_blank: "Todos", class: "form-select form-select-sm" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :orgao, "Órgão", class: "form-label" %>
+        <%= text_field_tag :orgao, params[:orgao], class: "form-control form-control-sm", placeholder: "Buscar por órgão" %>
+      </div>
+      <div class="col-auto">
+        <%= label_tag :frequentador, "Frequentador", class: "form-label" %>
+        <%= text_field_tag :frequentador, params[:frequentador], class: "form-control form-control-sm", placeholder: "Buscar por frequentador" %>
+      </div>
+      <div class="col-auto d-flex gap-1">
+        <%= button_tag class: "btn btn-primary btn-sm" do %>
+          <i class="bi bi-search"></i> Filtrar
+        <% end %>
+        <%= link_to direitos_deveres_path, class: "btn btn-outline-secondary btn-sm" do %>
+          <i class="bi bi-x-lg"></i> Limpar
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card card-primary card-outline">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-journal-text me-1"></i> Lista de Direitos & Deveres</h3>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Frequentador</th>
+            <th>Cargo</th>
+            <th>Lotação</th>
+            <th>Momento Inicial</th>
+            <th>Momento Final</th>
+            <th>Status</th>
+            <th>Cadastrado em</th>
+            <th>Gerência</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @registros.each do |registro| %>
+            <tr>
+              <td><%= registro[:tipo] %></td>
+              <td><%= registro[:frequentador] %></td>
+              <td><%= registro[:cargo] %></td>
+              <td><%= registro[:lotacao] %></td>
+              <td><%= registro[:momento_inicial] %></td>
+              <td><%= registro[:momento_final] %></td>
+              <td><%= registro[:status] %></td>
+              <td><%= registro[:cadastrado_em] %></td>
+              <td><%= registro[:gerencia] %></td>
+            </tr>
+          <% end %>
+          <% if @registros.empty? %>
+            <tr><td colspan="9" class="text-muted text-center">Nenhum registro cadastrado</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
