@@ -24,6 +24,11 @@ module Admin
     end
 
     def update
+      if @user.cpf.present?
+        redirect_to users_path, alert: "Frequentador vinculado ao Pessoas — edição manual bloqueada. O cadastro é atualizado via importação/reimportação do Pessoas."
+        return
+      end
+
       if @user.update(user_params)
         redirect_to users_path, notice: "Usuário atualizado com sucesso"
       else

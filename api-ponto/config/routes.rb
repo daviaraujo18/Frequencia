@@ -23,7 +23,14 @@ Rails.application.routes.draw do
       end
     end
     resources :time_records, only: [:index]
-    resources :frequentadores, only: [:index]
+    resources :frequentadores, only: [:index] do
+      member do
+        post :reimportar_dados_pessoa
+      end
+      collection do
+        post :importar_unidade
+      end
+    end
     get "estacoes/new", to: "estacoes#new", as: :new_estacao
     get "estacoes/:id/edit", to: "estacoes#edit", as: :edit_estacao
     resources :estacoes, only: [:index, :create, :update, :destroy]

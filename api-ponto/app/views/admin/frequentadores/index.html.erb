@@ -1,6 +1,7 @@
 <% content_for :page_title, "Gerência de Frequentadores" %>
 <% content_for :page_actions do %>
   <%= link_to "Cadastrar novo frequentador", "#" %>
+  <%= button_to "Importar servidores da unidade piloto", importar_unidade_frequentadores_path, method: :post, class: "btn btn-outline-primary btn-sm", form: { data: { turbo: false } } %>
 <% end %>
 
 <div class="row mb-3">
@@ -82,8 +83,16 @@
           <% @frequentadores.each do |user| %>
             <tr>
               <td><%= user.nome_completo %></td>
-              <td class="text-muted">—</td>
-              <td class="text-muted">—</td>
+              <% if user.frequentador_cache&.orgao.present? %>
+                <td><%= user.frequentador_cache.orgao %></td>
+              <% else %>
+                <td class="text-muted">—</td>
+              <% end %>
+              <% if user.frequentador_cache&.vinculo.present? %>
+                <td><%= user.frequentador_cache.vinculo %></td>
+              <% else %>
+                <td class="text-muted">—</td>
+              <% end %>
               <td>
                 <% if user.digitais_hash.present? %>
                   <span class="badge text-bg-info">Cadastrada</span>
@@ -93,6 +102,11 @@
               </td>
               <td class="text-end">
                 <div class="d-flex gap-1 justify-content-end">
+                  <% if user.cpf.present? %>
+                    <%= button_to reimportar_dados_pessoa_frequentador_path(user), method: :post, class: "btn btn-xs btn-outline-secondary", title: "Reimportar do Pessoas" do %>
+                      <i class="bi bi-arrow-repeat"></i>
+                    <% end %>
+                  <% end %>
                   <%= link_to edit_user_path(user), class: "btn btn-xs btn-outline-primary" do %>
                     <i class="bi bi-pencil"></i>
                   <% end %>

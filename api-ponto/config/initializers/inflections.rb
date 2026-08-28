@@ -20,4 +20,9 @@
 # helper `estacao_path` usado pelas rotas de `admin/estacoes` (Task 1.3).
 ActiveSupport::Inflector.inflections(:en) do |inflect|
   inflect.irregular "estacao", "estacoes"
+
+  # Mesmo problema para "frequentador"/"frequentadores": o inflector padrão
+  # singulariza para "frequentadore", quebrando o path helper de member route
+  # `reimportar_dados_pessoa_frequentador_path` (Sprint 8, Task 8.7).
+  inflect.irregular "frequentador", "frequentadores"
 end
