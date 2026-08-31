@@ -38,6 +38,9 @@ gem "thruster", require: false
 gem "turbo-rails"
 gem "stimulus-rails"
 
+# Pagination
+gem "kaminari"
+
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 # gem "rack-cors"
 
