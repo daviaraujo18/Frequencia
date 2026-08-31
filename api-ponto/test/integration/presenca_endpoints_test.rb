@@ -260,6 +260,29 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
     assert_equal 1, TimeRecord.where(raw_data: registros).count
   end
 
+  test "POST SincronizarRegistrosPonto associa o TimeRecord a EstacaoPonto real (Sprint 13, task 13.1)" do
+    estacao = estacoes_ponto(:two)
+    registros = "#{@user.id}-15:07:2026:14:30:45"
+    enc = CryptoDes.encrypt(registros)
+    post presenca_ajax_SincronizarRegistrosPonto_url,
+      params: { registros: enc, codAtivacao: estacao.cod_ativacao }
+    assert_response :success
+
+    record = TimeRecord.find_by(raw_data: registros)
+    assert_equal estacao, record.estacao_ponto
+  end
+
+  test "POST SincronizarRegistrosPonto com sentinela de OS nao suportado nao associa EstacaoPonto (sem linha real correspondente)" do
+    registros = "#{@user.id}-15:07:2026:14:30:45"
+    enc = CryptoDes.encrypt(registros)
+    post presenca_ajax_SincronizarRegistrosPonto_url,
+      params: { registros: enc, codAtivacao: "SistemaOperacionalNaoSuportado" }
+    assert_response :success
+
+    record = TimeRecord.find_by(raw_data: registros)
+    assert_nil record.estacao_ponto
+  end
+
   test "POST SincronizarRegistrosPonto handles invalid DES data gracefully (default plain text)" do
     post presenca_ajax_SincronizarRegistrosPonto_url,
       params: { registros: "invalid-data", codAtivacao: "poc-ativacao-001" }

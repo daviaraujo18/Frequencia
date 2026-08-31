@@ -57,13 +57,13 @@
         <tbody>
           <% @registros.each do |registro| %>
             <tr>
-              <td><%= registro[:frequentador] %></td>
-              <td><%= registro[:data] %></td>
-              <td><%= registro[:operacao] %></td>
-              <td><%= registro[:modo] %></td>
-              <td><%= registro[:lotacao_epoca] %></td>
-              <td><%= registro[:estacao] %></td>
-              <td><%= registro[:gerencia] %></td>
+              <td><%= registro.user.nome_completo %></td>
+              <td><%= registro.punched_at&.strftime("%d/%m/%Y %H:%M:%S") %></td>
+              <td><%= { "entry" => "Entrada", "exit" => "Saída" }[registro.punch_type] || "—" %></td>
+              <td><%= { "biometric" => "Biometria", "manual" => "Manual" }[registro.authentication_mode] || registro.authentication_mode %></td>
+              <td class="text-muted">—</td>
+              <td><%= registro.estacao_ponto&.descricao %></td>
+              <td></td>
             </tr>
           <% end %>
           <% if @registros.empty? %>

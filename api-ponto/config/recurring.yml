@@ -17,3 +17,11 @@ production:
     class: ImportarDadosPessoaJob
     queue: default
     schedule: at midnight every day
+  sincronizar_afastamentos:
+    class: SincronizarAfastamentosJob
+    queue: default
+    # 5 minutos depois de importar_dados_pessoa — evita concorrência entre
+    # os dois jobs (advisory locks diferentes, mas ambos iterando sobre
+    # User.where.not(cpf: nil); rodar em sequência, não em paralelo, evita
+    # sobrecarregar a Sticapi com duas varreduras simultâneas).
+    schedule: at 00:05 every day

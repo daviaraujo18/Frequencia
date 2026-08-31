@@ -25,4 +25,25 @@ ActiveSupport::Inflector.inflections(:en) do |inflect|
   # singulariza para "frequentadore", quebrando o path helper de member route
   # `reimportar_dados_pessoa_frequentador_path` (Sprint 8, Task 8.7).
   inflect.irregular "frequentador", "frequentadores"
+
+  # "categoria" termina em "-ia", e o Rails trata palavras assim como plural
+  # latino já existente (mesmo padrão de "bacteria"/"bacterium") — por
+  # padrão ele se recusa a pluralizar de novo (`pluralize("categoria") ==
+  # "categoria"`), o que quebrava o nome de tabela do model
+  # `RegimeCategoria` (Sprint 11, estrutura real do Regime — 2026-08-31).
+  inflect.irregular "categoria", "categorias"
+
+  # "caches" (de "cache") singulariza errado por padrão: o Rails trata
+  # palavras terminadas em "-ches" como plural de "-ch" (ex.: "churches" →
+  # "church"), então `singularize("frequentador_caches")` virava
+  # "frequentador_cach" (sem o "e" final) — quebrava a inferência de classe
+  # de `has_many :afastamento_caches`/`:frequentador_caches` (Sprint 12,
+  # `AfastamentoCache`/`FrequentadorCache`, 2026-08-31).
+  inflect.irregular "cache", "caches"
+
+  # "versao" segue o mesmo padrão de "estacao": o inflector padrão (locale
+  # :en) singulariza "versoes" para "verso" (perde o "a" nasal do
+  # português), quebrando o path helper `versao_path`/inferência de classe
+  # de `Versao` a partir da tabela `versoes` (Sprint 14, Task 14.4).
+  inflect.irregular "versao", "versoes"
 end

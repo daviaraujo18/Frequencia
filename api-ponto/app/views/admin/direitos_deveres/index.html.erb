@@ -4,6 +4,9 @@
   <div class="col-sm-6">
     <p class="text-muted mb-0"><%= @registros.size %> registro(s) cadastrado(s)</p>
   </div>
+  <div class="col-sm-6 text-sm-end">
+    <%= button_to "Sincronizar agora", sincronizar_agora_direitos_deveres_path, method: :post, class: "btn btn-outline-primary", form: { data: { turbo: false } } %>
+  </div>
 </div>
 
 <div class="card card-primary card-outline mb-4">
@@ -70,15 +73,15 @@
         <tbody>
           <% @registros.each do |registro| %>
             <tr>
-              <td><%= registro[:tipo] %></td>
-              <td><%= registro[:frequentador] %></td>
-              <td><%= registro[:cargo] %></td>
-              <td><%= registro[:lotacao] %></td>
-              <td><%= registro[:momento_inicial] %></td>
-              <td><%= registro[:momento_final] %></td>
-              <td><%= registro[:status] %></td>
-              <td><%= registro[:cadastrado_em] %></td>
-              <td><%= registro[:gerencia] %></td>
+              <td><%= registro.tipo %></td>
+              <td><%= registro.frequentador_cache&.nome %></td>
+              <td><%= registro.cargo %></td>
+              <td><%= registro.lotacao %></td>
+              <td><%= registro.momento_inicial %></td>
+              <td><%= registro.momento_final %></td>
+              <td><%= registro.status %></td>
+              <td><%= registro.created_at %></td>
+              <td></td>
             </tr>
           <% end %>
           <% if @registros.empty? %>

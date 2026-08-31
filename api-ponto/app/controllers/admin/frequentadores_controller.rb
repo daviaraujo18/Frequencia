@@ -17,6 +17,10 @@ module Admin
       if params[:sem_digital].present?
         @frequentadores = @frequentadores.where(digitais_hash: nil)
       end
+
+      if params[:orgao].present?
+        @frequentadores = @frequentadores.joins(:frequentador_cache).where("frequentador_caches.orgao ILIKE ?", "%#{params[:orgao]}%")
+      end
     end
 
     def reimportar_dados_pessoa

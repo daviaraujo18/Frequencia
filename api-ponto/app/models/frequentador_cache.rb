@@ -5,6 +5,7 @@ class FrequentadorCache < ApplicationRecord
   # docs/integracao-pessoas-sticapi.md.
 
   has_one :user, foreign_key: :cpf, primary_key: :cpf, inverse_of: :frequentador_cache
+  has_many :afastamento_caches, foreign_key: :cpf, primary_key: :cpf, inverse_of: :frequentador_cache
 
   validates :cpf, presence: true, uniqueness: true, format: { with: /\A\d{11}\z/ }
 

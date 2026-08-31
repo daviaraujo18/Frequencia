@@ -76,6 +76,28 @@ module Admin
       assert_select "td.text-muted", text: "—", minimum: 1
     end
 
+    test "filtra por orgao" do
+      user_a = User.create!(nome_completo: "Frequentador A", password: "123456", cpf: "11122233344")
+      user_b = User.create!(nome_completo: "Frequentador B", password: "123456", cpf: "55566677788")
+      FrequentadorCache.create!(cpf: "11122233344", nome: "Frequentador A", orgao: "Vara Cível")
+      FrequentadorCache.create!(cpf: "55566677788", nome: "Frequentador B", orgao: "Vara Criminal")
+
+      get frequentadores_path, params: { orgao: "Cível" }
+
+      assert_response :success
+      assert_select "td", text: "Frequentador A"
+      assert_select "td", text: "Frequentador B", count: 0
+    end
+
+    test "filtra por orgao ignora frequentador sem FrequentadorCache" do
+      User.create!(nome_completo: "Sem Cache", password: "123456")
+
+      get frequentadores_path, params: { orgao: "Vara" }
+
+      assert_response :success
+      assert_select "td", text: "Sem Cache", count: 0
+    end
+
     test "index continua respondendo com o espelho antigo mesmo sem nenhuma chamada a Sticapi" do
       frequentador = User.create!(nome_completo: "Com Cache Antigo", password: "123456", cpf: "11122233344")
       FrequentadorCache.create!(cpf: "11122233344", nome: "Com Cache Antigo", orgao: "Orgao de 2 dias atras", vinculo: "Efetivo", sincronizado_em: 2.days.ago)

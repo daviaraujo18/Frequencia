@@ -28,6 +28,14 @@ module Presenca
         return render plain: "sincronizado"
       end
 
+      # Sprint 13 (task 13.1): guarda de qual estação veio o lote, pra grid
+      # admin/frequencia poder exibir a coluna "Estação". `find_by` (não
+      # `find_by!`) porque o sentinela de OS não suportado é válido no
+      # `codigo_ativacao_valido?` acima mas não corresponde a uma linha
+      # real — nesse caso `estacao_ponto` fica nil, e o `TimeRecord` grava
+      # sem esse vínculo (coluna nullable).
+      estacao_ponto = EstacaoPonto.find_by("lower(cod_ativacao) = ?", params[:codAtivacao].to_s.downcase)
+
       registros_raw = params[:registros].to_s
       registros_decrypted = decrypt_registros(registros_raw)
       # A Estação junta os registros com ";" (ArquivoRegistros.lerArquivo,
@@ -100,7 +108,8 @@ module Presenca
           punch_type: punch_type,
           # Sprint R (R.5): auditoria — true quando o valor veio do payload,
           # false quando foi inferido pelo PunchTypeService (fallback ADR-08).
-          punch_type_explicit: punch_type_is_explicit
+          punch_type_explicit: punch_type_is_explicit,
+          estacao_ponto: estacao_ponto
         )
 
         registros_aceitos << {

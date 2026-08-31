@@ -205,4 +205,31 @@ class TimeRecordTest < ActiveSupport::TestCase
     assert_equal second_record, result
     assert_equal "second", result.raw_data
   end
+
+  # --- Associação estacao_ponto (Sprint 13, task 13.1) ---
+
+  test "belongs_to estacao_ponto e eh opcional" do
+    record = TimeRecord.new(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.now,
+      authentication_mode: "biometric"
+    )
+    assert record.valid?
+    assert_nil record.estacao_ponto
+  end
+
+  test "pode ser associado a uma estacao_ponto real" do
+    estacao = estacoes_ponto(:one)
+
+    record = TimeRecord.create!(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.now,
+      authentication_mode: "biometric",
+      estacao_ponto: estacao
+    )
+
+    assert_equal estacao, record.reload.estacao_ponto
+  end
 end

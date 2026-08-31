@@ -2,6 +2,8 @@ class User < ApplicationRecord
   has_secure_password
 
   has_many :time_records, dependent: :restrict_with_exception
+  has_many :regime_frequentadores, dependent: :restrict_with_exception
+  has_many :regimes, through: :regime_frequentadores
 
   # Vínculo do Frequentador local (login da estação) com o espelho de dados
   # do Pessoas (Sprint 10) — via CPF, não FK numérica. optional porque

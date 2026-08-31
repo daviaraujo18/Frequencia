@@ -22,7 +22,7 @@
       </div>
       <div class="col-auto">
         <%= label_tag :orgao, "Órgão", class: "form-label" %>
-        <%= text_field_tag :orgao, params[:orgao], class: "form-control form-control-sm", placeholder: "Buscar por órgão", disabled: true, title: "Disponível quando os dados de órgão forem importados" %>
+        <%= text_field_tag :orgao, params[:orgao], class: "form-control form-control-sm", placeholder: "Buscar por órgão" %>
       </div>
       <div class="col-auto">
         <%= label_tag :categoria, "Categoria", class: "form-label" %>
@@ -39,7 +39,7 @@
               include_blank: "Todos",
               class: "form-select form-select-sm",
               disabled: true,
-              title: "Disponível quando os dados de categoria forem importados" %>
+              title: "Pendente: FrequentadorCache ainda não guarda a categoria (campo categoria_trabalhador_ativa da Sticapi não é puxado hoje)" %>
       </div>
       <div class="col-auto d-flex align-items-center gap-3 pb-1">
         <div class="form-check">
