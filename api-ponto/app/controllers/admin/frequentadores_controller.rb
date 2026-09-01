@@ -14,8 +14,14 @@ module Admin
         @frequentadores = @frequentadores.where("nome_completo ILIKE ?", "%#{params[:nome]}%")
       end
 
-      if params[:sem_digital].present?
-        @frequentadores = @frequentadores.where(digitais_hash: nil)
+      if params[:digital].present?
+        if params[:digital] == "1"
+          @frequentadores = @frequentadores.where.not(digitais_hash: [nil, ""])
+        elsif params[:digital] == "0"
+          @frequentadores = @frequentadores.where(digitais_hash: [nil, ""])
+        end
+      elsif params[:sem_digital].present?
+        @frequentadores = @frequentadores.where(digitais_hash: [nil, ""])
       end
 
       if params[:orgao].present?
@@ -45,3 +51,4 @@ module Admin
     end
   end
 end
+
