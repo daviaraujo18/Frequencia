@@ -5,6 +5,24 @@ module Admin
 
     def index
       @users = User.order(:nome_completo)
+
+      if params[:nome].present?
+        @users = @users.where("nome_completo ILIKE ?", "%#{params[:nome]}%")
+      end
+
+      if params[:username].present?
+        @users = @users.where("username ILIKE ?", "%#{params[:username]}%")
+      end
+
+      if params[:status_filtro].present?
+        @users = @users.where(status: params[:status_filtro])
+      end
+
+      if params[:digital].present?
+        @users = @users.where(params[:digital] == "1" ? "digitais_hash IS NOT NULL" : "digitais_hash IS NULL")
+      end
+
+      @users = @users.page(params[:page])
     end
 
     def new
