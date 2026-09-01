@@ -52,7 +52,7 @@
           <% @registros.each do |registro| %>
             <tr>
               <td><%= registro[:orgao] %></td>
-              <td><%= registro[:trabalhado] %></td>
+              <td class="<%= "text-muted" if registro[:trabalhado].nil? %>"><%= registro[:trabalhado] || "—" %></td>
               <td><%= registro[:presencas] %></td>
               <td><%= registro[:ausencias] %></td>
             </tr>

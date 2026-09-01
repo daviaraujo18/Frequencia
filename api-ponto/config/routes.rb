@@ -23,15 +23,32 @@ Rails.application.routes.draw do
       end
     end
     resources :time_records, only: [:index]
-    resources :frequentadores, only: [:index]
-    resources :estacoes, only: [:index]
-    resources :versoes, only: [:index]
+    resources :frequentadores, only: [:index] do
+      member do
+        post :reimportar_dados_pessoa
+      end
+      collection do
+        post :importar_unidade
+      end
+    end
+    get "estacoes/new", to: "estacoes#new", as: :new_estacao
+    get "estacoes/:id/edit", to: "estacoes#edit", as: :edit_estacao
+    resources :estacoes, only: [:index, :create, :update, :destroy]
+    get "versoes/new", to: "versoes#new", as: :new_versao
+    get "versoes/:id/edit", to: "versoes#edit", as: :edit_versao
+    resources :versoes, only: [:index, :create, :update, :destroy]
     resources :relatorio_terceirizados, only: [:index]
     get "frequencia_por_orgao", to: "frequencia_por_orgao#index", as: :frequencia_por_orgao
     get "parcial", to: "parcial#index", as: :parcial
     get "frequencia", to: "frequencia#index", as: :frequencia
-    resources :regimes, only: [:index]
-    resources :direitos_deveres, only: [:index]
+    get "regimes/new", to: "regimes#new", as: :new_regime
+    get "regimes/:id/edit", to: "regimes#edit", as: :edit_regime
+    resources :regimes, only: [:index, :create, :update, :destroy]
+    resources :direitos_deveres, only: [:index] do
+      collection do
+        post :sincronizar_agora
+      end
+    end
     resources :gestores_individuais, only: [:index]
   end
 

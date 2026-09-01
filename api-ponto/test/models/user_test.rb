@@ -103,4 +103,19 @@ class UserTest < ActiveSupport::TestCase
     )
     assert_equal user, record.user
   end
+
+  test "belongs_to frequentador_cache via cpf" do
+    user = User.create!(nome_completo: "Com Vinculo", password: "123456", cpf: "11122233344")
+    cache = FrequentadorCache.create!(cpf: "11122233344", nome: "Com Vinculo")
+
+    assert_equal cache, user.reload.frequentador_cache
+  end
+
+  test "frequentador_cache fica nil quando nao ha cpf ou nao ha cache correspondente" do
+    sem_cpf = User.create!(nome_completo: "Sem Cpf", password: "123456")
+    assert_nil sem_cpf.frequentador_cache
+
+    com_cpf_sem_cache = User.create!(nome_completo: "Sem Cache", password: "123456", cpf: "99988877766")
+    assert_nil com_cpf_sem_cache.frequentador_cache
+  end
 end

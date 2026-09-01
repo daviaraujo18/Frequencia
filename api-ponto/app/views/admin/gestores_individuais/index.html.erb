@@ -23,9 +23,9 @@
         <tbody>
           <% @gestores.each do |gestor| %>
             <tr>
-              <td><%= gestor[:nome] %></td>
-              <td><%= gestor[:orgao] %></td>
-              <td><%= gestor[:gerenciados] %></td>
+              <td><%= gestor.nome %></td>
+              <td><%= gestor.orgao %></td>
+              <td><%= gestor.gerenciados.size %></td>
             </tr>
           <% end %>
           <% if @gestores.empty? %>

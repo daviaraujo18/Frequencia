@@ -1,5 +1,10 @@
 class TimeRecord < ApplicationRecord
   belongs_to :user
+  # Sprint 13 (task 13.1): optional porque registros antigos (antes desta
+  # migration) e o sentinela de OS não suportado (ver
+  # EstacaoPonto::CODIGO_SISTEMA_OPERACIONAL_NAO_SUPORTADO) não têm uma
+  # EstacaoPonto real associada.
+  belongs_to :estacao_ponto, optional: true
 
   validates :raw_data, presence: true
   validates :punched_at, presence: true

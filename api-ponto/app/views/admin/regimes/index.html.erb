@@ -4,6 +4,11 @@
   <div class="col-sm-6">
     <p class="text-muted mb-0"><%= @regimes.size %> regime(s) cadastrado(s)</p>
   </div>
+  <div class="col-sm-6 text-sm-end">
+    <%= link_to new_regime_path, class: "btn btn-primary" do %>
+      <i class="bi bi-plus-lg me-1"></i> Novo Regime
+    <% end %>
+  </div>
 </div>
 
 <div class="card card-primary card-outline mb-4">
@@ -19,28 +24,16 @@
       <div class="col-auto">
         <%= label_tag :categoria, "Categoria", class: "form-label" %>
         <%= select_tag :categoria,
-              options_for_select([
-                "Servidor Efetivo",
-                "Servidor Comissionado",
-                "Estagiário",
-                "Residente",
-                "Terceirizado",
-                "Auxiliar da Justiça",
-                "Cedido"
-              ], params[:categoria]),
+              options_for_select(Regime::CATEGORIAS_DISPONIVEIS.map { |c| [ Regime::CATEGORIAS_LABELS[c], c ] }, params[:categoria]),
               include_blank: "Todos",
-              class: "form-select form-select-sm",
-              disabled: true,
-              title: "Disponível quando os dados de categoria forem importados" %>
+              class: "form-select form-select-sm" %>
       </div>
       <div class="col-auto">
         <%= label_tag :modalidade, "Modalidade", class: "form-label" %>
         <%= select_tag :modalidade,
-              options_for_select([], params[:modalidade]),
+              options_for_select(Regime::MODALIDADES_DISPONIVEIS.map { |m| [ Regime::MODALIDADES_LABELS[m], m ] }, params[:modalidade]),
               include_blank: "Todas",
-              class: "form-select form-select-sm",
-              disabled: true,
-              title: "Disponível quando as modalidades forem definidas" %>
+              class: "form-select form-select-sm" %>
       </div>
       <div class="col-auto d-flex gap-1">
         <%= button_tag class: "btn btn-primary btn-sm" do %>
@@ -74,12 +67,21 @@
         <tbody>
           <% @regimes.each do |regime| %>
             <tr>
-              <td><%= regime[:categoria] %></td>
-              <td><%= regime[:nome] %></td>
-              <td><%= regime[:modalidade] %></td>
-              <td><%= regime[:resumo] %></td>
-              <td><%= regime[:meta_semanal] %></td>
-              <td><%= regime[:gerencia] %></td>
+              <td><%= regime.categorias.map { |c| Regime::CATEGORIAS_LABELS[c] || c }.join(", ") %></td>
+              <td><%= regime.nome %></td>
+              <td><%= Regime::MODALIDADES_LABELS[regime.modalidade] || regime.modalidade %></td>
+              <td><%= regime.resumo %></td>
+              <td><%= regime.meta_semanal %></td>
+              <td class="text-end">
+                <div class="d-flex gap-1 justify-content-end">
+                  <%= link_to edit_regime_path(regime), class: "btn btn-xs btn-outline-primary" do %>
+                    <i class="bi bi-pencil"></i>
+                  <% end %>
+                  <%= button_to regime_path(regime), method: :delete, class: "btn btn-xs btn-outline-danger", data: { turbo_confirm: "Tem certeza que deseja excluir este regime?" } do %>
+                    <i class="bi bi-trash"></i>
+                  <% end %>
+                </div>
+              </td>
             </tr>
           <% end %>
           <% if @regimes.empty? %>

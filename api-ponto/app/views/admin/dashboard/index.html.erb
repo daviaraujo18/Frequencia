@@ -8,6 +8,36 @@
   </style>
   <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
     <div class="col">
+      <div class="small-box text-bg-secondary">
+        <div class="inner">
+          <h3><%= @total_frequentadores %></h3>
+          <p>Frequentadores</p>
+        </div>
+        <svg class="small-box-icon" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+        </svg>
+        <%= link_to frequentadores_path, class: "small-box-footer" do %>
+          Ver detalhes <i class="bi bi-arrow-right"></i>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="small-box text-bg-dark">
+        <div class="inner">
+          <h3><%= @total_estacoes %></h3>
+          <p>Estações de Ponto</p>
+        </div>
+        <svg class="small-box-icon" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M4 6h16v10H4V6zm0-2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h6v2H8v2h8v-2h-2v-2h6a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4z"/>
+        </svg>
+        <%= link_to estacoes_path, class: "small-box-footer" do %>
+          Ver detalhes <i class="bi bi-arrow-right"></i>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="col">
       <div class="small-box text-bg-primary">
         <div class="inner">
           <h3><%= @total_usuarios %></h3>

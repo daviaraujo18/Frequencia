@@ -37,6 +37,35 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Nome Alterado", user.reload.nome_completo
   end
 
+  test "edit exibe campos desabilitados para frequentador vinculado ao Pessoas (com cpf)" do
+    user = User.create!(nome_completo: "Vindo Do Pessoas", password: "123456", cpf: "11122233344")
+
+    get edit_user_path(user)
+
+    assert_response :success
+    assert_select "input[name='user[nome_completo]'][disabled]"
+    assert_select "input[type='submit']", count: 0
+  end
+
+  test "edit nao desabilita campos para usuario sem cpf (cadastro manual)" do
+    user = User.create!(nome_completo: "Manual", password: "123456")
+
+    get edit_user_path(user)
+
+    assert_response :success
+    assert_select "input[name='user[nome_completo]']:not([disabled])"
+    assert_select "input[type='submit']"
+  end
+
+  test "update bloqueia edicao de frequentador vinculado ao Pessoas mesmo via POST direto" do
+    user = User.create!(nome_completo: "Vindo Do Pessoas", password: "123456", cpf: "11122233344")
+
+    patch user_path(user), params: { user: { nome_completo: "Tentativa De Alterar" } }
+
+    assert_redirected_to users_path
+    assert_equal "Vindo Do Pessoas", user.reload.nome_completo
+  end
+
   test "deve inativar usuario" do
     user = User.create!(nome_completo: "Inativável", password: "123456")
     delete user_path(user)
