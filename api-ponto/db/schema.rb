@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_09_02_120002) do
+ActiveRecord::Schema[8.0].define(version: 2026_09_02_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -148,6 +148,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_02_120002) do
     t.jsonb "expediente", default: [], null: false
     t.bigint "anterior_id"
     t.bigint "padrao_id"
+    t.boolean "excluido", default: false, null: false
+    t.boolean "visivel", default: true, null: false
     t.index ["anterior_id"], name: "index_regimes_on_anterior_id"
     t.index ["padrao_id"], name: "index_regimes_on_padrao_id"
   end

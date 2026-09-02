@@ -4,7 +4,14 @@ module Admin
     before_action -> { require_admin(regimes_path) }, only: [ :new, :create, :edit, :update, :destroy ]
 
     def index
-      @regimes = Regime.includes(:regime_categorias).order(:nome)
+      # Mesmo filtro real do legado (`RegimeDao.paginateList`): só mostra
+      # regimes ativos (não excluídos, marcados como visíveis) e que não
+      # tenham sido substituídos por uma versão mais nova (não são
+      # `anterior_id` de nenhum outro regime não-excluído).
+      @regimes = Regime.includes(:regime_categorias)
+        .where(excluido: false, visivel: true)
+        .where.not(id: Regime.where(excluido: false).where.not(anterior_id: nil).select(:anterior_id))
+        .order(:nome)
 
       if params[:nome].present?
         @regimes = @regimes.where("nome ILIKE ?", "%#{params[:nome]}%")

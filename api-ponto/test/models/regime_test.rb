@@ -6,6 +6,34 @@ class RegimeTest < ActiveSupport::TestCase
     assert regime.valid?
   end
 
+  test "resumo_exibicao usa o campo resumo quando presente" do
+    regime = Regime.new(resumo: "8h/dia", expediente: [ { "dias" => "SEG,TER", "inicio" => "08:00", "fim" => "16:00" } ])
+    assert_equal [ "8h/dia" ], regime.resumo_exibicao
+  end
+
+  test "resumo_exibicao computa dias/horas do expediente quando resumo esta em branco" do
+    regime = Regime.new(expediente: [
+      { "dias" => "SEG,TER,QUA,QUI,SEX,", "inicio" => "07:00", "fim" => "13:00" }
+    ])
+    assert_equal [ "SEG,TER,QUA,QUI,SEX, de 07:00 às 13:00" ], regime.resumo_exibicao
+  end
+
+  test "resumo_exibicao lista um item por periodo do expediente" do
+    regime = Regime.new(expediente: [
+      { "dias" => "SEG,TER,QUA,QUI,SEX,", "inicio" => "08:00", "fim" => "12:00" },
+      { "dias" => "SEG,TER,QUA,QUI,SEX,", "inicio" => "14:00", "fim" => "18:00" }
+    ])
+    assert_equal [
+      "SEG,TER,QUA,QUI,SEX, de 08:00 às 12:00",
+      "SEG,TER,QUA,QUI,SEX, de 14:00 às 18:00"
+    ], regime.resumo_exibicao
+  end
+
+  test "resumo_exibicao retorna vazio quando nao ha resumo nem expediente" do
+    regime = Regime.new
+    assert_equal [], regime.resumo_exibicao
+  end
+
   test "invalid without nome" do
     regime = Regime.new
     assert_not regime.valid?

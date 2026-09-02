@@ -14,16 +14,18 @@ class Regime < ApplicationRecord
 
   # Códigos reais de `presenca_regime_categoriavinculo` — confirmados em
   # 2026-08-31 consultando o banco de produção da Intranet (`SELECT DISTINCT
-  # categoria`, todos os 309 regimes, não só os ativos): só estes 6 códigos
-  # são usados de fato, mesmo que `CategoriaVinculoEnum.java` possa definir
-  # outros (ex.: RESIDENTE, MAGISTRADO) nunca vinculados a um regime.
-  # Antes desta correção, este model usava rótulos em português inventados
-  # a partir do filtro da tela (não do enum real) — substituídos pelos
-  # códigos reais para bater com a modelagem de dados de verdade.
+  # categoria`, todos os 309 regimes, não só os ativos): 6 desses códigos
+  # são usados de fato nos regimes já importados; `RESIDENTE` foi
+  # adicionado a pedido do usuário (2026-09-02) como categoria nova
+  # disponível — existe no enum real do legado (`CategoriaVinculoEnum.java`)
+  # mas nunca esteve vinculada a um regime até agora, então nenhum dos 309
+  # regimes importados tem essa categoria (fica disponível pra uso daqui
+  # pra frente).
   CATEGORIAS_DISPONIVEIS = %w[
     SERVIDOR_CARREIRA
     CARGO_COMISSIONADO
     ESTAGIARIO
+    RESIDENTE
     TERCEIRIZADO
     AUXILIAR_DA_JUSTICA
     CEDIDO
@@ -39,13 +41,15 @@ class Regime < ApplicationRecord
   MODALIDADES_DISPONIVEIS = %w[HORAS HORAS_COM_INTERVALO OCORRENCIAS].freeze
 
   # Só para exibição (dropdown, listagem) — o valor persistido é sempre o
-  # código real (`CATEGORIAS_DISPONIVEIS`), nunca o rótulo.
+  # código real (`CATEGORIAS_DISPONIVEIS`), nunca o rótulo. Rótulos
+  # atualizados a pedido do usuário (2026-09-02).
   CATEGORIAS_LABELS = {
-    "SERVIDOR_CARREIRA" => "Servidor de Carreira",
-    "CARGO_COMISSIONADO" => "Cargo Comissionado",
+    "SERVIDOR_CARREIRA" => "Servidor Efetivo",
+    "CARGO_COMISSIONADO" => "Servidor Comissionado",
     "ESTAGIARIO" => "Estagiário",
+    "RESIDENTE" => "Residente",
     "TERCEIRIZADO" => "Terceirizado",
-    "AUXILIAR_DA_JUSTICA" => "Auxiliar da Justiça",
+    "AUXILIAR_DA_JUSTICA" => "Auxiliar de justiça",
     "CEDIDO" => "Cedido"
   }.freeze
 
@@ -68,6 +72,20 @@ class Regime < ApplicationRecord
 
   def categorias
     regime_categorias.map(&:categoria)
+  end
+
+  # Formatação de dias/horários pra coluna "Resumo" — mesmo formato do
+  # legado (`Regime.java#getResumo()`: "{dias} de {inicio} às {fim}", um
+  # item por período de `expediente`). É só formatação de exibição, não o
+  # motor de cálculo (metaSemanal/banco de horas) — isso continua Fase B.
+  # `resumo` (campo digitado manualmente no form) tem prioridade quando
+  # presente; senão computa a partir do `expediente` real.
+  def resumo_exibicao
+    return [ resumo ] if resumo.present?
+
+    Array(expediente).map do |periodo|
+      "#{periodo['dias']} de #{periodo['inicio']} às #{periodo['fim']}"
+    end
   end
 
   def categorias=(lista)
