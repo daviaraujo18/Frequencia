@@ -4,7 +4,7 @@ module Admin
     before_action -> { require_admin(estacoes_path) }, only: [:new, :create, :edit, :update, :destroy]
 
     def index
-      @estacoes = EstacaoPonto.order(:descricao)
+      @estacoes = EstacaoPonto.includes(:registro_estacao_pontos).order(:descricao)
     end
 
     def new
@@ -44,7 +44,8 @@ module Admin
 
     def estacao_params
       params.require(:estacao).permit(
-        :descricao, :versao, :ultimo_contato, :vnc, :anydesk, :teamviewer, :observacao, :cod_ativacao
+        :descricao, :versao, :ultimo_contato, :vnc, :anydesk, :teamviewer, :observacao, :cod_ativacao,
+        :codigo_unico_maquina, :momento_inicio, :momento_fim, :liberado_batida_manual, :ativo
       )
     end
   end

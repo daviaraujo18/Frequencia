@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_08_31_160000) do
+ActiveRecord::Schema[8.0].define(version: 2026_09_02_120002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -29,6 +29,36 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_31_160000) do
     t.index ["cpf"], name: "index_afastamento_caches_on_cpf"
   end
 
+  create_table "calculo_diarios", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.date "data", null: false
+    t.integer "normal_segundos"
+    t.integer "excepcional_segundos"
+    t.integer "total_segundos"
+    t.integer "meta_segundos"
+    t.boolean "aberto", default: false, null: false
+    t.boolean "ausencia", default: false, null: false
+    t.boolean "falta", default: false, null: false
+    t.boolean "falta_a_descontar", default: false, null: false
+    t.boolean "falta_compensada", default: false, null: false
+    t.boolean "descontado_em_folha", default: false, null: false
+    t.string "informacao"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "data"], name: "index_calculo_diarios_on_user_id_and_data", unique: true
+    t.index ["user_id"], name: "index_calculo_diarios_on_user_id"
+  end
+
+  create_table "estacao_pings", force: :cascade do |t|
+    t.string "ip"
+    t.datetime "momento"
+    t.string "versao"
+    t.bigint "estacao_ponto_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["estacao_ponto_id"], name: "index_estacao_pings_on_estacao_ponto_id"
+  end
+
   create_table "estacoes_ponto", force: :cascade do |t|
     t.string "descricao", null: false
     t.string "versao"
@@ -40,6 +70,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_31_160000) do
     t.string "cod_ativacao", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "codigo_unico_maquina"
+    t.date "momento_inicio"
+    t.date "momento_fim"
+    t.boolean "liberado_batida_manual", default: false, null: false
+    t.boolean "ativo", default: true, null: false
     t.index ["cod_ativacao"], name: "index_estacoes_ponto_on_cod_ativacao", unique: true
   end
 
@@ -117,6 +152,18 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_31_160000) do
     t.index ["padrao_id"], name: "index_regimes_on_padrao_id"
   end
 
+  create_table "registro_estacao_pontos", force: :cascade do |t|
+    t.text "arquivo_criptografado"
+    t.datetime "momento_processamento"
+    t.datetime "momento_sinc"
+    t.boolean "processado", default: false, null: false
+    t.bigint "estacao_ponto_id", null: false
+    t.text "ip"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["estacao_ponto_id"], name: "index_registro_estacao_pontos_on_estacao_ponto_id"
+  end
+
   create_table "time_records", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "raw_data"
@@ -156,6 +203,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_31_160000) do
     t.datetime "updated_at", null: false
   end
 
+  add_foreign_key "calculo_diarios", "users"
+  add_foreign_key "estacao_pings", "estacoes_ponto", column: "estacao_ponto_id"
   add_foreign_key "gestor_individual_gerenciados", "gestores_individuais", column: "gestor_individual_id"
   add_foreign_key "gestor_individual_gerenciados", "users"
   add_foreign_key "regime_categorias", "regimes"
@@ -163,6 +212,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_31_160000) do
   add_foreign_key "regime_frequentadores", "users"
   add_foreign_key "regimes", "regimes", column: "anterior_id"
   add_foreign_key "regimes", "regimes", column: "padrao_id"
+  add_foreign_key "registro_estacao_pontos", "estacoes_ponto", column: "estacao_ponto_id"
   add_foreign_key "time_records", "estacoes_ponto", column: "estacao_ponto_id"
   add_foreign_key "time_records", "users"
 end

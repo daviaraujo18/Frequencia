@@ -36,7 +36,11 @@
               <td><%= estacao[:descricao] %></td>
               <td><%= estacao[:versao] %></td>
               <td><%= estacao[:ultimo_contato] %></td>
-              <td><%= estacao[:vnc] %></td>
+              <td>
+                <% if estacao.vnc_ip.present? %>
+                  <%= link_to estacao.vnc_ip, "vnc://#{estacao.vnc_ip}" %>
+                <% end %>
+              </td>
               <td><%= estacao[:anydesk] %></td>
               <td><%= estacao[:teamviewer] %></td>
               <td><%= estacao[:observacao] %></td>
