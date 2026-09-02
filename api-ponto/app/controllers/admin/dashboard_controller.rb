@@ -15,13 +15,16 @@ module Admin
 
         # Sprint 15 (task 15.1): KPIs simples de "Fase A" — contagem direta,
         # sem nenhum cálculo de banco de horas/fechamento (Fase B, Sprint
-        # 16+, ver task 15.2). `FrequentadorCache` é o espelho local de
-        # frequentadores vindo do Pessoas (Sprint 8/10). `EstacaoPonto` não
-        # tem campo de status/ativação no schema atual (não existe coluna
-        # `ativa` nem conceito de desativação) — toda estação cadastrada é
-        # contada, já que o schema não distingue estações ativas de
-        # inativas nesta fase.
-        @total_frequentadores = FrequentadorCache.count
+        # 16+, ver task 15.2). `EstacaoPonto` não tem campo de
+        # status/ativação no schema atual (não existe coluna `ativa` nem
+        # conceito de desativação) — toda estação cadastrada é contada, já
+        # que o schema não distingue estações ativas de inativas nesta fase.
+        #
+        # `@total_frequentadores` trocado de `FrequentadorCache.count`
+        # (espelho local) para SELECT ao vivo no pessoas2 (pedido do
+        # usuário, 2026-09-02) — mesma fonte já usada em
+        # admin/frequentadores (task 10.10): todo vínculo ativo real.
+        @total_frequentadores = Pessoas::Vinculo.ativos.count
         @total_estacoes = EstacaoPonto.count
 
         # "Últimas Batidas" exibe entradas e saídas em colunas separadas

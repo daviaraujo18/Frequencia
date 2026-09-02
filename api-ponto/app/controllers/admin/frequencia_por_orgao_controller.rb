@@ -13,8 +13,11 @@ module Admin
     # - "Trabalhado": não computado ainda — exigiria o motor de cálculo
     #   diário (horas entre entrada/saída), que é Fase B (Sprint 16). Fica
     #   "—" por enquanto, não inventado.
+    # Pedido do usuário (2026-09-02): trocar leitura de espelho local
+    # (`FrequentadorCache`) por SELECT ao vivo no pessoas2 — órgão vem da
+    # lotação principal vigente de vínculo ativo (Pessoas::Vinculo).
     def registros_por_orgao
-      orgaos = FrequentadorCache.distinct.where.not(orgao: nil).pluck(:orgao).sort
+      orgaos = Pessoas::Vinculo.orgaos_em_uso
 
       if params[:orgao].present?
         orgaos = orgaos.select { |orgao| orgao.downcase.include?(params[:orgao].downcase) }
@@ -24,7 +27,7 @@ module Admin
     end
 
     def linha_do_orgao(orgao)
-      cpfs = FrequentadorCache.where(orgao: orgao).pluck(:cpf)
+      cpfs = Pessoas::Vinculo.cpfs_por_orgao(orgao)
       user_ids = User.where(cpf: cpfs).pluck(:id)
 
       {

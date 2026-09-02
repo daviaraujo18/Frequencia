@@ -7,8 +7,25 @@ module Admin
       post login_path, params: { username: @admin.username, password: "123456" }
     end
 
+    # Pedido do usuário (2026-09-02): órgão/cpfs deixaram de vir do espelho
+    # local (FrequentadorCache) e passaram a ser SELECT ao vivo no pessoas2
+    # (Pessoas::Vinculo.orgaos_em_uso/.cpfs_por_orgao). pessoas_test não tem
+    # schema carregado (task 8.13) — stubamos os dois pontos de entrada,
+    # mesmo padrão já usado em frequentadores_controller_test.rb.
+    def stub_orgaos(mapa_orgao_para_cpfs)
+      Pessoas::Vinculo.define_singleton_method(:orgaos_em_uso) { mapa_orgao_para_cpfs.keys.sort }
+      Pessoas::Vinculo.define_singleton_method(:cpfs_por_orgao) { |orgao| mapa_orgao_para_cpfs[orgao] || [] }
+
+      yield
+    ensure
+      Pessoas::Vinculo.singleton_class.remove_method(:orgaos_em_uso)
+      Pessoas::Vinculo.singleton_class.remove_method(:cpfs_por_orgao)
+    end
+
     test "deve funcionar com base vazia" do
-      get frequencia_por_orgao_path
+      stub_orgaos({}) do
+        get frequencia_por_orgao_path
+      end
 
       assert_response :success
       assert_select "td", text: "Nenhum registro encontrado"
@@ -16,7 +33,6 @@ module Admin
 
     test "agrupa presencas por orgao contando dias distintos com batida" do
       user = User.create!(nome_completo: "Fulano", password: "123456", cpf: "11122233344")
-      FrequentadorCache.create!(cpf: "11122233344", nome: "Fulano", orgao: "Vara Cível")
 
       dia1 = Time.zone.local(2026, 7, 10, 8, 0)
       dia1_tarde = Time.zone.local(2026, 7, 10, 17, 0)
@@ -26,7 +42,9 @@ module Admin
       TimeRecord.create!(user: user, raw_data: "b", punched_at: dia1_tarde, authentication_mode: "biometric")
       TimeRecord.create!(user: user, raw_data: "c", punched_at: dia2, authentication_mode: "biometric")
 
-      get frequencia_por_orgao_path
+      stub_orgaos({ "Vara Cível" => [ "11122233344" ] }) do
+        get frequencia_por_orgao_path
+      end
 
       assert_response :success
       assert_select "td", text: "Vara Cível"
@@ -35,20 +53,21 @@ module Admin
     end
 
     test "conta afastamentos como ausencias por orgao" do
-      FrequentadorCache.create!(cpf: "11122233344", nome: "Fulano", orgao: "Vara Cível")
       AfastamentoCache.create!(afastamento_id_pessoas: 1, cpf: "11122233344", tipo: "Férias", momento_inicial: Time.zone.local(2026, 7, 5))
       AfastamentoCache.create!(afastamento_id_pessoas: 2, cpf: "11122233344", tipo: "Licença", momento_inicial: Time.zone.local(2026, 7, 15))
 
-      get frequencia_por_orgao_path
+      stub_orgaos({ "Vara Cível" => [ "11122233344" ] }) do
+        get frequencia_por_orgao_path
+      end
 
       assert_response :success
       assert_select "td", text: "2"
     end
 
     test "trabalhado aparece como travessao (nao computado, pendente Fase B)" do
-      FrequentadorCache.create!(cpf: "11122233344", nome: "Fulano", orgao: "Vara Cível")
-
-      get frequencia_por_orgao_path
+      stub_orgaos({ "Vara Cível" => [ "11122233344" ] }) do
+        get frequencia_por_orgao_path
+      end
 
       assert_response :success
       assert_select "td.text-muted", text: "—", minimum: 1
@@ -59,12 +78,13 @@ module Admin
       # dados suficientes para calcular horas trabalhadas (entrada + saida no
       # mesmo dia), a tela nao deve computar nada - isso e Fase B (Sprint 16).
       user = User.create!(nome_completo: "Fulano", password: "123456", cpf: "11122233344")
-      FrequentadorCache.create!(cpf: "11122233344", nome: "Fulano", orgao: "Vara Cível")
 
       TimeRecord.create!(user: user, raw_data: "entrada", punched_at: Time.zone.local(2026, 7, 10, 8, 0), authentication_mode: "biometric")
       TimeRecord.create!(user: user, raw_data: "saida", punched_at: Time.zone.local(2026, 7, 10, 17, 0), authentication_mode: "biometric")
 
-      get frequencia_por_orgao_path
+      stub_orgaos({ "Vara Cível" => [ "11122233344" ] }) do
+        get frequencia_por_orgao_path
+      end
 
       assert_response :success
       assert_select "td.text-muted", text: "—", minimum: 1
@@ -75,10 +95,9 @@ module Admin
     end
 
     test "filtra por orgao" do
-      FrequentadorCache.create!(cpf: "11122233344", nome: "Fulano", orgao: "Vara Cível")
-      FrequentadorCache.create!(cpf: "55566677788", nome: "Beltrano", orgao: "Vara Criminal")
-
-      get frequencia_por_orgao_path, params: { orgao: "Cível" }
+      stub_orgaos({ "Vara Cível" => [ "11122233344" ], "Vara Criminal" => [ "55566677788" ] }) do
+        get frequencia_por_orgao_path, params: { orgao: "Cível" }
+      end
 
       assert_response :success
       assert_select "td", text: "Vara Cível"
@@ -87,19 +106,22 @@ module Admin
 
     test "filtra por mes e ano" do
       user = User.create!(nome_completo: "Fulano", password: "123456", cpf: "11122233344")
-      FrequentadorCache.create!(cpf: "11122233344", nome: "Fulano", orgao: "Vara Cível")
 
       TimeRecord.create!(user: user, raw_data: "julho", punched_at: Time.zone.local(2026, 7, 10, 8, 0), authentication_mode: "biometric")
       TimeRecord.create!(user: user, raw_data: "agosto", punched_at: Time.zone.local(2026, 8, 10, 8, 0), authentication_mode: "biometric")
 
-      get frequencia_por_orgao_path, params: { mes: 7, ano: 2026 }
+      stub_orgaos({ "Vara Cível" => [ "11122233344" ] }) do
+        get frequencia_por_orgao_path, params: { mes: 7, ano: 2026 }
+      end
 
       assert_response :success
       assert_select "td", text: "1"
     end
 
     test "orgao sem frequentador algum nao aparece" do
-      get frequencia_por_orgao_path
+      stub_orgaos({}) do
+        get frequencia_por_orgao_path
+      end
 
       assert_response :success
       assert_select "td", text: "Nenhum registro encontrado"

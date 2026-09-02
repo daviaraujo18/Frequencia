@@ -4,6 +4,22 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   setup do
     @user = User.create!(nome_completo: "Admin Teste", password: "123456", admin: true)
     post login_path, params: { username: @user.username, password: "123456" }
+
+    # "Frequentadores" trocou de FrequentadorCache.count (espelho local)
+    # para Pessoas::Vinculo.ativos.count (SELECT ao vivo no pessoas2) —
+    # pedido do usuário, 2026-09-02. pessoas_test não tem schema carregado
+    # (task 8.13) — stuba vazio por padrão, sobrescrito nos testes que
+    # precisam de uma contagem específica.
+    stub_vinculos_ativos([])
+  end
+
+  teardown do
+    Pessoas::Vinculo.singleton_class.remove_method(:ativos) if Pessoas::Vinculo.singleton_class.method_defined?(:ativos)
+  end
+
+  def stub_vinculos_ativos(lista)
+    Pessoas::Vinculo.singleton_class.remove_method(:ativos) if Pessoas::Vinculo.singleton_class.method_defined?(:ativos)
+    Pessoas::Vinculo.define_singleton_method(:ativos) { lista }
   end
 
   test "deve carregar dashboard" do
@@ -24,11 +40,9 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   # KPI dependa disso).
   test "deve exibir contagem real de frequentadores, estacoes e batidas do dia" do
     TimeRecord.delete_all
-    FrequentadorCache.delete_all
     EstacaoPonto.delete_all
 
-    FrequentadorCache.create!(cpf: "11111111111", nome: "Frequentador Um", orgao: "Órgão A")
-    FrequentadorCache.create!(cpf: "22222222222", nome: "Frequentador Dois", orgao: "Órgão B")
+    stub_vinculos_ativos(%w[11111111111 22222222222])
 
     EstacaoPonto.create!(descricao: "Estação Recepção", cod_ativacao: "estacao-recepcao")
 
@@ -50,7 +64,6 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
 
   test "deve carregar dashboard sem erro com base vazia" do
     TimeRecord.delete_all
-    FrequentadorCache.delete_all
     EstacaoPonto.delete_all
 
     get dashboard_path

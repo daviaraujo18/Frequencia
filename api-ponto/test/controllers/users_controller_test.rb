@@ -6,9 +6,32 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     post login_path, params: { username: @admin.username, password: "123456" }
   end
 
+  # Pedido do usuário (2026-09-02): index passou a listar
+  # Pessoas::Vinculo.ativos (mesmo padrão de admin/frequentadores, task
+  # 10.10) em vez de só User.order(:nome_completo). pessoas_test não tem
+  # schema carregado (task 8.13) — stuba o ponto de entrada, mesmo padrão
+  # já usado em frequentadores_controller_test.rb.
   test "deve listar usuarios" do
+    Pessoas::Vinculo.define_singleton_method(:frequentadores_ativos) { |**_kwargs| Kaminari.paginate_array([]).page(1) }
+
     get users_path
+
     assert_response :success
+  ensure
+    Pessoas::Vinculo.singleton_class.remove_method(:frequentadores_ativos)
+  end
+
+  test "usuario local sem cpf aparece na secao separada, mesmo sem vinculo no pessoas2" do
+    Pessoas::Vinculo.define_singleton_method(:frequentadores_ativos) { |**_kwargs| Kaminari.paginate_array([]).page(1) }
+    sem_cpf = User.create!(nome_completo: "Admin Sem Vinculo", password: "123456")
+
+    get users_path
+
+    assert_response :success
+    assert_select "td", text: "Admin Sem Vinculo"
+    assert_select "code", text: sem_cpf.username
+  ensure
+    Pessoas::Vinculo.singleton_class.remove_method(:frequentadores_ativos)
   end
 
   test "deve mostrar formulario de novo usuario" do
