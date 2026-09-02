@@ -80,6 +80,46 @@ module Pessoas
       scope
     end
 
+    # Mesmo filtro de nome de `frequentadores_ativos` (vínculo ativo +
+    # `pessoas.nome ILIKE`), exposto como lista de CPFs — usado pelo filtro
+    # de "Usuário" em admin/time_records (pedido do usuário, 2026-09-02:
+    # "deve funcionar da mesma maneira que o filtro Nome funciona em
+    # /frequentadores"). Isolado como método de classe pra ser o único
+    # ponto de entrada a stubar nos testes (mesmo motivo dos métodos acima).
+    def self.cpfs_por_nome(nome)
+      return [] if nome.blank?
+
+      ativos.joins(:pessoa).where("pessoas.nome ILIKE ?", "%#{nome}%").distinct.pluck("pessoas.cpf")
+    end
+
+    # Lista de órgãos (unidade da lotação principal vigente) entre os
+    # vínculos ativos — substitui `FrequentadorCache.distinct.pluck(:orgao)`
+    # em admin/frequencia_por_orgao (pedido do usuário, 2026-09-02: trocar
+    # leitura de espelho local por SELECT ao vivo no pessoas2).
+    def self.orgaos_em_uso
+      Pessoas::Lotacao.principais.merge(Pessoas::Lotacao.vigentes)
+        .where(vinculo_id: ativos.select(:id))
+        .joins(:unidade)
+        .distinct
+        .pluck("unidades.descricao")
+        .compact
+        .sort
+    end
+
+    # CPFs dos vínculos ativos cuja lotação principal vigente é o órgão
+    # informado (comparação exata — o chamador já resolveu o nome via
+    # `orgaos_em_uso`). Substitui `FrequentadorCache.where(orgao:).pluck(:cpf)`.
+    def self.cpfs_por_orgao(orgao)
+      return [] if orgao.blank?
+
+      vinculo_ids = Pessoas::Lotacao.principais.merge(Pessoas::Lotacao.vigentes)
+        .joins(:unidade)
+        .where(unidades: { descricao: orgao })
+        .select(:vinculo_id)
+
+      ativos.where(id: vinculo_ids).joins(:pessoa).distinct.pluck("pessoas.cpf")
+    end
+
     # Lotação principal vigente pré-carregada em lote pros vínculos de uma
     # página (não é um `belongs_to` simples — ver `#lotacao_principal`).
     # Evita 1 query por linha na view; isolado como método de classe pra

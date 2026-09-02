@@ -16,7 +16,15 @@ module Admin
       # ignorando qualquer filtro de usuário vindo dos params.
       if current_user.admin?
         if params[:usuario].present?
-          usuarios_encontrados = User.where("nome_completo ILIKE ?", "%#{params[:usuario]}%")
+          # Mesmo filtro/fonte do "Nome" em admin/frequentadores (pedido do
+          # usuário, 2026-09-02): busca por nome via vínculo ativo do
+          # pessoas2 (Pessoas::Vinculo.cpfs_por_nome), não pelo
+          # `nome_completo` local nem pela tabela `pessoas` crua (que
+          # incluiria gente com vínculo encerrado). Só retorna quem já tem
+          # User local (TimeRecord só existe pra quem já bateu ponto, e
+          # bater ponto exige User local).
+          cpfs_encontrados = Pessoas::Vinculo.cpfs_por_nome(params[:usuario])
+          usuarios_encontrados = User.where(cpf: cpfs_encontrados)
           registros = registros.where(user_id: usuarios_encontrados.select(:id))
 
           # Só entra no modo "um usuário só" (com o card de resumo mensal)
