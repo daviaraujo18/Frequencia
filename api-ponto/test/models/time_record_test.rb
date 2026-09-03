@@ -232,4 +232,130 @@ class TimeRecordTest < ActiveSupport::TestCase
 
     assert_equal estacao, record.reload.estacao_ponto
   end
+
+  # --- desconsiderar!/reconsiderar! (Sprint 19, task 19.2, UC-09) ---
+
+  test "desconsiderar! marca desconsiderado e ressalva e cria intervencao registrada" do
+    responsavel = users(:two)
+    record = TimeRecord.create!(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.local(2026, 7, 22, 8, 0, 0),
+      authentication_mode: "biometric"
+    )
+
+    record.desconsiderar!(justificativa: "Batida duplicada por falha na estação", responsavel: responsavel)
+    record.reload
+
+    assert record.desconsiderado
+    assert record.ressalva
+
+    intervencao = IntervencaoFrequencia.find_by(time_record: record, tipo: "desconsideracao_ponto")
+    assert intervencao
+    assert_equal "registrado", intervencao.status
+    assert_equal "Batida duplicada por falha na estação", intervencao.justificativa
+    assert_equal @user, intervencao.user
+    assert_equal responsavel, intervencao.responsavel
+  end
+
+  test "desconsiderar! exige justificativa" do
+    record = TimeRecord.create!(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.now,
+      authentication_mode: "biometric"
+    )
+
+    assert_raises(ActiveRecord::RecordInvalid) do
+      record.desconsiderar!(justificativa: nil, responsavel: users(:two))
+    end
+
+    record.reload
+    assert_not record.desconsiderado
+    assert_not record.ressalva
+  end
+
+  test "reconsiderar! desfaz desconsiderar! e cria intervencao propria" do
+    responsavel = users(:two)
+    record = TimeRecord.create!(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.local(2026, 7, 22, 8, 0, 0),
+      authentication_mode: "biometric"
+    )
+    record.desconsiderar!(justificativa: "Batida duplicada", responsavel: responsavel)
+
+    record.reconsiderar!(responsavel: responsavel)
+    record.reload
+
+    assert_not record.desconsiderado
+    assert_not record.ressalva
+
+    intervencao = IntervencaoFrequencia.find_by(time_record: record, tipo: "reconsideracao_ponto")
+    assert intervencao
+    assert_equal "registrado", intervencao.status
+    assert_nil intervencao.justificativa
+  end
+
+  test "reconsiderar! em registro nunca desconsiderado nao quebra" do
+    record = TimeRecord.create!(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.now,
+      authentication_mode: "biometric"
+    )
+
+    assert_nothing_raised do
+      record.reconsiderar!(responsavel: users(:two))
+    end
+
+    record.reload
+    assert_not record.desconsiderado
+    assert_not record.ressalva
+  end
+
+  # --- desconsiderar_por_predio! (Sprint 19, task 19.4, UC-11) ---
+
+  test "desconsiderar_por_predio! marca desconsiderado e ressalva e cria intervencao com justificativa padrao" do
+    responsavel = users(:two)
+    estacao = estacoes_ponto(:one)
+    record = TimeRecord.create!(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.local(2026, 7, 22, 8, 0, 0),
+      authentication_mode: "biometric",
+      estacao_ponto: estacao
+    )
+
+    record.desconsiderar_por_predio!(estacao_ponto: estacao, responsavel: responsavel)
+    record.reload
+
+    assert record.desconsiderado
+    assert record.ressalva
+
+    intervencao = IntervencaoFrequencia.find_by(time_record: record, tipo: "desconsideracao_predio")
+    assert intervencao
+    assert_equal "registrado", intervencao.status
+    assert_equal "Ponto desconsiderado: servidor bateu na estação #{estacao.descricao}, prédio não autorizado",
+                 intervencao.justificativa
+    assert_equal @user, intervencao.user
+    assert_equal responsavel, intervencao.responsavel
+  end
+
+  test "desconsiderar_por_predio! aceita justificativa customizada" do
+    responsavel = users(:two)
+    estacao = estacoes_ponto(:one)
+    record = TimeRecord.create!(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.now,
+      authentication_mode: "biometric",
+      estacao_ponto: estacao
+    )
+
+    record.desconsiderar_por_predio!(estacao_ponto: estacao, responsavel: responsavel, justificativa: "Motivo customizado")
+
+    intervencao = IntervencaoFrequencia.find_by(time_record: record, tipo: "desconsideracao_predio")
+    assert_equal "Motivo customizado", intervencao.justificativa
+  end
 end
