@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_09_02_150000) do
+ActiveRecord::Schema[8.0].define(version: 2026_09_03_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -106,6 +106,26 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_02_150000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "intervencao_frequencias", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "responsavel_id"
+    t.string "tipo", null: false
+    t.text "justificativa"
+    t.datetime "momento", null: false
+    t.string "punch_type"
+    t.bigint "time_record_id"
+    t.string "status", default: "pendente", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "resolvido_por_id"
+    t.index ["resolvido_por_id"], name: "index_intervencao_frequencias_on_resolvido_por_id"
+    t.index ["responsavel_id"], name: "index_intervencao_frequencias_on_responsavel_id"
+    t.index ["status"], name: "index_intervencao_frequencias_on_status"
+    t.index ["time_record_id"], name: "index_intervencao_frequencias_on_time_record_id"
+    t.index ["tipo"], name: "index_intervencao_frequencias_on_tipo"
+    t.index ["user_id"], name: "index_intervencao_frequencias_on_user_id"
+  end
+
   create_table "regime_categorias", force: :cascade do |t|
     t.bigint "regime_id", null: false
     t.string "categoria"
@@ -166,6 +186,71 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_02_150000) do
     t.index ["estacao_ponto_id"], name: "index_registro_estacao_pontos_on_estacao_ponto_id"
   end
 
+  create_table "registro_mensal_frequencias", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "ano", null: false
+    t.integer "mes", null: false
+    t.date "data_inicio", null: false
+    t.date "data_fim", null: false
+    t.integer "meta_mensal", default: 0, null: false
+    t.integer "meta_mensal_dias", default: 0, null: false
+    t.integer "meta_atual", default: 0, null: false
+    t.integer "meta_atual_dias", default: 0, null: false
+    t.integer "trabalhado", default: 0, null: false
+    t.integer "trabalhado_normal", default: 0, null: false
+    t.integer "trabalhado_dias", default: 0, null: false
+    t.integer "dias_em_aberto", default: 0, null: false
+    t.integer "faltas", default: 0, null: false
+    t.integer "saldo_liquido", default: 0, null: false
+    t.integer "retido", default: 0, null: false
+    t.integer "acumulado", default: 0, null: false
+    t.integer "retificado", default: 0, null: false
+    t.boolean "finalizado", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "ano", "mes"], name: "index_registro_mensal_frequencias_on_user_ano_mes", unique: true
+    t.index ["user_id"], name: "index_registro_mensal_frequencias_on_user_id"
+  end
+
+  create_table "relatorio_frequencia_finais", force: :cascade do |t|
+    t.integer "mes", null: false
+    t.integer "ano", null: false
+    t.datetime "data_geracao", null: false
+    t.datetime "data_alteracao"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ano", "mes"], name: "index_relatorio_frequencia_finais_on_ano_mes", unique: true
+  end
+
+  create_table "relatorio_frequentadores", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "relatorio_frequencia_final_id", null: false
+    t.integer "saldo_bruto", default: 0, null: false
+    t.integer "valor_retroativo", default: 0, null: false
+    t.integer "resultado", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["relatorio_frequencia_final_id"], name: "idx_on_relatorio_frequencia_final_id_4296ca1ab3"
+    t.index ["user_id"], name: "index_relatorio_frequentadores_on_user_id"
+  end
+
+  create_table "retificador_banco_horas", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "responsavel_id"
+    t.integer "ano", null: false
+    t.integer "mes", null: false, comment: "1..12"
+    t.string "tipo", null: false
+    t.integer "segundos_a_retificar", null: false
+    t.text "observacao"
+    t.text "informacao"
+    t.boolean "excluido", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["responsavel_id"], name: "index_retificador_banco_horas_on_responsavel_id"
+    t.index ["user_id", "ano", "mes"], name: "index_retificador_banco_horas_on_user_ano_mes"
+    t.index ["user_id"], name: "index_retificador_banco_horas_on_user_id"
+  end
+
   create_table "time_records", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "raw_data"
@@ -176,6 +261,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_02_150000) do
     t.string "punch_type"
     t.boolean "punch_type_explicit", default: false, null: false
     t.bigint "estacao_ponto_id"
+    t.boolean "desconsiderado", default: false, null: false
+    t.boolean "ressalva", default: false, null: false
+    t.index ["desconsiderado"], name: "index_time_records_on_desconsiderado"
     t.index ["estacao_ponto_id"], name: "index_time_records_on_estacao_ponto_id"
     t.index ["punched_at"], name: "index_time_records_on_punched_at"
     t.index ["user_id"], name: "index_time_records_on_user_id"
@@ -197,6 +285,19 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_02_150000) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
+  create_table "valor_retroativos", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "ano", null: false
+    t.integer "mes", null: false, comment: "1..12"
+    t.datetime "data_geracao", null: false
+    t.string "processo"
+    t.integer "numero_hora", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "ano", "mes"], name: "index_valor_retroativos_on_user_ano_mes"
+    t.index ["user_id"], name: "index_valor_retroativos_on_user_id"
+  end
+
   create_table "versoes", force: :cascade do |t|
     t.string "numero", null: false
     t.text "novidades"
@@ -209,12 +310,22 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_02_150000) do
   add_foreign_key "estacao_pings", "estacoes_ponto", column: "estacao_ponto_id"
   add_foreign_key "gestor_individual_gerenciados", "gestores_individuais", column: "gestor_individual_id"
   add_foreign_key "gestor_individual_gerenciados", "users"
+  add_foreign_key "intervencao_frequencias", "time_records"
+  add_foreign_key "intervencao_frequencias", "users"
+  add_foreign_key "intervencao_frequencias", "users", column: "resolvido_por_id"
+  add_foreign_key "intervencao_frequencias", "users", column: "responsavel_id"
   add_foreign_key "regime_categorias", "regimes"
   add_foreign_key "regime_frequentadores", "regimes"
   add_foreign_key "regime_frequentadores", "users"
   add_foreign_key "regimes", "regimes", column: "anterior_id"
   add_foreign_key "regimes", "regimes", column: "padrao_id"
   add_foreign_key "registro_estacao_pontos", "estacoes_ponto", column: "estacao_ponto_id"
+  add_foreign_key "registro_mensal_frequencias", "users"
+  add_foreign_key "relatorio_frequentadores", "relatorio_frequencia_finais", column: "relatorio_frequencia_final_id"
+  add_foreign_key "relatorio_frequentadores", "users"
+  add_foreign_key "retificador_banco_horas", "users"
+  add_foreign_key "retificador_banco_horas", "users", column: "responsavel_id"
   add_foreign_key "time_records", "estacoes_ponto", column: "estacao_ponto_id"
   add_foreign_key "time_records", "users"
+  add_foreign_key "valor_retroativos", "users"
 end

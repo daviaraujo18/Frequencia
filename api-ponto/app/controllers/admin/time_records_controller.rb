@@ -1,5 +1,7 @@
 module Admin
   class TimeRecordsController < Admin::ApplicationController
+    include DuracaoFormatavel
+
     PER_PAGE = 50
 
     def index
@@ -124,13 +126,6 @@ module Admin
         total_segundos += (saida.punched_at - entrada.punched_at).to_i if saida
       end
       formatar_duracao(total_segundos)
-    end
-
-    def formatar_duracao(total_segundos)
-      horas = total_segundos / 3600
-      minutos = (total_segundos % 3600) / 60
-      segundos = total_segundos % 60
-      format("%02d:%02d:%02d", horas, minutos, segundos)
     end
 
     def montar_linha_dia(data, regs)

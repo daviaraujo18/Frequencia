@@ -27,6 +27,16 @@ module Admin
         @total_frequentadores = Pessoas::Vinculo.ativos.count
         @total_estacoes = EstacaoPonto.count
 
+        # Task 17.3 — 1o KPI real baseado em dado calculado (Fase B, Sprint
+        # 17): total de faltas do mês corrente, somado de
+        # `RegistroMensalFrequencia#faltas` (consolidação mensal,
+        # `ConsolidacaoMensalService.consolidar`). Sem registro consolidado
+        # pra nenhum usuário no mês ainda (ninguém rodou o cálculo), fica
+        # `0` — mesma soma de coluna ausente que `.sum` já devolve, não
+        # precisa de tratamento especial de "sem dado" como as telas de
+        # tabela (não há "—" possível num KPI agregado por soma).
+        @faltas_mes = RegistroMensalFrequencia.where(ano: hoje.year, mes: hoje.month).sum(:faltas)
+
         # "Últimas Batidas" exibe entradas e saídas em colunas separadas
         # (esquerda/direita) — buscamos os dois tipos independentemente para
         # que ambos os lados fiquem preenchidos mesmo se um tipo for muito

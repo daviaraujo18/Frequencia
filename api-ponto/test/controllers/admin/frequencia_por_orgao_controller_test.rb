@@ -64,7 +64,7 @@ module Admin
       assert_select "td", text: "2"
     end
 
-    test "trabalhado aparece como travessao (nao computado, pendente Fase B)" do
+    test "trabalhado aparece como travessao quando nao ha CalculoDiario calculado" do
       stub_orgaos({ "Vara Cível" => [ "11122233344" ] }) do
         get frequencia_por_orgao_path
       end
@@ -73,10 +73,12 @@ module Admin
       assert_select "td.text-muted", text: "—", minimum: 1
     end
 
-    test "trabalhado continua travessao mesmo com batidas de entrada e saida completas" do
-      # Prova que a coluna "Trabalhado" nao esconde calculo algum: mesmo com
-      # dados suficientes para calcular horas trabalhadas (entrada + saida no
-      # mesmo dia), a tela nao deve computar nada - isso e Fase B (Sprint 16).
+    test "trabalhado continua travessao mesmo com batidas de entrada e saida completas sem CalculoDiario" do
+      # Prova que a coluna "Trabalhado" nao infere calculo a partir das
+      # batidas brutas: mesmo com dados suficientes pra calcular horas
+      # trabalhadas (entrada + saida no mesmo dia), a tela so mostra um
+      # numero se `CalculoDiario` ja foi populado (task 17.3) -
+      # `CalculoDiarioService.calcular` nao roda automaticamente ainda.
       user = User.create!(nome_completo: "Fulano", password: "123456", cpf: "11122233344")
 
       TimeRecord.create!(user: user, raw_data: "entrada", punched_at: Time.zone.local(2026, 7, 10, 8, 0), authentication_mode: "biometric")
@@ -92,6 +94,24 @@ module Admin
       assert_select "td:nth-child(2)" do |cells|
         cells.each { |cell| assert_equal "—", cell.text.strip }
       end
+    end
+
+    test "trabalhado soma total_segundos dos CalculoDiario do orgao no periodo" do
+      user1 = User.create!(nome_completo: "Fulano", password: "123456", cpf: "11122233344")
+      user2 = User.create!(nome_completo: "Beltrano", password: "123456", cpf: "22233344455")
+
+      CalculoDiario.create!(user: user1, data: Date.new(2026, 7, 10), meta_segundos: 18_000, total_segundos: 18_000)
+      CalculoDiario.create!(user: user2, data: Date.new(2026, 7, 11), meta_segundos: 18_000, total_segundos: 3_600)
+      # Fora do periodo filtrado (agosto) - nao deve entrar na soma
+      CalculoDiario.create!(user: user1, data: Date.new(2026, 8, 1), meta_segundos: 18_000, total_segundos: 99_999)
+
+      stub_orgaos({ "Vara Cível" => [ "11122233344", "22233344455" ] }) do
+        get frequencia_por_orgao_path, params: { mes: 7, ano: 2026 }
+      end
+
+      assert_response :success
+      # 18_000 + 3_600 = 21_600s = 06:00:00
+      assert_select "td", text: "06:00:00"
     end
 
     test "filtra por orgao" do

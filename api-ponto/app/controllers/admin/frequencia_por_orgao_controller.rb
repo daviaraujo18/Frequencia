@@ -1,18 +1,23 @@
 module Admin
   class FrequenciaPorOrgaoController < Admin::ApplicationController
+    include DuracaoFormatavel
+
     def index
       @registros = registros_por_orgao
     end
 
     private
 
-    # Agregação simples (Fase A — sem motor de cálculo, isso é Sprint 16+):
+    # Agregação (Fase A + motor de cálculo, Sprint 16/17):
     # - "Presenças": dias distintos com pelo menos 1 batida no período
     # - "Ausências": afastamentos (AfastamentoCache, Sprint 12) que começam
     #   no período
-    # - "Trabalhado": não computado ainda — exigiria o motor de cálculo
-    #   diário (horas entre entrada/saída), que é Fase B (Sprint 16). Fica
-    #   "—" por enquanto, não inventado.
+    # - "Trabalhado": soma de `CalculoDiario#total_segundos` dos usuários do
+    #   órgão no período filtrado (task 17.3). `CalculoDiario` só existe pra
+    #   quem já teve `CalculoDiarioService.calcular` rodado (não há
+    #   job/gatilho automático ainda, decisão própria fora de escopo aqui) —
+    #   sem nenhum registro calculado no período, continua "—", mesma
+    #   disciplina de não inventar dado ausente.
     # Pedido do usuário (2026-09-02): trocar leitura de espelho local
     # (`FrequentadorCache`) por SELECT ao vivo no pessoas2 — órgão vem da
     # lotação principal vigente de vínculo ativo (Pessoas::Vinculo).
@@ -32,10 +37,18 @@ module Admin
 
       {
         orgao: orgao,
-        trabalhado: nil,
+        trabalhado: trabalhado_calculado(user_ids),
         presencas: contar_dias_com_batida(user_ids),
         ausencias: contar_afastamentos(cpfs)
       }
+    end
+
+    def trabalhado_calculado(user_ids)
+      calculos = CalculoDiario.where(user_id: user_ids)
+      calculos = filtrar_por_periodo(calculos, :data)
+      return nil unless calculos.exists?
+
+      formatar_duracao(calculos.sum(:total_segundos))
     end
 
     def contar_dias_com_batida(user_ids)

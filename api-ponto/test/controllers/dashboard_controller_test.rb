@@ -74,4 +74,30 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_match(%r{<h3>\s*0\s*</h3>\s*<p>Estações de Ponto</p>}m, response.body)
     assert_match(%r{<h3>\s*0\s*</h3>\s*<p>Batidas Hoje</p>}m, response.body)
   end
+
+  # Task 17.3 — 1o KPI do dashboard baseado em dado calculado real (Fase B,
+  # Sprint 17): soma de `RegistroMensalFrequencia#faltas` do mes corrente.
+  test "deve exibir faltas do mes como zero sem RegistroMensalFrequencia calculado" do
+    get dashboard_path
+
+    assert_response :success
+    assert_match(%r{Faltas no Mês</p>\s*<h3 class="mb-0">\s*0\s*</h3>}m, response.body)
+  end
+
+  test "deve somar faltas do mes a partir de RegistroMensalFrequencia calculados" do
+    hoje = Time.zone.today
+    usuario1 = User.create!(nome_completo: "Fulano", password: "123456")
+    usuario2 = User.create!(nome_completo: "Beltrano", password: "123456")
+
+    RegistroMensalFrequencia.create!(user: usuario1, ano: hoje.year, mes: hoje.month, data_inicio: hoje.beginning_of_month, data_fim: hoje.end_of_month, faltas: 2)
+    RegistroMensalFrequencia.create!(user: usuario2, ano: hoje.year, mes: hoje.month, data_inicio: hoje.beginning_of_month, data_fim: hoje.end_of_month, faltas: 3)
+    # Mes anterior nao deve entrar na soma
+    mes_anterior = hoje.prev_month
+    RegistroMensalFrequencia.create!(user: usuario1, ano: mes_anterior.year, mes: mes_anterior.month, data_inicio: mes_anterior.beginning_of_month, data_fim: mes_anterior.end_of_month, faltas: 99)
+
+    get dashboard_path
+
+    assert_response :success
+    assert_match(%r{Faltas no Mês</p>\s*<h3 class="mb-0">\s*5\s*</h3>}m, response.body)
+  end
 end
