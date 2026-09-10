@@ -358,4 +358,46 @@ class TimeRecordTest < ActiveSupport::TestCase
     intervencao = IntervencaoFrequencia.find_by(time_record: record, tipo: "desconsideracao_predio")
     assert_equal "Motivo customizado", intervencao.justificativa
   end
+
+  # --- Associação intervencoes_frequencia (Sprint 19, task 19.5 — auditoria) ---
+  #
+  # `TimeRecord#intervencoes_frequencia` é `has_many` (não `has_one`,
+  # decisão documentada no topo do model) porque um mesmo registro pode
+  # acumular mais de uma intervenção ao longo do tempo (ex.: desconsiderado
+  # e depois reconsiderado). Nenhum teste existente verificava a associação
+  # em si (só `IntervencaoFrequencia.find_by` isolado) — este cobre o
+  # acúmulo de fato.
+
+  test "TimeRecord acumula multiplas IntervencaoFrequencia ao longo do tempo (has_many, nao has_one)" do
+    responsavel = users(:two)
+    record = TimeRecord.create!(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.local(2026, 7, 22, 8, 0, 0),
+      authentication_mode: "biometric"
+    )
+
+    record.desconsiderar!(justificativa: "Batida duplicada", responsavel: responsavel)
+    record.reload.reconsiderar!(responsavel: responsavel)
+
+    assert_equal 2, record.intervencoes_frequencia.count
+    assert_equal %w[desconsideracao_ponto reconsideracao_ponto], record.intervencoes_frequencia.order(:created_at).pluck(:tipo)
+  end
+
+  test "destruir o TimeRecord anula time_record_id nas intervencoes associadas, sem apagar o historico (dependent: nullify)" do
+    responsavel = users(:two)
+    record = TimeRecord.create!(
+      user: @user,
+      raw_data: "2026-07-22 08:00:00",
+      punched_at: Time.zone.now,
+      authentication_mode: "biometric"
+    )
+    record.desconsiderar!(justificativa: "Batida duplicada", responsavel: responsavel)
+    intervencao = record.intervencoes_frequencia.sole
+
+    record.destroy!
+
+    assert IntervencaoFrequencia.exists?(intervencao.id)
+    assert_nil intervencao.reload.time_record_id
+  end
 end
