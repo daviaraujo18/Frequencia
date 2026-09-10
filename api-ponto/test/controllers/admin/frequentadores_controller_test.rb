@@ -259,5 +259,51 @@ module Admin
 
       assert_redirected_to login_path
     end
+
+    # Task 23.10 (auditoria) — `reimportar_dados_pessoa` e `importar_unidade`
+    # usam `authorize! :manage, User` (task 23.7), mas só havia teste do
+    # caminho de autenticação, não do caminho de acesso negado por falta de
+    # permissão. Só admin tem `:manage` em `User` (ver app/models/ability.rb).
+    test "usuario nao-admin nao deve reimportar dados do pessoa" do
+      frequentador = User.create!(nome_completo: "Frequentador Com Cpf", password: "123456", cpf: "11122233344")
+      login_como_nao_admin
+
+      assert_no_enqueued_jobs(only: ImportarDadosPessoaJob) do
+        post reimportar_dados_pessoa_frequentador_path(frequentador)
+      end
+
+      assert_redirected_to dashboard_path
+    end
+
+    test "usuario nao-admin nao deve importar unidade" do
+      login_como_nao_admin
+
+      assert_no_enqueued_jobs(only: ImportarServidoresUnidadeJob) do
+        post importar_unidade_frequentadores_path
+      end
+
+      assert_redirected_to dashboard_path
+    end
+
+    test "gestor tambem nao deve importar unidade (fora do escopo de manage do gestor)" do
+      delete logout_path
+      gestor = User.create!(nome_completo: "Gestor Teste", password: "123456")
+      gestor.add_role(:gestor)
+      post login_path, params: { username: gestor.username, password: "123456" }
+
+      assert_no_enqueued_jobs(only: ImportarServidoresUnidadeJob) do
+        post importar_unidade_frequentadores_path
+      end
+
+      assert_redirected_to dashboard_path
+    end
+
+    private
+
+    def login_como_nao_admin
+      delete logout_path
+      usuario_comum = User.create!(nome_completo: "Usuario Comum", password: "123456", admin: false)
+      post login_path, params: { username: usuario_comum.username, password: "123456" }
+    end
   end
 end

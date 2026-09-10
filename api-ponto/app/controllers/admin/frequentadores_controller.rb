@@ -13,6 +13,9 @@ module Admin
     # continuam vindo do `User` local (não existem no pessoas2), ligado via
     # `cpf`.
     def index
+      # Task 23.7 — CanCanCan: autorização explícita para leitura.
+      # Admin/gestor/operador podem visualizar.
+      authorize! :read, :all
       @vinculos = Pessoas::Vinculo.frequentadores_ativos(
         nome: params[:nome],
         orgao: params[:orgao],
@@ -31,6 +34,9 @@ module Admin
     end
 
     def reimportar_dados_pessoa
+      # Task 23.7 — CanCanCan: somente admin pode reimportar dados do Pessoas.
+      authorize! :manage, User
+
       user = User.find(params[:id])
 
       if user.cpf.blank?
@@ -47,6 +53,9 @@ module Admin
     # botão "Reimportar do Pessoas" acima, que atualiza 1 pessoa já
     # cadastrada.
     def importar_unidade
+      # Task 23.7 — CanCanCan: somente admin pode importar servidores.
+      authorize! :manage, User
+
       ImportarServidoresUnidadeJob.perform_later(UNIDADE_PILOTO_ID)
       redirect_to frequentadores_path, notice: "Importação dos servidores da unidade piloto iniciada."
     end

@@ -5,6 +5,10 @@ module Admin
     PER_PAGE = 50
 
     def index
+      # Task 23.7 — CanCanCan: autorização explícita para leitura de registros.
+      # Admin/gestor/operador podem visualizar (todos têm :read em :all).
+      # Gestor também pode gerenciar TimeRecord, mas index é apenas leitura.
+      authorize! :read, :all
       # Anos disponíveis pro dropdown de filtro — do ano do registro mais
       # antigo até o ano atual (nunca futuro). Sem registros ainda, mostra
       # só o ano atual.

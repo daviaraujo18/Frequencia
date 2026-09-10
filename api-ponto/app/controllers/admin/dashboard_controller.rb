@@ -1,6 +1,10 @@
 module Admin
   class DashboardController < Admin::ApplicationController
     def index
+      # Task 23.7 — CanCanCan: autorização explícita para leitura do dashboard.
+      # Admin, gestor e operador podem visualizar (todos têm :read em :all).
+      authorize! :read, :all
+
       if current_user.admin?
         hoje = Time.current.beginning_of_day
 

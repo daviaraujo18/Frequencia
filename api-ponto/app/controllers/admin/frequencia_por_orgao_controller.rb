@@ -3,6 +3,10 @@ module Admin
     include DuracaoFormatavel
 
     def index
+      # Task 23.7 — CanCanCan: autorização explícita para leitura.
+      # Admin/gestor/operador podem visualizar (todos têm :read em :all).
+      authorize! :read, :all
+
       @registros = registros_por_orgao
     end
 

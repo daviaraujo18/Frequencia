@@ -212,7 +212,9 @@ module Admin
 
       get new_regime_path
 
-      assert_redirected_to regimes_path
+      # Task 23.7 — CanCanCan: acesso negado redireciona para o dashboard
+      # (rescue_from CanCan::AccessDenied), não mais para o recurso.
+      assert_redirected_to dashboard_path
     end
 
     test "usuario nao-admin nao deve criar regime" do
@@ -221,7 +223,7 @@ module Admin
       assert_no_difference("Regime.count") do
         post regimes_path, params: { regime: { nome: "Jornada Nova" } }
       end
-      assert_redirected_to regimes_path
+      assert_redirected_to dashboard_path
     end
 
     test "usuario nao-admin nao deve acessar formulario de edicao" do
@@ -230,7 +232,7 @@ module Admin
       regime = Regime.create!(nome: "Jornada Qualquer")
       get edit_regime_path(regime)
 
-      assert_redirected_to regimes_path
+      assert_redirected_to dashboard_path
     end
 
     private
