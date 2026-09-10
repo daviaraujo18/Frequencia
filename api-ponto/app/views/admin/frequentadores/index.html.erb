@@ -126,15 +126,6 @@
                     <%= link_to edit_user_path(user), class: "btn btn-xs btn-outline-primary", title: "Editar" do %>
                       <i class="bi bi-pencil"></i>
                     <% end %>
-                    <% if user.status == 1 %>
-                      <%= button_to user_path(user), method: :delete, class: "btn btn-xs btn-outline-danger", title: "Inativar", data: { turbo_confirm: "Tem certeza?" } do %>
-                        <i class="bi bi-person-x"></i>
-                      <% end %>
-                    <% else %>
-                      <%= button_to purge_user_path(user), method: :delete, class: "btn btn-xs btn-danger", title: "Excluir definitivamente", data: { turbo_confirm: "Tem certeza que deseja excluir definitivamente este usuário?" } do %>
-                        <i class="bi bi-trash"></i>
-                      <% end %>
-                    <% end %>
                   <% end %>
                 </div>
               </td>

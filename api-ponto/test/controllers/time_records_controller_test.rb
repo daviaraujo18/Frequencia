@@ -5,6 +5,29 @@ class TimeRecordsControllerTest < ActionDispatch::IntegrationTest
     @admin = User.create!(nome_completo: "Admin Teste", password: "123456", admin: true, cpf: "55566677788")
     @user = User.create!(nome_completo: "Frequentador", password: "123456", cpf: "11122233344")
     @record = TimeRecord.create!(user: @user, raw_data: "#{@user.id}-15:07:2026:14:30:45", punched_at: Time.current, authentication_mode: "biometric")
+
+    # @admin tem cpf preenchido só pra participar do filtro por nome
+    # simulado abaixo — não representa uma conta vinda de verdade do
+    # pessoas2. Como o login (task 21.5) agora valida cpf via
+    # Pessoas::User.buscar_por_cpf, stubamos esse ponto de entrada pra
+    # devolver o mesmo hash da senha local usada no login deste teste.
+    # @admin e @user têm cpf preenchido só pra participar do filtro por nome
+    # simulado abaixo — não representam contas vindas de verdade do
+    # pessoas2. Como o login (task 21.5) agora valida cpf via
+    # Pessoas::User.buscar_por_cpf, stubamos esse ponto de entrada pra
+    # devolver o mesmo hash da senha local usada no login ("123456") pra
+    # ambos, já que "usuario basico sempre ve o card..." abaixo também
+    # loga como @user.
+    senha_hash = BCrypt::Password.create("123456")
+    cpfs_locais = [ @admin.cpf, @user.cpf ]
+    # `Pessoas::User.buscar_por_cpf` já existe como método real na classe
+    # — salva o original antes de sobrescrever e restaura explicitamente
+    # no teardown (ver nota em test/models/user_test.rb sobre esse padrão).
+    @buscar_por_cpf_original = Pessoas::User.method(:buscar_por_cpf)
+    Pessoas::User.define_singleton_method(:buscar_por_cpf) do |cpf|
+      cpfs_locais.include?(cpf) ? Struct.new(:encrypted_password).new(senha_hash) : nil
+    end
+
     post login_path, params: { username: @admin.username, password: "123456" }
 
     # O filtro de Usuário funciona igual ao filtro Nome de admin/frequentadores
@@ -21,6 +44,7 @@ class TimeRecordsControllerTest < ActionDispatch::IntegrationTest
 
   teardown do
     Pessoas::Vinculo.singleton_class.remove_method(:cpfs_por_nome)
+    Pessoas::User.define_singleton_method(:buscar_por_cpf, @buscar_por_cpf_original)
   end
 
   test "deve listar registros de ponto" do

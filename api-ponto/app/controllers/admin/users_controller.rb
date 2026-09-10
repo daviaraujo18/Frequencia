@@ -1,7 +1,10 @@
 module Admin
   class UsersController < Admin::ApplicationController
-    before_action :set_user, only: [:edit, :update, :destroy, :purge]
-    before_action -> { require_admin(users_path) }, only: [:index, :new, :create, :edit, :update, :destroy, :purge]
+    before_action :set_user, only: [:edit, :update]
+    # Task 23.7 — CanCanCan: load_and_authorize_resource para edit/update
+    # (manage User). Index usa autorização explícita porque não segue
+    # resources padrão (lê de Pessoas::Vinculo, não de User).
+    load_and_authorize_resource :user, only: [:edit, :update]
 
     # Pedido do usuário (2026-09-02): mesma abordagem já aplicada em
     # admin/frequentadores (task 10.10) — a listagem deixa de ser só o
@@ -10,6 +13,9 @@ module Admin
     # username (conceitos só locais) continuam vindo do `User`, ligado por
     # `cpf`.
     def index
+      # Task 23.7 — CanCanCan: autorização explícita para leitura da listagem.
+      # Admin/gestor/operador podem visualizar (todos têm :read em :all).
+      authorize! :read, :all
       @vinculos = Pessoas::Vinculo.frequentadores_ativos(
         nome: params[:nome],
         incluir_cpfs: cpfs_exigidos_pelos_filtros_locais,
@@ -34,19 +40,6 @@ module Admin
       end
     end
 
-    def new
-      @user = User.new
-    end
-
-    def create
-      @user = User.new(user_params)
-      if @user.save
-        redirect_to users_path, notice: "Usuário criado com sucesso"
-      else
-        render :new, status: :unprocessable_entity
-      end
-    end
-
     def edit
     end
 
@@ -60,22 +53,6 @@ module Admin
         redirect_to users_path, notice: "Usuário atualizado com sucesso"
       else
         render :edit, status: :unprocessable_entity
-      end
-    end
-
-    def destroy
-      @user.update!(status: 0)
-      redirect_to users_path, notice: "Usuário inativado com sucesso"
-    end
-
-    def purge
-      if @user.status == 1
-        redirect_to users_path, alert: "Apenas usuários inativos podem ser excluídos"
-      elsif @user.time_records.exists?
-        redirect_to users_path, alert: "Não é possível excluir usuário com registros de ponto vinculados"
-      else
-        @user.destroy
-        redirect_to users_path, notice: "Usuário excluído com sucesso"
       end
     end
 
