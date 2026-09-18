@@ -6,14 +6,14 @@
   </div>
   <div class="col-sm-6 text-sm-end">
     <%= link_to new_regime_path, class: "btn btn-primary" do %>
-      <i class="bi bi-plus-lg me-1"></i> Novo Regime
+      <i class="fas fa-plus me-1"></i> Novo Regime
     <% end %>
   </div>
 </div>
 
 <div class="card card-primary card-outline mb-4">
   <div class="card-header">
-    <h3 class="card-title"><i class="bi bi-funnel me-1"></i> Filtros</h3>
+    <h3 class="card-title"><i class="fas fa-filter me-1"></i> Filtros</h3>
   </div>
   <div class="card-body">
     <%= form_tag regimes_path, method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
@@ -37,10 +37,10 @@
       </div>
       <div class="col-auto d-flex gap-1">
         <%= button_tag class: "btn btn-primary btn-sm" do %>
-          <i class="bi bi-search"></i> Filtrar
+          <i class="fas fa-magnifying-glass"></i> Filtrar
         <% end %>
         <%= link_to regimes_path, class: "btn btn-outline-secondary btn-sm" do %>
-          <i class="bi bi-x-lg"></i> Limpar
+          <i class="fas fa-xmark"></i> Limpar
         <% end %>
       </div>
     <% end %>
@@ -68,7 +68,7 @@
   <% grupos.each do |rotulo_categoria, regimes_do_grupo| %>
     <div class="card card-primary card-outline mb-3">
       <div class="card-header">
-        <h3 class="card-title fw-bold"><i class="bi bi-tag me-1"></i> <%= rotulo_categoria %></h3>
+        <h3 class="card-title fw-bold"><i class="fas fa-tag me-1"></i> <%= rotulo_categoria %></h3>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -96,10 +96,10 @@
                   <td class="text-end">
                     <div class="d-flex gap-1 justify-content-end">
                       <%= link_to edit_regime_path(regime), class: "btn btn-xs btn-outline-primary" do %>
-                        <i class="bi bi-pencil"></i>
+                        <i class="fas fa-pencil"></i>
                       <% end %>
                       <%= button_to regime_path(regime), method: :delete, class: "btn btn-xs btn-outline-danger", data: { turbo_confirm: "Tem certeza que deseja excluir este regime?" } do %>
-                        <i class="bi bi-trash"></i>
+                        <i class="fas fa-trash"></i>
                       <% end %>
                     </div>
                   </td>

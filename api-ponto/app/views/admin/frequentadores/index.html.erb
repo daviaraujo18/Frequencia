@@ -12,7 +12,7 @@
 
 <div class="card card-primary card-outline mb-4">
   <div class="card-header">
-    <h3 class="card-title"><i class="bi bi-funnel me-1"></i> Filtros</h3>
+    <h3 class="card-title"><i class="fas fa-filter me-1"></i> Filtros</h3>
   </div>
   <div class="card-body">
     <%= form_tag frequentadores_path, method: :get, class: "row g-2 align-items-end", data: { turbo: false } do %>
@@ -50,10 +50,10 @@
       </div>
       <div class="col-auto d-flex gap-1">
         <%= button_tag class: "btn btn-primary btn-sm" do %>
-          <i class="bi bi-search"></i> Filtrar
+          <i class="fas fa-magnifying-glass"></i> Filtrar
         <% end %>
         <%= link_to frequentadores_path, class: "btn btn-outline-secondary btn-sm" do %>
-          <i class="bi bi-x-lg"></i> Limpar
+          <i class="fas fa-xmark"></i> Limpar
         <% end %>
       </div>
     <% end %>
@@ -62,7 +62,7 @@
 
 <div class="card card-primary card-outline">
   <div class="card-header">
-    <h3 class="card-title"><i class="bi bi-person-check me-1"></i> Lista de Frequentadores</h3>
+    <h3 class="card-title"><i class="fas fa-user-check me-1"></i> Lista de Frequentadores</h3>
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
@@ -115,16 +115,16 @@
                 <div class="d-flex gap-1 justify-content-end">
                   <% if user.nil? %>
                     <span class="btn btn-xs btn-outline-secondary disabled" title="Sem cadastro local — cadastro a partir do Pessoas ainda não implementado">
-                      <i class="bi bi-person-plus"></i>
+                      <i class="fas fa-user-plus"></i>
                     </span>
                   <% else %>
                     <% if user.cpf.present? %>
                       <%= button_to reimportar_dados_pessoa_frequentador_path(user), method: :post, class: "btn btn-xs btn-outline-secondary", title: "Reimportar do Pessoas" do %>
-                        <i class="bi bi-arrow-repeat"></i>
+                        <i class="fas fa-rotate"></i>
                       <% end %>
                     <% end %>
                     <%= link_to edit_user_path(user), class: "btn btn-xs btn-outline-primary", title: "Editar" do %>
-                      <i class="bi bi-pencil"></i>
+                      <i class="fas fa-pencil"></i>
                     <% end %>
                   <% end %>
                 </div>

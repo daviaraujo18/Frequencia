@@ -8,7 +8,7 @@
 
 <div class="card card-primary card-outline">
   <div class="card-header">
-    <h3 class="card-title"><i class="bi bi-people me-1"></i> Lista de Usuários</h3>
+    <h3 class="card-title"><i class="fas fa-users me-1"></i> Lista de Usuários</h3>
   </div>
   <!--begin::Card Body-->
   <div class="card-body p-0">
@@ -45,10 +45,10 @@
               <td class="text-end py-2">
                 <div class="d-flex gap-1 justify-content-end">
                   <%= button_tag class: "btn btn-primary btn-sm", title: "Filtrar" do %>
-                    <i class="bi bi-search"></i> Filtrar
+                    <i class="fas fa-magnifying-glass"></i> Filtrar
                   <% end %>
                   <%= link_to users_path, class: "btn btn-outline-secondary btn-sm", title: "Limpar Filtros" do %>
-                    <i class="bi bi-x-lg"></i>
+                    <i class="fas fa-xmark"></i>
                   <% end %>
                 </div>
               </td>
@@ -88,11 +88,11 @@
                   <div class="d-flex gap-1 justify-content-end">
                     <% if user.nil? %>
                       <span class="btn btn-xs btn-outline-secondary disabled" title="Sem cadastro local — cadastro a partir do Pessoas ainda não implementado">
-                        <i class="bi bi-person-plus"></i>
+                        <i class="fas fa-user-plus"></i>
                       </span>
                     <% else %>
                       <%= link_to edit_user_path(user), class: "btn btn-xs btn-outline-primary", title: "Editar" do %>
-                        <i class="bi bi-pencil"></i>
+                        <i class="fas fa-pencil"></i>
                       <% end %>
                     <% end %>
                   </div>
@@ -123,7 +123,7 @@
 <% if @users_sem_cpf.any? %>
   <div class="card card-outline card-secondary mt-4">
     <div class="card-header">
-      <h3 class="card-title"><i class="bi bi-person-badge me-1"></i> Contas locais sem vínculo no Pessoas</h3>
+      <h3 class="card-title"><i class="fas fa-id-badge me-1"></i> Contas locais sem vínculo no Pessoas</h3>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -159,7 +159,7 @@
                 <td class="text-end">
                   <div class="d-flex gap-1 justify-content-end">
                     <%= link_to edit_user_path(user), class: "btn btn-xs btn-outline-primary", title: "Editar" do %>
-                      <i class="bi bi-pencil"></i>
+                      <i class="fas fa-pencil"></i>
                     <% end %>
                   </div>
                 </td>
