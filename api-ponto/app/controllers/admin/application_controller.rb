@@ -22,8 +22,54 @@ module Admin
 
     private
 
+    # Resolve o usuário do contexto admin. Duas fontes de sessão coexistem
+    # (ver bug_report_23_cs): `session[:user_id]` (contrato legado — fonte
+    # de verdade deste contexto) e a sessão Warden/Devise. Correções:
+    #
+    # - B3: revalida `status` a cada request — conta desativada (status != 1)
+    #   tem a sessão revogada imediatamente (nunca fica "válida" até o
+    #   browser fechar; sem alterar `active_for_authentication?`/Ability).
+    # - B4: quando a sessão vem do cookie `remember_user_token` (Warden
+    #   autentica via rememberable após o browser ser reaberto, mas
+    #   `session[:user_id]` está vazio), sincroniza o id para o contexto
+    #   admin reconhecer o usuário — o remember_me passa a entregar acesso.
     def current_user
-      @current_user ||= User.find_by(id: session[:user_id]) if session[:user_id]
+      return @current_user if defined?(@current_user)
+
+      @current_user =
+        if session[:user_id]
+          user_from_session
+        else
+          user_from_warden
+        end
+    end
+
+    def user_from_session
+      user = User.find_by(id: session[:user_id])
+      return user if user&.status == 1
+
+      revoke_admin_session!
+      nil
+    end
+
+    # Warden autentica via `authenticate(scope: :user)` — fast path pela
+    # sessão Warden ou strategy rememberable quando há cookie de remember.
+    def user_from_warden
+      warden_user = request.env["warden"]&.authenticate(scope: :user)
+      return nil unless warden_user
+
+      if warden_user.status == 1
+        session[:user_id] = warden_user.id
+        warden_user
+      else
+        revoke_admin_session!
+        nil
+      end
+    end
+
+    def revoke_admin_session!
+      session[:user_id] = nil
+      request.env["warden"]&.logout(:user)
     end
 
     def logged_in?

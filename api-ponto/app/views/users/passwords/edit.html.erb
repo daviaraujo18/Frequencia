@@ -1,0 +1,54 @@
+<%# Task 23.8 — View de definição da nova senha (Users::PasswordsController#edit,
+    GET /u/password/edit?reset_password_token=...). Mesmo card AdminLTE 4 do
+    login, layout "login". O form submete PATCH /u/password com o
+    `reset_password_token` vindo do e-mail de recuperação (guardado em campo
+    hidden); `reset_password_by_token` valida o token e redefine a senha. %>
+<div class="card shadow-lg">
+  <div class="card-body p-5">
+    <%= render "users/shared/card_header",
+               app_title: t("devise.passwords.edit.app_title"),
+               subtitle: t("devise.passwords.edit.subtitle") %>
+
+    <% if flash[:alert] %>
+      <div class="alert alert-danger"><i class="fas fa-triangle-exclamation me-1"></i> <%= flash[:alert] %></div>
+    <% end %>
+    <% if flash[:notice] %>
+      <div class="alert alert-success"><i class="fas fa-circle-check me-1"></i> <%= flash[:notice] %></div>
+    <% end %>
+
+    <%= render "users/shared/error_messages", resource: resource %>
+
+    <%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :patch, data: { turbo: false } }) do |f| %>
+      <%= f.hidden_field :reset_password_token %>
+
+      <div class="mb-3">
+        <%= f.label :password, t("devise.passwords.edit.new_password"), class: "form-label" %>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-lock"></i></span>
+          <%= f.password_field :password, class: "form-control", autofocus: true, autocomplete: "new-password" %>
+        </div>
+        <%# O generator Devise usa `@minimum_password_length` (setado pelo
+            controller); aqui calculamos direto para não depender do
+            instance variable (Usuário: config.password_length = 6..128). %>
+        <% if Devise.password_length.min.present? %>
+          <div class="form-text">
+            <%= t("devise.shared.minimum_password_length", count: Devise.password_length.min) %>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :password_confirmation, t("devise.passwords.edit.confirm_new_password"), class: "form-label" %>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-lock"></i></span>
+          <%= f.password_field :password_confirmation, class: "form-control", autocomplete: "new-password" %>
+        </div>
+      </div>
+
+      <%= f.submit t("devise.passwords.edit.change_my_password"), class: "btn btn-primary w-100" %>
+    <% end %>
+
+    <hr class="my-4">
+    <%= render "users/shared/links" %>
+  </div>
+</div>

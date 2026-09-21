@@ -8,7 +8,8 @@ Rails.application.routes.draw do
   # para manter layout "login" + session[:user_id] + after_sign_in para
   # dashboard. Login admin continua em /login via controllers abaixo.
   devise_for :users, path: "u", skip: %i[registrations],
-                     controllers: { sessions: "users/sessions" }
+                     controllers: { sessions: "users/sessions",
+                                    passwords: "users/passwords" }
 
   # Admin frontend (R.2 — controllers vivem em Admin::, paths preservados via
   # `module:` para não quebrar login_path/dashboard_path/users_path/etc.

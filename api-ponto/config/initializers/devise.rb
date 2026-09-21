@@ -113,7 +113,12 @@ Devise.setup do |config|
   # It will change confirmation, password recovery and other workflows
   # to behave the same regardless if the e-mail provided was right or wrong.
   # Does not affect registerable.
-  # config.paranoid = true
+  # Bug 2 (bug_report_23_bug-finder, 2ª rodada): habilitado para eliminar a
+  # enumeração de contas via `POST /u/password` (email conhecido → 302,
+  # email desconhecido → 422 antes desta correção). Com paranoid, ambos os
+  # casos respondem de forma indistinguível (redirect + mensagem genérica
+  # `devise.passwords.send_paranoid_instructions`).
+  config.paranoid = true
 
   # By default Devise will store the user in session. You can skip storage for
   # particular strategies by setting this option.

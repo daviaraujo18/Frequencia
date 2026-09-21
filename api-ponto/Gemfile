@@ -48,6 +48,22 @@ gem "stimulus-rails"
 # Pagination
 gem "kaminari"
 
+# Sprint 24, task 24.1 — Paginação padrão do basic8 (RF03/D3).
+# Adotada nos scaffolds admin via `@pagy, @collection = pagy(...)`. O
+# kaminari permanece no bundle até a Sprint 28 (RF10), quando será
+# removido em favor do pagy como dependência única.
+gem "pagy", "~> 9"
+
+# Sprint 24, task 24.1 — Scaffold padrão do basic8 (RF01/RF02, D1/D2).
+# zutils: engine dos partials `shared/*` (search_form, index, form, show)
+# e helpers do template de referência (helpers locais do app têm precedência).
+# simple_form: formulários com wrapper Bootstrap 5.
+# ransack: busca/filtros nas listagens (whitelist `ransackable_*` entra
+# na Sprint 25 — RN04).
+gem "zutils", "~> 4.0"
+gem "simple_form", "~> 5.4"
+gem "ransack", "~> 4.4"
+
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 # gem "rack-cors"
 
