@@ -106,6 +106,30 @@ class Users::PasswordsControllerTest < ActionDispatch::IntegrationTest
     assert_equal I18n.t("devise.passwords.send_paranoid_instructions"), known_notice
   end
 
+  test "POST /u/password com email conhecido e desconhecido executam a mesma quantidade de queries SQL (Bug 10)" do
+    # Bug 10 (bug_report_23_bug-finder-r4): timing side-channel estrutural —
+    # email conhecido executava 5 queries (SELECT por email + SELECT por
+    # reset_password_token do token_generator + SAVEPOINT/UPDATE/RELEASE do
+    # save) e ainda levantava/capturava NameError; email desconhecido
+    # executava apenas 1 query (SELECT miss). O delta de ~1-2ms permite, em
+    # tese, enumerar contas por medição de tempo. O patch equaliza o caminho
+    # desconhecido com "phantom work" (geração de token + transação aninhada
+    # que grava em registro inexistente) para que AMBOS executem o MESMO
+    # número de queries — e o teste trava essa invariante.
+    known_queries = count_sql_queries do
+      post user_password_path, params: { user: { email: @user.email } }
+    end
+
+    reset!
+
+    unknown_queries = count_sql_queries do
+      post user_password_path, params: { user: { email: "nao.existe@tjpi.jus.br" } }
+    end
+
+    assert_equal known_queries, unknown_queries,
+      "email conhecido (#{known_queries} queries) e desconhecido (#{unknown_queries} queries) devem executar a MESMA quantidade de queries SQL (Bug 10)"
+  end
+
   test "PATCH /u/password com token invalido re-renderiza edit com erro" do
     patch user_password_path, params: {
       user: {
@@ -119,5 +143,18 @@ class Users::PasswordsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action='/u/password']"
     assert_select "input[name='user[reset_password_token]']"
     assert_select ".alert-danger"
+  end
+
+  private
+
+  # Conta as queries SQL executadas dentro do bloco, via
+  # ActiveSupport::Notifications (evento "sql.active_record").
+  def count_sql_queries
+    count = 0
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") { count += 1 }
+    yield
+    count
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber)
   end
 end

@@ -42,6 +42,39 @@ class Users::PasswordsController < Devise::PasswordsController
   # e-mail) e é substituído a cada nova solicitação.
   def create
     super
+    # Bug 10 (bug_report_23_bug-finder-r4) — phantom work para equalizar o
+    # timing entre email conhecido e desconhecido.
+    #
+    # Contexto: com `config.paranoid = true`, o caminho de email CONHECIDO
+    # executa 5 queries (SELECT por email + SELECT por reset_password_token
+    # do token_generator + SAVEPOINT/UPDATE/RELEASE do save) e ainda
+    # levanta/captura NameError (mailer desmontado); o caminho DESCONHECIDO
+    # executa apenas 1 query (SELECT miss) e retorna normal. Esse delta de
+    # ~1-2ms é um timing side-channel: um atacante pode, medindo o tempo de
+    # resposta, enumerar quais emails existem no sistema.
+    #
+    # Correção escolhida (sem feature creep): quando `super` retorna SEM
+    # exceção, só pode ter sido o caminho de email desconhecido (no caminho
+    # conhecido, o disparo do mailer levanta NameError antes do retorno —
+    # capturado no rescue abaixo). Então replicamos o trabalho do caminho
+    # conhecido de forma INÓCUA: geramos um token fantasma (SELECT por
+    # reset_password_token, como faz o Devise) e executamos uma transação
+    # aninhada que grava em registro inexistente (id = -1 → UPDATE de 0
+    # linhas, com SAVEPOINT/RELEASE — mesmas 3 queries adicionais do save).
+    # Nenhum dado é alterado; o número de queries fica idêntico (5 = 5).
+    #
+    # NOTA: o custo do raise/rescue do NameError não é replicado (seria um
+    # anti-pattern lançar exceção de propósito); o delta residual é de
+    # microssegundos e dominado pelo I/O das queries, que ficam iguais.
+    unless resource.persisted?
+      _raw, enc = Devise.token_generator.generate(resource_class, :reset_password_token)
+      resource_class.transaction(requires_new: true) do
+        resource_class.where(id: -1).update_all(
+          reset_password_token: enc,
+          reset_password_sent_at: Time.now.utc
+        )
+      end
+    end
   rescue NameError => e
     raise unless e.name == :Mailer
 
