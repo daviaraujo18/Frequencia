@@ -6,6 +6,13 @@ module Admin
   class ApplicationController < ::ApplicationController
     include CanCan::ControllerAdditions
 
+    # Task 24.3 (Sprint 24) — Pagy (RF03): expõe o backend de paginação para
+    # todos os controllers admin via `@pagy, @collection = pagy(...)`. O módulo
+    # é privado no Pagy 9 (chamado pelas actions), e sua inclusão NÃO altera a
+    # autenticação (require_login/current_user) nem a autorização CanCanCan
+    # da task 23.7 (RN06 — zero regressão em auth/ability).
+    include Pagy::Backend
+
     layout "admin"
 
     before_action :require_login

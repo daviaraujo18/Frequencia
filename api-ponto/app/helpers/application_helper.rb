@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
+  # Task 24.4 (Sprint 24) — Pagy (RF03): expõe o frontend de paginação para
+  # todas as views admin via `pagy_info`/`pagy_nav`. O módulo do Pagy 9 é
+  # público e usa `request`/`params` do contexto de view (UrlHelpers), sem
+  # depender do controller. NÃO altera os helpers portados da zutils abaixo
+  # (menu_activated?/eval_with_rescue — precedência local preservada).
+  include Pagy::Frontend
+
   # --------------------------------------------------------------------------
   # menu_activated? / eval_with_rescue
   #

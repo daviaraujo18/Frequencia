@@ -77,4 +77,45 @@ class ApplicationHelperTest < ActionView::TestCase
 
     assert_equal "error", menu_activated?(menu_item)
   end
+
+  # --------------------------------------------------------------------------
+  # Pagy::Frontend (task 24.4, RF03)
+  #
+  # O módulo do Pagy 9 é incluído no ApplicationHelper; `pagy_url_for` (via
+  # UrlHelpers) depende de `request`/`params` do contexto de view, que o
+  # ActionView::TestCase fornece (mesma base usada na 24.3 para o backend).
+  # --------------------------------------------------------------------------
+
+  test "ApplicationHelper expõe Pagy::Frontend na cadeia de ancestrais" do
+    assert_includes ApplicationHelper.ancestors, Pagy::Frontend
+  end
+
+  test "pagy_info é callable e renderiza o span de info do pagy" do
+    pagy = Pagy.new(count: 100, limit: 10)
+
+    html = pagy_info(pagy)
+
+    assert_includes html, '<span class="pagy info">'
+    assert_includes html, "</span>"
+  end
+
+  test "pagy_info com página única renderiza o span de info" do
+    pagy = Pagy.new(count: 1)
+
+    html = pagy_info(pagy)
+
+    assert_includes html, '<span class="pagy info">'
+    assert_includes html, "</span>"
+  end
+
+  test "pagy_nav é callable e renderiza o nav com links de página" do
+    pagy = Pagy.new(count: 100, limit: 10)
+
+    html = pagy_nav(pagy)
+
+    assert_includes html, '<nav class="pagy nav"'
+    assert_includes html, "</nav>"
+    assert_includes html, 'aria-current="page"'
+    assert_match(/href="\?page=\d+"/, html)
+  end
 end
