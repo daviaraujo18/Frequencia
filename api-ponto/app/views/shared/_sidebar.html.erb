@@ -1,0 +1,114 @@
+<%# Task 26.2 (Sprint 26) — partial `shared/_sidebar` (menu dinâmico data-driven).
+    Porta fiel de `basic8/app/views/shared/_sidebar.html.erb` (94 linhas), com o
+    `@static_menu` definido pela task 26.1 (`set_configurations` no
+    Admin::ApplicationController). Renderiza 3 níveis de navegação (pai, filho,
+    neto) com filtro CanCanCan `can? permission, permission_check` em TODOS os
+    níveis e destaque da tela ativa via `menu_activated?` (zutils — inclui a
+    peculiaridade truthy "error" do helper, já documentada em ApplicationHelper).
+
+    Adaptações conscientes da porta (registradas para o Code Reviewer):
+      1. `nav-arrow` em `fas fa-chevron-right` (o fonte usa `bi bi-chevron-right`):
+         convenção FA do Frequencia — as views já migraram `bi-*` → `fa-*` e o
+         layout admin atual usa exatamente `fas fa-chevron-right`. O
+         bootstrap-icons (task 26.7) cobre apenas resíduos `bi-*` de partials
+         zutils da Sprint 25.
+      2. Filtro `can?` ADICIONADO no nível neto (3º nível): o fonte do basic8
+         NÃO filtra o neto (`c.dig(:children).each` sem `if can?`); o critério
+         da 26.2 exige filtro por permissão em pai, filho e neto.
+      3. `aria-label` em pt-BR ("Navegação principal"), igual ao layout admin
+         atual (RNF03 — conteúdo acessível ao usuário final é pt-BR), em vez do
+         "Main navigation" do fonte.
+    %>
+<aside class="app-sidebar bg-body-secondary shadow" data-enable-persistence="true">
+  <div class="sidebar-brand">
+    <%= link_to root_path, class: "brand-link" do %>
+      <span class="ms-2 logo-lg">
+        <i class="pl-3 <%= @app_icon %>"></i>
+      </span>
+
+      <span class="brand-text fw-light"><strong><%= @app_name %></strong></span>
+    <% end %>
+  </div>
+
+  <div class="sidebar-wrapper">
+    <nav class="mt-2">
+      <ul
+        class="nav sidebar-menu flex-column"
+        data-lte-toggle="treeview"
+        role="navigation"
+        aria-label="Navegação principal"
+        data-accordion="false"
+        id="navigation"
+      >
+        <% @static_menu.each do |mi| %>
+          <% if can? mi.dig(:permission), mi.dig(:permission_check) %>
+            <% unless mi.dig(:children) %>
+              <li class="nav-item">
+                <%= link_to mi.dig(:url), class: "nav-link #{"active" if menu_activated?(mi)}" do %>
+                  <i class="nav-icon <%= mi.dig(:icon) %>"></i>
+                  <p><%= mi.dig(:name) %></p>
+                <% end %>
+              </li>
+            <% else %>
+              <li class="nav-item <%= "menu-open" if menu_activated?(mi) %>">
+                <a
+                  href="#"
+                  class="nav-link <%= "active" if menu_activated?(mi) %>"
+                >
+                  <i class="nav-icon <%= mi.dig(:icon) %>"></i>
+
+                  <p>
+                    <%= mi.dig(:name) %>
+                    <i class="nav-arrow fas fa-chevron-right"></i>
+                  </p>
+                </a>
+
+                <ul class="nav nav-treeview">
+                  <% mi.dig(:children).each do |c| %>
+                    <% if can? c.dig(:permission), c.dig(:permission_check) %>
+                      <% unless c.dig(:children) %>
+                        <li class="nav-item">
+                          <%= link_to c.dig(:url), target: c.dig(:target), class: "nav-link #{'active' if menu_activated?(c)}" do %>
+                            <i class="nav-icon <%= c.dig(:icon) %>"></i>
+                            <p><%= c.dig(:name) %></p>
+                          <% end %>
+                        </li>
+                      <% else %>
+                        <li class="nav-item <%= "menu-open" if menu_activated?(c) %>">
+                          <a
+                            href="#"
+                            class="nav-link <%= "active" if menu_activated?(c) %>"
+                          >
+                            <i class="nav-icon <%= c.dig(:icon) %>"></i>
+
+                            <p>
+                              <%= c.dig(:name) %>
+                              <i class="nav-arrow fas fa-chevron-right"></i>
+                            </p>
+                          </a>
+
+                          <ul class="nav nav-treeview">
+                            <% c.dig(:children).each do |cc| %>
+                              <% if can? cc.dig(:permission), cc.dig(:permission_check) %>
+                                <li class="nav-item">
+                                  <%= link_to cc.dig(:url), target: cc.dig(:target), class: "nav-link #{'active' if menu_activated?(cc)}" do %>
+                                    <i class="nav-icon <%= cc.dig(:icon) %>"></i>
+                                    <p><%= cc.dig(:name) %></p>
+                                  <% end %>
+                                </li>
+                              <% end %>
+                            <% end %>
+                          </ul>
+                        </li>
+                      <% end %>
+                    <% end %>
+                  <% end %>
+                </ul>
+              </li>
+            <% end %>
+          <% end %>
+        <% end %>
+      </ul>
+    </nav>
+  </div>
+</aside>

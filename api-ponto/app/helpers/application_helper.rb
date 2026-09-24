@@ -43,4 +43,34 @@ module ApplicationHelper
       menu_item.dig(:children).to_a.any? { |c| check.call(c[:active_test]) } ||
       menu_item.dig(:children).to_a.flat_map { |c| c.dig(:children).to_a }.any? { |c| check.call(c[:active_test]) }
   end
+
+  # --------------------------------------------------------------------------
+  # resource_icon / resource_human_name (task 26.1, Sprint 26 — RF06/D1, RNF05)
+  #
+  # Portados fielmente de `basic8/app/helpers/application_helper.rb`. Dão
+  # nome/ícone a um recurso a partir do `controller_name` da tela, para que
+  # os partials `shared/*` (_title, _header, _sidebar) e os scaffolds da
+  # Sprint 25 herdem a convenção sem duplicação por tela.
+  #
+  # `controller_name` vem SEM namespace (`Admin::EstacoesController` →
+  # "estacoes"); `singularize.camelize.constantize` resolve o model direto
+  # (ex: "regimes" → `Regime`). Quando o nome não mapeia para uma constante
+  # existente (ex: "estacoes" → `Estacao` — o model real é `EstacaoPonto`),
+  # o `NameError` é capturado e o fallback é devolvido. Nenhum input de
+  # usuário chega aqui — `controller_name`/`action_name` vêm do roteamento.
+  # --------------------------------------------------------------------------
+
+  def resource_icon(controller_name)
+    klass = controller_name.singularize.camelize.constantize
+    klass.respond_to?(:icon) ? klass.icon : "fa fa-circle"
+  rescue NameError
+    "fa fa-circle"
+  end
+
+  def resource_human_name(controller_name, _action_name)
+    klass = controller_name.singularize.camelize.constantize
+    klass.model_name.human.pluralize
+  rescue NameError
+    controller_name.capitalize
+  end
 end

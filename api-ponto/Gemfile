@@ -64,6 +64,12 @@ gem "zutils", "~> 4.0"
 gem "simple_form", "~> 5.4"
 gem "ransack", "~> 4.4"
 
+# Sprint 26, task 26.6 — Breadcrumbs do admin (RNF05): trilho de navegação
+# renderizado pelo partial `shared/_title` (task 26.4). Mesma gem do basic8
+# (sem restrição de versão, fiel ao fonte). Compatibilidade Rails 8/Ruby 3.4
+# verificada no boot (risco 🟡 do plano da Iteration 26).
+gem "breadcrumbs_on_rails"
+
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 # gem "rack-cors"
 

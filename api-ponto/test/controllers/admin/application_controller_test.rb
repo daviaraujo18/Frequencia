@@ -119,5 +119,108 @@ module Admin
       assert_equal usuario.id, @controller.send(:current_user).id,
                    "current_user deve continuar derivando do usuário autenticado na sessão"
     end
+
+    # ----------------------------------------------------------------------
+    # set_configurations (task 26.1 — contexto do layout)
+    # ----------------------------------------------------------------------
+
+    test "set_configurations expoe o contexto do layout apos acao admin real" do
+      usuario = criar_usuario
+      login_como(usuario)
+
+      get dashboard_path
+      assert_response :success
+
+      assert_equal "API Ponto TJPI", @controller.instance_variable_get(:@app_name),
+                   "@app_name deve preservar a identidade atual do app"
+      assert_equal "Sistema de registro e controle de frequência do TJPI",
+                   @controller.instance_variable_get(:@app_description),
+                   "@app_description deve contextualizar o sistema"
+      assert_equal ApplicationRecord.icon, @controller.instance_variable_get(:@app_icon),
+                   "@app_icon deve vir do fallback ApplicationRecord.icon"
+      assert_equal [], @controller.instance_variable_get(:@menu),
+                   "@menu deve começar vazio (padrão basic8)"
+
+      static_menu = @controller.instance_variable_get(:@static_menu)
+      assert static_menu.any?, "@static_menu deve conter os itens de navegação admin"
+    end
+
+    test "set_configurations monta @static_menu sem rotas mortas (url '#' so em itens com children)" do
+      usuario = criar_usuario
+      login_como(usuario)
+
+      get dashboard_path
+      assert_response :success
+
+      static_menu = @controller.instance_variable_get(:@static_menu)
+      folhas_com_rota_morta = []
+
+      visitar = lambda do |itens|
+        itens.each do |item|
+          if item[:children].present?
+            visitar.call(item[:children])
+          elsif item[:url].to_s == "#"
+            folhas_com_rota_morta << item[:name]
+          end
+        end
+      end
+      visitar.call(static_menu)
+
+      assert_empty folhas_com_rota_morta,
+                   "nenhum item folha pode ter url '#' (rota morta como o 'Inicializar Estação' do layout inline)"
+    end
+
+    test "set_configurations inclui a navegacao real do layout admin no padrao basic8" do
+      usuario = criar_usuario
+      login_como(usuario)
+
+      get dashboard_path
+      assert_response :success
+
+      static_menu = @controller.instance_variable_get(:@static_menu)
+      urls = []
+
+      coletar = lambda do |itens|
+        itens.each do |item|
+          urls << item[:url].to_s if item[:url].present?
+          coletar.call(item[:children]) if item[:children].present?
+        end
+      end
+      coletar.call(static_menu)
+
+      assert_includes urls, dashboard_path
+      assert_includes urls, time_records_path
+      assert_includes urls, users_path
+      assert_includes urls, frequentadores_path
+      assert_includes urls, estacoes_path
+      assert_includes urls, versoes_path
+      assert_includes urls, relatorio_terceirizados_path
+      assert_includes urls, frequencia_por_orgao_path
+      assert_includes urls, parcial_path
+      assert_includes urls, frequencia_path
+      assert_includes urls, regimes_path
+      assert_includes urls, direitos_deveres_path
+      assert_includes urls, gestores_individuais_path
+
+      # Cada item-folha do padrão basic8 carrega permission/permission_check/
+      # active_test (a sidebar da 26.2 filtra e destaca por eles).
+      presenca = static_menu.find { |item| item[:name] == "Presença" }
+      assert presenca, "grupo Presença deve existir no menu"
+      assert presenca[:children].any?, "grupo Presença deve ter children (sub-navegação)"
+
+      folhas = []
+      coletar_folhas = lambda do |itens|
+        itens.each do |item|
+          if item[:children].present?
+            coletar_folhas.call(item[:children])
+          else
+            folhas << item
+          end
+        end
+      end
+      coletar_folhas.call(static_menu)
+      assert folhas.none? { |item| item[:permission].nil? || item[:permission_check].nil? },
+             "todo item-folha deve ter :permission e :permission_check para o filtro CanCanCan"
+    end
   end
 end

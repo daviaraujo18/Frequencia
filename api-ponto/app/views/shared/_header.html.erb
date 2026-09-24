@@ -1,0 +1,131 @@
+<%# Task 26.3 (Sprint 26) — partial `shared/_header` (navbar com marca central +
+    dropdown de usuário com badges de roles).
+    Porta fiel de `basic8/app/views/shared/_header.html.erb` (89 linhas) adaptada
+    ao Frequencia. Segue o padrão de isolamento das tasks 26.1/26.2: o layout
+    `admin.html.erb` ainda NÃO compõe os partials `shared/*` (composição é a task
+    26.5 — o bloco header/theme inline do layout permanece até lá). Este partial é
+    a FONTE ÚNICA do markup do header quando a 26.5 renderizá-lo — a extração é
+    limpa, sem duplicar markup do theme dentro dele próprio.
+
+    Adaptações conscientes da porta (registradas para o Code Reviewer):
+      1. Toggle da sidebar: `data-lte-toggle="sidebar"` (AdminLTE 4 nativo) +
+         `data-controller="sidebar"` + `data-action="click->sidebar#toggle"` —
+         PRESERVA o `sidebar_controller.js` do Frequencia (persistência em
+         localStorage, task 24.8), ao contrário do fonte que delega apenas ao
+         nativo do AdminLTE.
+      2. Marca central: `@app_icon` + `@app_name` via `link_to root_path`
+         (definidos pela task 26.1 — `set_configurations`).
+      3. Dropdown do usuário: nome com `current_user.try(:nome_completo)`
+         (model `User` do Frequencia — coluna `nome_completo` NOT NULL; fallback
+         "Visitante" do fonte); e-mail renderizado SOMENTE quando presente
+         (`email` é nullable no Frequencia — Sprint 23 — e o "Não autenticado"
+         do fonte seria enganoso para usuário logado sem e-mail); badges de roles
+         iterando `(current_user.try(:roles) || [])` → `role.name` com a
+         convenção `text-bg-*` (Bootstrap 5.3) — `text-bg-primary`, mesma cor
+         para todas (fiel ao `bg-primary` do fonte); decisão de convenção
+         registrada na task e REUTILIZADA na 26.4 (`shared/_title`).
+      4. Logout: `button_to logout_path, method: :delete` (rota real do
+         Frequencia — RN06: `delete /logout` → `users/sessions#destroy`;
+         adaptação do `destroy_user_session_path` do basic8). `turbo_confirm`
+         mantido do fonte, mensagem em pt-BR (RNF03).
+      5. `aria-label` no toggle da sidebar em pt-BR ("Alternar menu lateral")
+         (RNF03 — o layout admin atual usa "Toggle sidebar"; o fonte não tem).
+      6. Marca visual do header segue o fonte: `bg-primary` + `data-bs-theme="dark"`
+         (o layout atual usa `bg-body` — o visual do basic8 entra na composição
+         da 26.5).
+    %>
+<nav class="app-header navbar navbar-expand bg-primary" data-bs-theme="dark">
+  <div class="container-fluid">
+    <ul class="navbar-nav flex-grow-1 align-items-center">
+      <li class="nav-item">
+        <a
+          class="nav-link"
+          data-lte-toggle="sidebar"
+          data-controller="sidebar"
+          data-action="click->sidebar#toggle"
+          href="#"
+          role="button"
+          aria-label="Alternar menu lateral"
+        >
+          <i class="fas fa-bars"></i>
+        </a>
+      </li>
+
+      <li class="nav-item flex-grow-1 text-center">
+        <%= link_to root_path, class: "nav-link d-inline-flex align-items-center justify-content-center w-100" do %>
+          <i class="me-2 <%= @app_icon %>"></i>
+          <strong><%= @app_name %></strong>
+        <% end %>
+      </li>
+    </ul>
+
+    <ul class="navbar-nav">
+      <li class="nav-item dropdown">
+        <a
+          class="nav-link dropdown-toggle"
+          data-bs-toggle="dropdown"
+          href="#"
+          role="button"
+          aria-expanded="false"
+          aria-label="Alternar tema"
+          title="Alternar tema"
+        >
+          <i class="fas fa-sun" data-theme-target="icon"></i>
+        </a>
+        <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
+          <button class="dropdown-item d-flex align-items-center gap-2" data-action="theme#pick" data-theme-mode-param="light">
+            <i class="fas fa-sun"></i> Claro
+          </button>
+          <button class="dropdown-item d-flex align-items-center gap-2" data-action="theme#pick" data-theme-mode-param="dark">
+            <i class="fas fa-moon"></i> Escuro
+          </button>
+          <button class="dropdown-item d-flex align-items-center gap-2" data-action="theme#pick" data-theme-mode-param="auto">
+            <i class="fas fa-circle-half-stroke"></i> Automático
+          </button>
+        </div>
+      </li>
+    </ul>
+
+    <ul class="navbar-nav">
+      <li class="nav-item dropdown">
+        <a
+          class="nav-link d-flex align-items-center gap-1"
+          data-bs-toggle="dropdown"
+          href="#"
+        >
+          <i class="fas fa-user"></i>
+          <i class="fas fa-caret-down small"></i>
+        </a>
+
+        <div class="dropdown-menu dropdown-menu-end dropdown-menu-lg p-2">
+          <div class="d-flex gap-2 align-items-center mb-2">
+            <div class="flex-grow-1">
+              <div class="fw-semibold text-sm"><%= current_user.try(:nome_completo) || "Visitante" %></div>
+              <% if current_user.try(:email).present? %>
+                <div class="text-muted small"><%= current_user.email %></div>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-1 mb-2">
+            <% (current_user.try(:roles) || []).each do |role| %>
+              <span class="badge text-bg-primary">
+                <%= role.name %>
+              </span>
+            <% end %>
+          </div>
+
+          <div class="dropdown-divider"></div>
+
+          <%= button_to logout_path,
+            class: "dropdown-item dropdown-footer",
+            data: { turbo_confirm: "Confirmar saída?" },
+            method: :delete do %>
+            <i class="fas fa-sign-out-alt"></i>
+            Sair
+          <% end %>
+        </div>
+      </li>
+    </ul>
+  </div>
+</nav>

@@ -3,20 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>API Ponto TJPI</title>
+  <%# Task 26.5 — título dinâmico: @app_name (set_configurations, task 26.1) +
+      sufixo da página via `content_for :page_title` (views admin atuais) ou
+      fallback `resource_human_name` (helper 26.1 — telas sem page_title, ex.:
+      scaffolds da Sprint 25). `strip_tags` é defensivo: o content_for pode
+      carregar HTML no future. O `yield :page_title` NÃO consome o content_for
+      (ActionView::OutputFlow#get não destrutivo) — o partial `shared/_title`
+      ainda o lê no corpo. %>
+  <title><%= @app_name %> | <%= content_for?(:page_title) ? strip_tags(yield(:page_title)) : resource_human_name(controller_name, action_name) %></title>
 
   <meta name="color-scheme" content="light dark" />
-  <meta name="theme-color" content="#007bff" media="(prefers-color-scheme: light)" />
+  <%# Task 26.5 — theme-color sincronizado com a paleta $primary: #2563eb
+      (_variables.scss, task 26.8) no modo claro; o dark mantém o tom escuro
+      do Frequencia (decisão registrada na Linha do Tempo da 26.5). %>
+  <meta name="theme-color" content="#2563eb" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)" />
 
   <%= csrf_meta_tags %>
   <%= csp_meta_tag %>
 
+  <%# Task 26.5 — favicon padrão basic8 (public/icon.png + public/icon.svg
+      portados do fonte; o basic8 ainda repete o svg via favicon_link_tag —
+      duplicação evitada aqui: a tag manual já cobre os dois formatos). %>
+  <link rel="icon" href="/icon.png" type="image/png">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.png">
+
   <!-- Fonts -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" crossorigin="anonymous" media="print" onload="this.media='all'" />
 
   <!-- AdminLTE 4 -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0/dist/css/adminlte.min.css" crossorigin="anonymous" />
+  <%# NOTE (26.8): CDN do admin-lte REMOVIDO — o build local
+      (app/assets/builds/application.css, gerado por `yarn build:css` e servido
+      via `//= link_tree ../builds` no manifest.js) importa
+      `admin-lte/src/scss/adminlte` e provê o AdminLTE com a paleta
+      `$primary: #2563eb` (_variables.scss), que passa a prevalecer.
+      Fontsource (Source Sans 3) e OverlayScrollbars CDN são MANTIDOS: as
+      fontes não são empacotadas no build e o CSS do OverlayScrollbars não é
+      importado (decisão de escopo 26.9/26.10). %>
 
   <!-- OverlayScrollbars -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/styles/overlayscrollbars.min.css" crossorigin="anonymous" />
@@ -27,237 +51,26 @@
 
 <div class="app-wrapper">
 
-  <!-- App Header (Navbar) -->
-  <nav class="app-header navbar navbar-expand bg-body">
-    <div class="container-fluid">
-      <!-- Left navbar links -->
-      <ul class="navbar-nav">
-        <li class="nav-item">
-          <a
-            class="nav-link"
-            data-lte-toggle="sidebar"
-            data-controller="sidebar"
-            data-action="click->sidebar#toggle"
-            href="#"
-            role="button"
-            aria-label="Toggle sidebar"
-          >
-            <i class="fas fa-bars"></i>
-          </a>
-        </li>
-        <li class="nav-item d-none d-md-block">
-          <%= link_to root_path, class: "nav-link" do %>
-            <i class="fas fa-table-cells me-1" aria-hidden="true"></i>
-            Dashboard
-          <% end %>
-        </li>
-      </ul>
+  <%# Task 26.5 — composição única dos partials `shared/*` (fonte única do
+      markup; os blocos inline equivalentes foram removidos). Header (26.3),
+      sidebar (26.2), título (26.4 — return early p/ sessions/dashboard) e
+      footer (26.5). Nenhum bloco inline duplicado permanece. %>
+  <%= render "shared/header" %>
 
-      <!-- Right navbar links -->
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item dropdown">
-          <a
-            class="nav-link dropdown-toggle"
-            data-bs-toggle="dropdown"
-            href="#"
-            role="button"
-            aria-expanded="false"
-            aria-label="Alternar tema"
-            title="Alternar tema"
-          >
-            <i class="fas fa-sun" data-theme-target="icon"></i>
-          </a>
-          <div class="dropdown-menu dropdown-menu-end" data-bs-popper="static">
-            <button class="dropdown-item d-flex align-items-center gap-2" data-action="theme#pick" data-theme-mode-param="light">
-              <i class="fas fa-sun"></i> Claro
-            </button>
-            <button class="dropdown-item d-flex align-items-center gap-2" data-action="theme#pick" data-theme-mode-param="dark">
-              <i class="fas fa-moon"></i> Escuro
-            </button>
-            <button class="dropdown-item d-flex align-items-center gap-2" data-action="theme#pick" data-theme-mode-param="auto">
-              <i class="fas fa-circle-half-stroke"></i> Automático
-            </button>
-          </div>
-        </li>
-        <% if session[:user_id] %>
-          <li class="nav-item dropdown user-menu">
-            <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" aria-label="Menu do usuário">
-              <span class="d-none d-md-inline"><%= current_user&.nome_completo %></span>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
-              <li class="user-header text-bg-primary">
-                <p>
-                  <%= current_user&.nome_completo %>
-                  <small><%= current_user&.admin? ? "Administrador" : "Usuário" %></small>
-                </p>
-              </li>
-              <li class="user-footer">
-                <%= button_to "Sair", logout_path, method: :delete, class: "btn btn-outline-danger w-100", data: { turbo: false } %>
-              </li>
-            </ul>
-          </li>
-        <% end %>
-      </ul>
-    </div>
-  </nav>
-  <!-- /.app-header -->
-
-  <!-- App Sidebar -->
-  <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
-    <div class="sidebar-brand">
-      <%= link_to root_path, class: "brand-link" do %>
-        <span class="brand-text fw-light">API Ponto TJPI</span>
-      <% end %>
-    </div>
-
-    <div class="sidebar-wrapper">
-      <nav class="mt-2" aria-label="Navegação principal">
-        <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" data-accordion="false">
-          <li class="nav-item">
-            <%= link_to dashboard_path, class: "nav-link#{" active" if current_page?(dashboard_path) || current_page?(root_path) }" do %>
-              <i class="nav-icon fas fa-gauge"></i>
-              <p>Dashboard</p>
-            <% end %>
-          </li>
-          <li class="nav-item">
-            <%= link_to time_records_path, class: "nav-link#{" active" if current_page?(time_records_path) }" do %>
-              <i class="nav-icon fas fa-clock-rotate-left"></i>
-              <p>Registros de Ponto</p>
-            <% end %>
-          </li>
-          <% if current_user&.admin? %>
-            <li class="nav-item">
-              <%= link_to users_path, class: "nav-link#{" active" if current_page?(users_path) }" do %>
-                <i class="nav-icon fas fa-users"></i>
-                <p>Usuários</p>
-              <% end %>
-            </li>
-          <% end %>
-          <li class="nav-item">
-            <a href="#" class="nav-link">
-              <i class="nav-icon fas fa-user-check"></i>
-              <p>
-                Presença
-                <i class="nav-arrow fas fa-chevron-right"></i>
-              </p>
-            </a>
-            <ul class="nav nav-treeview">
-              <li class="nav-item">
-                <%= link_to frequentadores_path, class: "nav-link#{" active" if current_page?(frequentadores_path) }" do %>
-                  <i class="nav-icon fas fa-circle"></i>
-                  <p>Frequentadores</p>
-                <% end %>
-              </li>
-              <li class="nav-item">
-                <a href="#" class="nav-link">
-                  <i class="nav-icon fas fa-circle"></i>
-                  <p>
-                    Estação de Ponto
-                    <i class="nav-arrow fas fa-chevron-right"></i>
-                  </p>
-                </a>
-                <ul class="nav nav-treeview">
-                  <li class="nav-item">
-                    <a href="#" class="nav-link">
-                      <i class="nav-icon fas fa-circle"></i>
-                      <p>Inicializar Estação</p>
-                    </a>
-                  </li>
-                  <li class="nav-item">
-                    <%= link_to estacoes_path, class: "nav-link#{" active" if current_page?(estacoes_path) }" do %>
-                      <i class="nav-icon fas fa-circle"></i>
-                      <p>Explorar Estações</p>
-                    <% end %>
-                  </li>
-                  <li class="nav-item">
-                    <%= link_to versoes_path, class: "nav-link#{" active" if current_page?(versoes_path) }" do %>
-                      <i class="nav-icon fas fa-circle"></i>
-                      <p>Explorar Versões</p>
-                    <% end %>
-                  </li>
-                </ul>
-              </li>
-              <li class="nav-item">
-                <a href="#" class="nav-link">
-                  <i class="nav-icon fas fa-circle"></i>
-                  <p>
-                    Relatório Mensal
-                    <i class="nav-arrow fas fa-chevron-right"></i>
-                  </p>
-                </a>
-                <ul class="nav nav-treeview">
-                  <li class="nav-item">
-                    <%= link_to relatorio_terceirizados_path, class: "nav-link#{" active" if current_page?(relatorio_terceirizados_path) }" do %>
-                      <i class="nav-icon fas fa-circle"></i>
-                      <p>Relatório Terceirizados</p>
-                    <% end %>
-                  </li>
-                  <li class="nav-item">
-                    <%= link_to frequencia_por_orgao_path, class: "nav-link#{" active" if current_page?(frequencia_por_orgao_path) }" do %>
-                      <i class="nav-icon fas fa-circle"></i>
-                      <p>Frequência por Órgão</p>
-                    <% end %>
-                  </li>
-                  <li class="nav-item">
-                    <%= link_to parcial_path, class: "nav-link#{" active" if current_page?(parcial_path) }" do %>
-                      <i class="nav-icon fas fa-circle"></i>
-                      <p>Parcial</p>
-                    <% end %>
-                  </li>
-                </ul>
-              </li>
-              <li class="nav-item">
-                <%= link_to frequencia_path, class: "nav-link#{" active" if current_page?(frequencia_path) }" do %>
-                  <i class="nav-icon fas fa-circle"></i>
-                  <p>Frequência</p>
-                <% end %>
-              </li>
-              <li class="nav-item">
-                <%= link_to regimes_path, class: "nav-link#{" active" if current_page?(regimes_path) }" do %>
-                  <i class="nav-icon fas fa-circle"></i>
-                  <p>Regimes</p>
-                <% end %>
-              </li>
-              <li class="nav-item">
-                <%= link_to direitos_deveres_path, class: "nav-link#{" active" if current_page?(direitos_deveres_path) }" do %>
-                  <i class="nav-icon fas fa-circle"></i>
-                  <p>Direitos &amp; Deveres</p>
-                <% end %>
-              </li>
-              <li class="nav-item">
-                <%= link_to gestores_individuais_path, class: "nav-link#{" active" if current_page?(gestores_individuais_path) }" do %>
-                  <i class="nav-icon fas fa-circle"></i>
-                  <p>Gestores Individuais</p>
-                <% end %>
-              </li>
-            </ul>
-          </li>
-        </ul>
-      </nav>
-    </div>
-  </aside>
-  <!-- /.app-sidebar -->
+  <%= render "shared/sidebar" %>
 
   <!-- App Main -->
   <main class="app-main">
-    <!-- App Content Header -->
-    <div class="app-content-header">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-sm-6">
-            <h1 class="mb-0 fs-3"><%= yield :page_title %></h1>
-          </div>
-          <div class="col-sm-6 d-flex align-items-center justify-content-end">
-            <%= yield :page_actions %>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- /.app-content-header -->
+    <%= render "shared/title" %>
 
     <!-- App Content -->
     <div class="app-content">
       <div class="container-fluid">
+        <%# Task 26.5 — flash local PRESERVADO (RF14): mapeamento local
+            notice→alert-success e alert→alert-danger mantido do layout inline,
+            sem adotar a superfície de flash da gem zutils (o teste RF14
+            FlashLocalZutilsCompatTest lê este arquivo fonte e verifica a
+            ausência dessas referências — não citá-las aqui). %>
         <% if flash[:notice] %>
           <div class="alert alert-success alert-dismissible fade show" role="alert">
             <%= flash[:notice] %>
@@ -277,50 +90,11 @@
   </main>
   <!-- /.app-main -->
 
-  <!-- Footer -->
-  <footer class="app-footer">
-    <div class="float-end d-none d-sm-inline">
-      <strong>API Ponto TJPI</strong>
-    </div>
-    <span>&copy; <%= Time.current.year %> Tribunal de Justiça do Piauí</span>
-  </footer>
+  <%= render "shared/footer" %>
 
 </div>
 <!-- /.app-wrapper -->
 
 <%= javascript_importmap_tags "application" %>
-
-<script>
-// NOTA (task 24.8): a persistência de estado da sidebar abaixo foi portada para
-// app/javascript/controllers/sidebar_controller.js (Stimulus), conectado ao mesmo botão
-// [data-lte-toggle="sidebar"] logo acima (data-controller="sidebar"). Este bloco inline ficou
-// redundante, mas foi mantido de propósito — a remoção é escopo da task 25.5 (ver Sprint 24).
-// Não há conflito funcional: ambos usam a mesma chave de localStorage ("admin-sidebar-collapsed")
-// e a mesma semântica de espelhar a classe `sidebar-collapse` do <body>.
-document.addEventListener('DOMContentLoaded', function() {
-  // Sidebar state persistence
-  var savedState = localStorage.getItem('admin-sidebar-collapsed');
-  if (savedState === 'true') {
-    document.body.classList.add('sidebar-collapse');
-  }
-  var toggleBtn = document.querySelector('[data-lte-toggle="sidebar"]');
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', function() {
-      setTimeout(function() {
-        var isCollapsed = document.body.classList.contains('sidebar-collapse');
-        localStorage.setItem('admin-sidebar-collapsed', isCollapsed);
-      }, 300);
-    });
-  }
-
-  // Active menu highlight for sidebar
-  var currentPath = window.location.pathname;
-  document.querySelectorAll('.sidebar-menu a.nav-link').forEach(function(link) {
-    if (link.getAttribute('href') === currentPath) {
-      link.classList.add('active');
-    }
-  });
-});
-</script>
 </body>
 </html>

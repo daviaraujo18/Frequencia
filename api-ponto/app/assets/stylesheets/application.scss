@@ -1,19 +1,49 @@
 // ============================================================
 // Entry point do build Sass (Sprint 24.1 — infraestrutura Node/Sass).
 //
-// Compila para app/assets/builds/app.css (yarn build:css). Propositalmente
-// NÃO se chama "application.css" para não colidir, no Propshaft, com o
-// manifesto atual em app/assets/stylesheets/application.css (que ainda
-// carrega Bootstrap/AdminLTE/Font Awesome via CDN e continua sendo o que
-// o layout referencia). A troca do layout para usar este build (removendo
-// os imports CDN) é escopo da task 24.4, não desta.
+// Compila para app/assets/builds/application.css (yarn build:css) — o MESMO
+// nome que o layout admin referencia via stylesheet_link_tag "application".
+// Desde a task 26.8 o build ENTRA no precompile (manifest.js com
+// `//= link_tree ../builds`) e o CDN do admin-lte foi removido do layout:
+// este entry point importa bootstrap + bootstrap-icons + admin-lte +
+// fontawesome e gera o CSS local com a paleta custom
+// ($primary: #2563eb em _variables.scss), que é o que prevalece.
+// Ordem de carregamento: apenas o build local (sem CDN admin-lte acima).
+//
+// NOTE (26.9) — decisão de escopo CSS de bibliotecas do basic8:
+// NENHUM import novo. toastr, tom-select, bootstrap-table,
+// bootstrap-fileinput e ckeditor5 NÃO estão no package.json nem nas views
+// do Frequencia (CSS morto — evidências no iteration_26.md, tabela lib-a-lib).
+// overlayscrollbars CSS permanece via CDN no layout admin (débito 🟢;
+// decisão do JS é a 26.10). zutils.scss não é importado (RF13).
 // ============================================================
 
 @import "variables";
 @import "bootstrap/scss/bootstrap";
 
+// Sprint 26.7 — Bootstrap Icons (bi-*): posição equivalente ao basic8
+// (após bootstrap, antes de admin-lte). Cobre os resíduos `bi-*` das
+// partials do basic8/zutils (ex.: nav-arrow do sidebar fonte); a Fase 1
+// usa `fa-*` (consistência Frequencia) — NÃO reintroduzir `bi-*` nas
+// views já migradas para Font Awesome.
+//
+// NOTE (26.8): `$bootstrap-icons-font-dir` sobreposto para "." — o default
+// "./fonts" produz url("./fonts/...") que o Propshaft NÃO consegue reescrever
+// (o load path expõe os webfonts flat — config/initializers/assets.rb registra
+// node_modules/bootstrap-icons/font/fonts — e "fonts/x.woff2" não é um logical
+// path). Com ".", a url vira ./bootstrap-icons.woff2 → reescrita pelo
+// precompile para /assets/bootstrap-icons-<digest>.woff2 (e servida em dev em
+// /assets/bootstrap-icons.woff2). Sem isso, o @font-face 404 em produção.
+$bootstrap-icons-font-dir: ".";
+@import "bootstrap-icons/font/bootstrap-icons";
+
 @import "admin-lte/src/scss/adminlte";
 
+// NOTE (26.8): `$fa-font-path` sobreposto para "." — mesmo motivo do
+// bootstrap-icons acima: o default "../webfonts" não resolve contra as
+// raízes do load path (webfonts flat, registrados desde a 24.1) e o
+// @font-face do Font Awesome quebraria (404) em produção.
+$fa-font-path: ".";
 @import "@fortawesome/fontawesome-free/scss/fontawesome";
 @import "@fortawesome/fontawesome-free/scss/brands";
 @import "@fortawesome/fontawesome-free/scss/regular";

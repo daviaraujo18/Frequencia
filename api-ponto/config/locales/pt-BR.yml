@@ -85,3 +85,17 @@ pt-BR:
       less_than: "deve ser menor que %{count}"
       less_than_or_equal_to: "deve ser menor ou igual a %{count}"
       other_than: "deve ser diferente de %{count}"
+  # Task 26.4 (Sprint 26) — `helpers.titles.*` portado de
+  # `basic8/config/locales/pt-BR.yml` (só o bloco consumido pelo partial
+  # `shared/_title`: título de ação no h1 e rótulo do botão auto-"Novo").
+  helpers:
+    titles:
+      create: "Cadastrar"
+      delete: "Apagar"
+      edit: "Editar"
+      index: "Listagem"
+      new: "Cadastrar"
+      save: "Salvar"
+      search: "Pesquisar"
+      show: "Ver"
+      update: "Editar"

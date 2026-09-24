@@ -25,7 +25,14 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   test "deve carregar dashboard" do
     get dashboard_path
     assert_response :success
-    assert_select ".app-content-header h1", "Dashboard"
+
+    # Task 26.5 (Sprint 26) — composição do layout via shared/_title (porta do
+    # fonte basic8): o partial retorna early para 'dashboard' → o dashboard
+    # NÃO renderiza mais o bloco .app-content-header (o layout inline antigo
+    # exibia `<h1>Dashboard</h1>`). O título da página migra para o <title>
+    # dinâmico (@app_name + content_for :page_title — task 26.5/26.4).
+    assert_select ".app-content-header", 0
+    assert_select "title", "API Ponto TJPI | Dashboard"
   end
 
   test "deve redirecionar para login se nao autenticado" do
@@ -69,7 +76,12 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     get dashboard_path
 
     assert_response :success
-    assert_select ".app-content-header h1", "Dashboard"
+
+    # Task 26.5 — mesmo contrato do teste acima: dashboard sem .app-content-header
+    # (shared/_title retorna early), título da aba dinâmico.
+    assert_select ".app-content-header", 0
+    assert_select "title", "API Ponto TJPI | Dashboard"
+
     assert_match(%r{<h3>\s*0\s*</h3>\s*<p>Frequentadores</p>}m, response.body)
     assert_match(%r{<h3>\s*0\s*</h3>\s*<p>Estações de Ponto</p>}m, response.body)
     assert_match(%r{<h3>\s*0\s*</h3>\s*<p>Batidas Hoje</p>}m, response.body)
