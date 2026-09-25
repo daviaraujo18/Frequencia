@@ -68,3 +68,20 @@
 **Lição:** Para neutralizar timing side-channel em endpoints paranoid, iguale a ASSINATURA DE I/O (queries), não o tempo com `sleep`; UPDATE em `id` inexistente é o "dummy write" inócuo perfeito (0 linhas, mesmas queries de transação). O custo do raise/rescue que não é replicado fica documentado como delta residual de µs.
 
 ---
+---
+
+### 2026-09-25 — Binstub `bin/brakeman` com `--ensure-latest` sai 0 sem escanear
+
+**Contexto:** Tarefa 29.1 (Sprint 29) — validação de segurança registrada como "Brakeman OK" em três rodadas.
+**Problema:** O binstub força `--ensure-latest`; com a gem instalada abaixo da última versão publicada, o Brakeman imprime só o aviso de versão e sai com código 0 **sem executar o scan** (nem `-o arquivo` é criado). O gate parece verde, mas não faz nada.
+**Solução:** Até o chore de pipeline corrigir o binstub, validar com `RUBYOPT= bundle exec brakeman` (ou conferir que o relatório foi gerado) e registrar a contagem real de warnings (baseline: 4 pré-existentes).
+**Lição:** Um gate de segurança só vale como evidência se produzir saída de scan (relatório/contagem de warnings); "exit 0" sozinho não prova execução.
+
+---
+
+### 2026-09-25 — Copiar trechos do schema.rb do Pessoas2 (Rails 6) para o Frequencia (Rails 8)
+
+**Contexto:** Task 29.0 (Sprint 29), schema de teste do espelho Pessoas (ADR-0006).
+**Problema:** Os `add_foreign_key` copiados literalmente falharam com `column "tipos_vinculo_id" referenced in foreign key constraint does not exist`. O `schema.rb` do Pessoas2 omite `column:` quando a coluna segue as inflexões **dele** (`tipos_vinculo` → `tipo_vinculo_id`); o Frequencia não tem essas inflexões e infere outro nome. Além disso, sem `ActiveRecord::Schema[6.0]` o Rails 8 cria `datetime` com precisão 6, diferente do banco real.
+**Solução:** `column:` explícito em todas as FKs copiadas e `ActiveRecord::Schema[6.0].define`. O teste de divergência compara os blocos `create_table` byte a byte e as FKs por tabela e coluna.
+**Lição:** Schema copiado entre apps com Rails e inflexões diferentes não é portável literalmente: fixe a versão de compatibilidade do `Schema[...]` e torne explícito tudo o que depende de inflexão. Obs.: o projeto usa Minitest 6, sem `minitest/mock` (`Object#stub` não existe); prefira dados reais ou injeção de dependência.

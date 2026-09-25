@@ -42,5 +42,5 @@ Equivalente real da pasta canônica `inception/`, que **não existe fisicamente*
 - Para a visão geral da migração → `docs/00-contexto/00-visao-geral.md`
 - Para RNF de segurança e checklist de canal lateral → `docs/00-contexto/03-seguranca-stack.md`
 - Para decisões de projeto e handoff → `docs/specs/STATE.md`
-- Para as ADRs → `docs/adr/0001-integracao-pessoas-frequencia.md` … `docs/adr/0005-destino-poc-api-ponto.md`
+- Para as ADRs → `docs/adr/0001-integracao-pessoas-frequencia.md` … `docs/adr/0006-schema-teste-espelho-pessoas.md`
 - Para o framework de 10 fases → `docs/00-contexto/01-framework-migracao.md`
