@@ -12,6 +12,16 @@ module Pessoas
     has_many :vinculos, class_name: "Pessoas::Vinculo", foreign_key: :pessoa_id, inverse_of: :pessoa
     has_many :afastamentos, through: :vinculos, class_name: "Pessoas::Afastamento"
 
+    # Usuários locais sem CPF são contas administrativas e não têm uma
+    # pessoa correspondente no Pessoas; nesse caso a busca deve apenas
+    # retornar nil, sem consultar o banco espelho.
+    def self.por_user(user)
+      normalized_cpf = user&.cpf.to_s.gsub(/\D/, "")
+      return if normalized_cpf.blank?
+
+      find_by(cpf: normalized_cpf)
+    end
+
     # Vínculo "ativo" no sentido usado pela antiga integração Sticapi
     # (`vinculos_ativos`): estado `em_exercicio` e sem data de fim (ou fim
     # no futuro). Uma pessoa pode ter mais de um vínculo simultâneo — igual
