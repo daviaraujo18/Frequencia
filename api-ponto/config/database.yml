@@ -64,11 +64,12 @@ test:
   primary:
     <<: *default
     database: api_ponto_test
-  # Mesmo padrão do development — em test, aponta pro pessoas_test local
-  # (mesma convenção do config/database.yml do próprio Pessoas2).
+  # Em test, aponta pra um banco local exclusivo do Frequencia (não o
+  # pessoas_test do próprio Pessoas2, pra não misturar tabelas entre projetos),
+  # com a estrutura de `unidades`/`pessoas` copiada do pessoas2/db/schema.rb.
   pessoas:
     <<: *default
-    database: pessoas_test
+    database: frequencia_pessoas_espelho_test
     username: <%= Rails.application.credentials.dig(:pessoas_db, :username) %>
     password: <%= Rails.application.credentials.dig(:pessoas_db, :password) %>
     host: <%= Rails.application.credentials.dig(:pessoas_db, :host) %>
