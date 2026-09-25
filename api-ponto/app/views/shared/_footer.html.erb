@@ -1,0 +1,20 @@
+<%# Task 26.5 (Sprint 26) — partial `shared/_footer` (rodapé simples).
+    Porta fiel de `basic8/app/views/shared/_footer.html.erb` (7 linhas) adaptada
+    ao Frequencia:
+      1. `@app_name` no bloco direito (definido pela task 26.1 —
+         `set_configurations`; o fonte também usa @app_name).
+      2. Linha de copyright do layout admin atual PRESERVADA ("© [ano]
+         Tribunal de Justiça do Piauí" — identidade TJPI; o fonte basic8 não
+         tem a frase da organização). A composição da 26.5 remove o footer
+         inline do layout em favor deste partial, e a frase foi mantida para
+         não perder informação.
+      3. `Time.current.year` (timezone-aware — comportamento do layout atual)
+         em vez de `Date.today.year` do fonte.
+    %>
+<footer class="app-footer d-none d-sm-block">
+  <div class="float-end">
+    <strong><%= @app_name %></strong>
+  </div>
+
+  <span>&copy; <%= Time.current.year %> Tribunal de Justiça do Piauí</span>
+</footer>

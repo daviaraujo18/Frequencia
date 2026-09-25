@@ -1,10 +1,27 @@
 module Admin
   class RegimesController < Admin::ApplicationController
-    before_action :set_regime, only: [ :edit, :update, :destroy ]
-    before_action -> { require_admin(regimes_path) }, only: [ :new, :create, :edit, :update, :destroy ]
+    # Task 23.7 — CanCanCan: CRUD puro carregado e autorizado pelo
+    # `load_and_authorize_resource` (padrão estacoes/versoes/users).
+    # Somente admin tem `:manage` em Regime (ability.rb 23.5) — o loader
+    # autoriza `:new`/`:create`/`:edit`/`:update`/`:destroy` na instância
+    # e nega (CanCan::AccessDenied → redirect dashboard) para
+    # gestor/operador/autenticado-sem-role. A index é exceção: usa query
+    # customizada (filtros do legado) e autoriza `:read` explicitamente.
+    load_and_authorize_resource :regime, except: [ :index ]
 
     def index
-      @regimes = Regime.includes(:regime_categorias).order(:nome)
+      # Task 23.7 — CanCanCan: autorização explícita para listagem.
+      # Admin/gestor/operador podem visualizar (todos têm :read em :all).
+      authorize! :read, :all
+
+      # Mesmo filtro real do legado (`RegimeDao.paginateList`): só mostra
+      # regimes ativos (não excluídos, marcados como visíveis) e que não
+      # tenham sido substituídos por uma versão mais nova (não são
+      # `anterior_id` de nenhum regime não-excluído).
+      @regimes = Regime.includes(:regime_categorias)
+        .where(excluido: false, visivel: true)
+        .where.not(id: Regime.where(excluido: false).where.not(anterior_id: nil).select(:anterior_id))
+        .order(:nome)
 
       if params[:nome].present?
         @regimes = @regimes.where("nome ILIKE ?", "%#{params[:nome]}%")
@@ -20,11 +37,11 @@ module Admin
     end
 
     def new
-      @regime = Regime.new
+      # @regime já construído (Regime.new) e autorizado pelo loader.
     end
 
     def create
-      @regime = Regime.new(regime_params)
+      # @regime já construído com os strong params e autorizado pelo loader.
       if @regime.save
         redirect_to regimes_path, notice: "Regime criado com sucesso"
       else
@@ -33,9 +50,11 @@ module Admin
     end
 
     def edit
+      # @regime já carregado e autorizado pelo loader.
     end
 
     def update
+      # @regime já carregado e autorizado pelo loader.
       if @regime.update(regime_params)
         redirect_to regimes_path, notice: "Regime atualizado com sucesso"
       else
@@ -44,6 +63,7 @@ module Admin
     end
 
     def destroy
+      # @regime já carregado e autorizado pelo loader.
       @regime.destroy
       redirect_to regimes_path, notice: "Regime excluído com sucesso"
     rescue ActiveRecord::DeleteRestrictionError
@@ -51,10 +71,6 @@ module Admin
     end
 
     private
-
-    def set_regime
-      @regime = Regime.find(params[:id])
-    end
 
     def regime_params
       params.require(:regime).permit(:nome, :modalidade, :resumo, :meta_semanal, categorias: [])
