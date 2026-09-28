@@ -130,32 +130,94 @@ class UserTest < ActiveSupport::TestCase
     end
   end
 
+  # B2 (bug_report_23_cs) — hash do Pessoas2 ausente/inválido não pode
+  # derrubar o login com 500 (`BCrypt::Errors::InvalidHash`). Contas
+  # pré-Devise têm `encrypted_password` nil/"" (Pessoas2 é read-only, sem
+  # backfill garantido); hash presente mas corrompido também ocorre.
+  # Todos os casos devem retornar `false` (falha limpa) — nunca raise.
+
+  test "B2: usuario com cpf e hash nulo (nil) no pessoas2 nao autentica (sem InvalidHash)" do
+    user = User.create!(nome_completo: "Hash Nulo", password: "123456", cpf: "11122233344")
+
+    stub_pessoas_user(PessoasUserStub.new(nil)) do
+      assert_not user.authenticate("123456")
+      assert_not user.valid_password?("123456")
+    end
+  end
+
+  test "B2: usuario com cpf e hash vazio ('') no pessoas2 nao autentica (sem InvalidHash)" do
+    user = User.create!(nome_completo: "Hash Vazio", password: "123456", cpf: "11122233344")
+
+    stub_pessoas_user(PessoasUserStub.new("")) do
+      assert_not user.authenticate("123456")
+      assert_not user.valid_password?("123456")
+    end
+  end
+
+  test "B2: usuario com cpf e hash corrompido no pessoas2 nao autentica (sem InvalidHash)" do
+    user = User.create!(nome_completo: "Hash Corrompido", password: "123456", cpf: "11122233344")
+
+    stub_pessoas_user(PessoasUserStub.new("hash-sem-prefixo-bcrypt")) do
+      assert_not user.authenticate("123456")
+      assert_not user.valid_password?("123456")
+    end
+  end
+
+  test "B2: usuario com cpf e hash valido mas senha errada continua rejeitado (sem raise)" do
+    hash = BCrypt::Password.create("senha-real-do-pessoas")
+    user = User.create!(nome_completo: "Hash Valido", password: "123456", cpf: "11122233344")
+
+    stub_pessoas_user(PessoasUserStub.new(hash)) do
+      assert_not user.authenticate("senha-errada")
+      assert_not user.valid_password?("senha-errada")
+    end
+  end
+
   test "usuario sem cpf (admin local) continua autenticando via has_secure_password" do
     user = users(:one)
     assert_nil user.cpf
     assert user.authenticate("123456")
   end
 
-  # Task 21.7 (auditoria de cobertura): não existe mais "consistência
-  # eventual"/"reprocessamento de evento perdido" (isso era do modelo antigo
-  # de API+eventos assíncronos, abandonado na task 8.12 em favor de SELECT
-  # direto e somente-leitura no Postgres do pessoas2 — não há fila nem
-  # reprocessamento a testar). O equivalente real hoje é: o que acontece
-  # quando a leitura ao pessoas2 falha (conexão indisponível/timeout) no
-  # ponto crítico de autenticação. `Pessoas::User.buscar_por_cpf` não tem
-  # rescue em nenhuma camada (`app/models/user.rb#authenticate`, nem
-  # `Admin::SessionsController#create`) — este teste documenta o
-  # comportamento real atual (a exceção propaga, sem fallback silencioso
-  # pra senha local), não um mecanismo novo.
-  test "authenticate propaga erro quando a leitura ao pessoas2 falha (sem fallback silencioso)" do
+  # Bug 1 (bug_report_23_bug-finder, 2ª rodada): antes desta correção,
+  # `Pessoas::User.buscar_por_cpf` não tinha rescue em nenhuma camada
+  # (`app/models/user.rb#authenticate`/`valid_password?`, nem
+  # `Admin::SessionsController#create`) — uma falha de infraestrutura
+  # (conexão indisponível/timeout/schema) com o mirror do Pessoas2 propagava
+  # até o controller e virava HTTP 500 em qualquer login por CPF. O wrapper
+  # privado `remote_password_hash_by_cpf` agora envolve essa consulta em
+  # `rescue ActiveRecord::ActiveRecordError, PG::Error` e devolve `nil`
+  # (falha limpa, mesmo contrato de "hash ausente" do B2) — sem fallback
+  # silencioso pra senha local.
+  def stub_pessoas_buscar_por_cpf_raising(exception_class, message)
+    original = Pessoas::User.method(:buscar_por_cpf)
+    Pessoas::User.define_singleton_method(:buscar_por_cpf) { |*_args, **_kwargs| raise exception_class, message }
+    yield
+  ensure
+    Pessoas::User.define_singleton_method(:buscar_por_cpf, original)
+  end
+
+  test "Bug 1: authenticate nao propaga ConnectionNotEstablished quando o pessoas2 esta indisponivel" do
     user = User.create!(nome_completo: "Vindo do Pessoas", password: "senha-local-irrelevante", cpf: "11122233344")
 
-    original = Pessoas::User.method(:buscar_por_cpf)
-    Pessoas::User.define_singleton_method(:buscar_por_cpf) { |*_args, **_kwargs| raise ActiveRecord::ConnectionNotEstablished, "conexao indisponivel" }
-    begin
-      assert_raises(ActiveRecord::ConnectionNotEstablished) { user.authenticate("qualquer-senha") }
-    ensure
-      Pessoas::User.define_singleton_method(:buscar_por_cpf, original)
+    stub_pessoas_buscar_por_cpf_raising(ActiveRecord::ConnectionNotEstablished, "conexao indisponivel") do
+      assert_nothing_raised { assert_not user.authenticate("qualquer-senha") }
+    end
+  end
+
+  test "Bug 1: valid_password? nao propaga ConnectionNotEstablished quando o pessoas2 esta indisponivel" do
+    user = User.create!(nome_completo: "Vindo do Pessoas", password: "senha-local-irrelevante", cpf: "11122233344")
+
+    stub_pessoas_buscar_por_cpf_raising(ActiveRecord::ConnectionNotEstablished, "conexao indisponivel") do
+      assert_nothing_raised { assert_not user.valid_password?("qualquer-senha") }
+    end
+  end
+
+  test "Bug 1: authenticate nao propaga ActiveRecord::StatementInvalid (timeout/schema) do pessoas2" do
+    user = User.create!(nome_completo: "Vindo do Pessoas", password: "senha-local-irrelevante", cpf: "11122233344")
+
+    stub_pessoas_buscar_por_cpf_raising(ActiveRecord::StatementInvalid, "timeout") do
+      assert_nothing_raised { assert_not user.authenticate("qualquer-senha") }
     end
   end
 

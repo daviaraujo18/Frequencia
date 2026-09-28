@@ -50,7 +50,14 @@ class TimeRecordsControllerTest < ActionDispatch::IntegrationTest
   test "deve listar registros de ponto" do
     get time_records_path
     assert_response :success
-    assert_select ".app-content-header h1", "Registros de Ponto"
+
+    # Task 26.5 (Sprint 26) — composição do layout via shared/_title (porta do
+    # fonte basic8): com `content_for :page_title` a view fornece o título e o
+    # partial renderiza `yield :page_title` CRU dentro do .app-content-header
+    # (sem o <h1> do layout inline antigo). O texto da página continua presente.
+    assert_select ".app-content-header", text: /Registros de Ponto/
+    assert_select ".app-content-header ol.breadcrumb", 1
+    assert_select "title", "API Ponto TJPI | Registros de Ponto"
   end
 
   test "filtro de usuario busca pelo nome do pessoas2, nao pelo nome_completo local" do

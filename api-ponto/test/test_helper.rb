@@ -1,6 +1,9 @@
 ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
+# Helpers do espelho Pessoas (ADR-0006). Incluídos só nas classes que usam o
+# schema real, para não acoplar a suíte inteira ao banco espelho.
+require_relative "support/pessoas_espelho_helper"
 
 module ActiveSupport
   class TestCase

@@ -24,6 +24,20 @@ sync_digitais:
   class: "SyncDigitaisJob"
   queue: default
 
+# Cálculo de frequência — roda por último, depois que os dados do Pessoas
+# (nome, afastamentos) já foram atualizados pelos dois jobs anteriores
+# (importar_dados_pessoa 00:00, sincronizar_afastamentos 00:05), garantindo
+# que o pipeline (CalculoDiarioService/ConsolidacaoMensalService) trabalhe
+# sobre TimeRecords/dados já sincronizados. Sequencial, não paralelo —
+# mesma lógica das duas entradas acima. Migrado de config/recurring.yml
+# (Solid Queue) para cá na integração com a branch do Wilker (Sidekiq) —
+# o recurring.yml original foi arquivado em
+# docs/11-deploy/arquivo-recurring-yml-solid-queue.yml.
+calcular_frequencia:
+  cron: "10 0 * * *"
+  class: "CalcularFrequenciaJob"
+  queue: default
+
 <% else %>
 {}
 <% end %>

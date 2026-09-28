@@ -1,0 +1,39 @@
+<%# Task 23.8 — View de recuperação de senha (Devise::Users::PasswordsController#new,
+    GET /u/password/new). Mesmo card AdminLTE 4 do login, layout "login".
+    O form submete POST /u/password (create do Devise::PasswordsController),
+    que gera o token de reset e dispara o e-mail de instruções (envio real
+    depende de ActionMailer — não montado; ver nota em
+    app/controllers/users/passwords_controller.rb). %>
+<div class="card shadow-lg">
+  <div class="card-body p-5">
+    <%= render "users/shared/card_header",
+               app_title: t("devise.passwords.new.app_title"),
+               subtitle: t("devise.passwords.new.subtitle") %>
+
+    <% if flash[:alert] %>
+      <div class="alert alert-danger"><i class="fas fa-triangle-exclamation me-1"></i> <%= flash[:alert] %></div>
+    <% end %>
+    <% if flash[:notice] %>
+      <div class="alert alert-success"><i class="fas fa-circle-check me-1"></i> <%= flash[:notice] %></div>
+    <% end %>
+
+    <%= render "users/shared/error_messages", resource: resource %>
+
+    <%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { data: { turbo: false } }) do |f| %>
+      <div class="mb-3">
+        <%= f.label :email, class: "form-label" %>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+          <%= f.email_field :email, class: "form-control", autofocus: true, autocomplete: "email", placeholder: "seu.email@tjpi.jus.br" %>
+        </div>
+        <div class="form-text">
+          <%= t("devise.passwords.new.send_me_reset_password_instructions") %>
+        </div>
+      </div>
+      <%= f.submit t("devise.passwords.new.send_me_reset_password_instructions"), class: "btn btn-primary w-100" %>
+    <% end %>
+
+    <hr class="my-4">
+    <%= render "users/shared/links" %>
+  </div>
+</div>

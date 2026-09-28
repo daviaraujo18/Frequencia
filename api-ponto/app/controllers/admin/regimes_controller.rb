@@ -1,6 +1,13 @@
 module Admin
   class RegimesController < Admin::ApplicationController
-    before_action :set_regime, only: [:edit, :update, :destroy]
+    # Task 23.7 — CanCanCan: CRUD puro carregado e autorizado pelo
+    # `load_and_authorize_resource` (padrão estacoes/versoes/users).
+    # Somente admin tem `:manage` em Regime (ability.rb 23.5) — o loader
+    # autoriza `:new`/`:create`/`:edit`/`:update`/`:destroy` na instância
+    # e nega (CanCan::AccessDenied → redirect dashboard) para
+    # gestor/operador/autenticado-sem-role. A index é exceção: usa query
+    # customizada (filtros do legado) e autoriza `:read` explicitamente.
+    load_and_authorize_resource :regime, except: [ :index ]
 
     def index
       # Task 23.7 — CanCanCan: autorização explícita para listagem.
@@ -30,17 +37,11 @@ module Admin
     end
 
     def new
-      # Task 23.7 — CanCanCan: somente admin pode criar regimes.
-      authorize! :manage, Regime
-
-      @regime = Regime.new
+      # @regime já construído (Regime.new) e autorizado pelo loader.
     end
 
     def create
-      # Task 23.7 — CanCanCan: somente admin pode criar regimes.
-      authorize! :manage, Regime
-
-      @regime = Regime.new(regime_params)
+      # @regime já construído com os strong params e autorizado pelo loader.
       if @regime.save
         redirect_to regimes_path, notice: "Regime criado com sucesso"
       else
@@ -49,14 +50,11 @@ module Admin
     end
 
     def edit
-      # Task 23.7 — CanCanCan: somente admin pode editar regimes.
-      authorize! :manage, Regime
+      # @regime já carregado e autorizado pelo loader.
     end
 
     def update
-      # Task 23.7 — CanCanCan: somente admin pode atualizar regimes.
-      authorize! :manage, Regime
-
+      # @regime já carregado e autorizado pelo loader.
       if @regime.update(regime_params)
         redirect_to regimes_path, notice: "Regime atualizado com sucesso"
       else
@@ -65,9 +63,7 @@ module Admin
     end
 
     def destroy
-      # Task 23.7 — CanCanCan: somente admin pode excluir regimes.
-      authorize! :manage, Regime
-
+      # @regime já carregado e autorizado pelo loader.
       @regime.destroy
       redirect_to regimes_path, notice: "Regime excluído com sucesso"
     rescue ActiveRecord::DeleteRestrictionError
@@ -75,10 +71,6 @@ module Admin
     end
 
     private
-
-    def set_regime
-      @regime = Regime.find(params[:id])
-    end
 
     def regime_params
       params.require(:regime).permit(:nome, :modalidade, :resumo, :meta_semanal, categorias: [])

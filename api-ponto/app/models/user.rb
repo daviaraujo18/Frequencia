@@ -72,10 +72,10 @@ class User < ApplicationRecord
   def authenticate(unencrypted_password)
     return super if cpf.blank?
 
-    pessoas_user = Pessoas::User.buscar_por_cpf(cpf)
-    return false if pessoas_user.blank?
+    hash = remote_password_hash_by_cpf(cpf)
+    return false if hash.blank?
 
-    BCrypt::Password.new(pessoas_user.encrypted_password) == unencrypted_password ? self : false
+    hash == unencrypted_password ? self : false
   end
 
   # Sprint 23, task 23.3 — coexistência has_secure_password × Devise
@@ -147,10 +147,10 @@ class User < ApplicationRecord
   # mantendo a validação local (encrypted_password) para os demais.
   def valid_password?(password)
     if cpf.present?
-      pessoas_user = Pessoas::User.buscar_por_cpf(cpf)
-      return false if pessoas_user.blank?
+      hash = remote_password_hash_by_cpf(cpf)
+      return false if hash.blank?
 
-      BCrypt::Password.new(pessoas_user.encrypted_password) == password
+      hash == password
     else
       super
     end
@@ -168,6 +168,35 @@ class User < ApplicationRecord
   end
 
   private
+
+  # Bug 1 (bug_report_23_bug-finder, 2ª rodada): envolve a CONSULTA ao
+  # mirror do Pessoas2 (`Pessoas::User.buscar_por_cpf`) em rescue — uma
+  # falha de infraestrutura/conexão com o banco espelho (indisponibilidade,
+  # timeout, schema) não pode derrubar o login com 500. Centralizado aqui
+  # (chamado por `authenticate` e `valid_password?`) para não duplicar o
+  # `rescue` nos dois pontos de uso. Falha de conexão/infra → `nil` (mesmo
+  # contrato de "hash ausente" já tratado por `remote_password_hash`).
+  def remote_password_hash_by_cpf(cpf)
+    remote_password_hash(Pessoas::User.buscar_por_cpf(cpf))
+  rescue ActiveRecord::ActiveRecordError, PG::Error => e
+    Rails.logger.error("[User#remote_password_hash_by_cpf] falha ao consultar Pessoas2 (cpf=#{cpf}): #{e.class} - #{e.message}")
+    nil
+  end
+
+  # B2 (bug_report_23_cs): devolve o `BCrypt::Password` do Pessoas2 para
+  # comparação, ou `nil` quando o hash está ausente (contas pré-Devise com
+  # `encrypted_password` nil/`""`) ou corrompido/inválido
+  # (`BCrypt::Errors::InvalidHash`). Nesses casos o login falha limpo
+  # (`false` em `authenticate`/`valid_password?`), sem exceção/500 — o
+  # guard `blank?` cobre nil/vazio e o `rescue` cobre hash presente mas
+  # inválido. Preserva o fluxo local (`super`) e o link Pessoas2 (CPF).
+  def remote_password_hash(pessoas_user)
+    return nil if pessoas_user.blank? || pessoas_user.encrypted_password.blank?
+
+    BCrypt::Password.new(pessoas_user.encrypted_password)
+  rescue BCrypt::Errors::InvalidHash
+    nil
+  end
 
   def generate_username
     return if username.present?

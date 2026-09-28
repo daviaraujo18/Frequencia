@@ -94,6 +94,24 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  # Bug 1 (bug_report_23_bug-finder, 2ª rodada) — mesmo padrão do fluxo
+  # Devise: falha de conexão/infra com o mirror do Pessoas2 no login legado
+  # (`/login`) não pode gerar 500. `User#authenticate` roteia pelo mesmo
+  # wrapper `remote_password_hash_by_cpf` usado por `valid_password?`.
+  test "deve rejeitar login legado com falha limpa quando o pessoas2 esta indisponivel" do
+    user_pessoas = User.create!(nome_completo: "Legado Pessoas2 Indisponivel", password: "senha-local-irrelevante", cpf: "11122233344")
+
+    original = Pessoas::User.method(:buscar_por_cpf)
+    Pessoas::User.define_singleton_method(:buscar_por_cpf) { |*_args, **_kwargs| raise ActiveRecord::ConnectionNotEstablished, "conexao indisponivel" }
+    begin
+      post login_path, params: { username: user_pessoas.username, password: "123456" }
+      assert_response :unprocessable_entity
+      assert_select ".alert-danger", "Usuário ou senha inválidos"
+    ensure
+      Pessoas::User.define_singleton_method(:buscar_por_cpf, original)
+    end
+  end
+
   # Task 23.3 (verificação): a regra de usuário inativo (status != 1) vive NO
   # CONTROLLER (`user.status == 1` em #create), não no model — permaneceu
   # intacta durante a transição Devise. Teste documenta o contrato atual.

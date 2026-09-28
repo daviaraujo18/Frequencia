@@ -11,22 +11,22 @@
 <% if current_user&.admin? %>
   <li class="nav-item">
     <a href="#" class="nav-link">
-      <i class="nav-icon bi bi-gear"></i>
+      <i class="nav-icon fas fa-gear"></i>
       <p>
         Configurações do Sistema
-        <i class="nav-arrow bi bi-chevron-right"></i>
+        <i class="nav-arrow fas fa-chevron-right"></i>
       </p>
     </a>
     <ul class="nav nav-treeview">
       <li class="nav-item">
         <%= link_to "/exception-track", class: "nav-link#{" active" if request.path.start_with?("/exception-track") }" do %>
-          <i class="nav-icon bi bi-bug"></i>
+          <i class="nav-icon fas fa-bug"></i>
           <p>Exception Track</p>
         <% end %>
       </li>
       <li class="nav-item">
         <%= link_to "/sidekiq", class: "nav-link#{" active" if request.path.start_with?("/sidekiq") }" do %>
-          <i class="nav-icon bi bi-diagram-3"></i>
+          <i class="nav-icon fas fa-diagram-project"></i>
           <p>Sidekiq</p>
         <% end %>
       </li>

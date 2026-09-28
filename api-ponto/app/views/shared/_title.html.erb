@@ -1,0 +1,113 @@
+<%# Task 26.4 (Sprint 26) — partial `shared/_title` (breadcrumbs + badges de
+    roles + box ícone 50×50 + auto-"Novo").
+    Porta fiel de `basic8/app/views/shared/_title.html.erb` (87 linhas) adaptada
+    ao Frequencia. Segue o padrão de isolamento das tasks 26.1/26.2/26.3: o
+    layout `admin.html.erb` ainda NÃO compõe os partials `shared/*` (composição
+    é a task 26.5 — o título fica disponível para ela). Dependências já
+    portadas: helpers `resource_icon`/`resource_human_name`/`set_configurations`
+    (26.1), convenção de badges `text-bg-*` (26.3), gem `breadcrumbs_on_rails`
+    com `add_breadcrumb "Início", :root_path` (26.6), `eval_with_rescue`
+    (zutils/ApplicationHelper) e `shared/btn_action_links` (zutils).
+
+    Adaptações conscientes da porta (registradas para o Code Reviewer):
+      1. Badges de roles com a MESMA convenção da task 26.3: `text-bg-primary`
+         (Bootstrap 5.3 — adaptação do `bg-primary` do fonte basic8; uma cor só
+         para todas as roles, decisão registrada na 26.3 e REUTILIZADA aqui,
+         sem duplicação).
+      2. Chaves I18n `helpers.titles` portadas de `basic8/config/locales/pt-BR.yml`
+         (bloco parcial — só o que o _title consome: `t("helpers.titles.#{action_name}")`
+         no h1 e `t("helpers.titles.new")` no botão Novo; `helpers.select/submit/links`
+         ficam para as tasks que os consumirem — zutils flash, scaffolds).
+      3. `@hide_page_title` preservado do fonte (não setado no Frequencia hoje —
+         usado por telas que optarem por ocultar o bloco de título).
+      4. Auto-"Novo" SEM checagem de `can?` (fiel ao fonte): o botão aparece
+         quando a rota `new_#{controller_name}_path` existe (o CanCanCan barra o
+         acesso na action — comportamento inalterado, RNF06).
+    %>
+<% return if ['sessions', 'dashboard'].include?(controller_name) %>
+
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="mb-1 d-flex justify-content-between flex-wrap align-items-center small">
+      <ol class="breadcrumb mb-0 text-muted bg-transparent">
+        <% if breadcrumbs.any? %>
+          <% breadcrumbs.each do |crumb| %>
+            <li class="breadcrumb-item <%= 'active fw-bold' if crumb == breadcrumbs.last %>">
+              <%= link_to crumb.path.is_a?(Symbol) ? send(crumb.path) : crumb.path, class: "#{'fw-bold' if crumb == breadcrumbs.first}" do %>
+                <% if crumb == breadcrumbs.first %>
+                  <%= @app_name %>
+                <% else %>
+                  <%= crumb.name %>
+                <% end %>
+              <% end %>
+            </li>
+          <% end %>
+        <% else %>
+          <li class="breadcrumb-item">
+            <%= link_to root_path, class: 'fw-bold' do %>
+              <%= @app_name %>
+            <% end %>
+          </li>
+          <li class="breadcrumb-item active">
+            <%= resource_human_name(controller_name, action_name) %>
+          </li>
+        <% end %>
+      </ol>
+
+      <div class="d-flex align-items-center gap-1">
+        <% (current_user.try(:roles) || []).each do |role| %>
+          <span class="badge text-bg-primary">
+            <%= role.name %>
+          </span>
+        <% end %>
+
+        <%= link_to root_path, class: 'bg-light fw-bold rounded px-1' do %>
+          <i class="fa fa-home"></i>
+        <% end %>
+      </div>
+    </div>
+
+    <% unless @hide_page_title %>
+      <% if content_for?(:page_title) %>
+        <%= yield :page_title %>
+      <% else %>
+        <div class="d-flex flex-wrap justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <div class="text-primary bg-primary bg-opacity-10 rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+              <i class="<%= resource_icon(controller_name) %> fs-3"></i>
+            </div>
+
+            <h1 class="m-0 h4">
+              <%= t("helpers.titles.#{action_name}", model: '') unless action_name == 'index' %>
+              <%= resource_human_name(controller_name, action_name) %>
+            </h1>
+          </div>
+
+          <div>
+            <% if content_for?(:page_actions) %>
+              <%= yield :page_actions %>
+            <% elsif action_name == 'index' %>
+              <% new_path = eval_with_rescue("new_#{controller_name.singularize}_path") %>
+              <% if new_path.present? && new_path != "error" %>
+                <%= link_to new_path, class: "btn btn-primary btn-sm" do %>
+                  <i class="fa fa-plus"></i>
+                  <span class="d-none d-sm-inline-block">
+                    <%= t("helpers.titles.new") %>
+                    <%= resource_human_name(controller_name, action_name).singularize %>
+                  </span>
+                <% end %>
+              <% end %>
+            <% elsif action_name == 'show' %>
+              <%= render "shared/btn_action_links",
+                object: instance_variable_get("@#{controller_name.singularize}"),
+                labels: false,
+                size: 'sm',
+                hide: ['show'] do %>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

@@ -5,6 +5,21 @@ class ApplicationController < ActionController::API
   # Habilita helpers (helper_method) para expor métodos do controller nas views
   include ActionController::Helpers
 
+  # NOTE (Task 26.4): em app API-only (ActionController::API), o include
+  # automático de `ApplicationHelper` nas views do Rails NÃO acontece. O hook
+  # `AbstractController::Helpers::ClassMethods#inherited` (que roda
+  # `default_helper_module!` → `helper "Application"`) só dispara na HERANÇA
+  # de uma classe que já inclui `ActionController::Helpers` — como esta base
+  # herda de `API`, o `ApplicationController` em si nunca recebe o default, e
+  # os subclasses resolvem `Admin::ApplicationHelper`/`Admin::XxxHelper`
+  # (NameError → skip). Mesma doença dos includes explícitos da 26.6
+  # (BreadcrumbsOnRails) e R.2 (RequestForgeryProtection): hooks de Base não
+  # alcançam API. Incluímos explicitamente para as views terem
+  # `resource_icon`/`resource_human_name`/`menu_activated?`/`eval_with_rescue`
+  # (ApplicationHelper — tasks 24.4/26.1) — exposição que o basic8 (Base)
+  # tem por padrão e da qual o partial `shared/_title` (26.4) depende.
+  helper ApplicationHelper
+
   # Habilita renderização de HTML com layouts e respond_to
   include ActionController::MimeResponds
 
@@ -29,6 +44,16 @@ class ApplicationController < ActionController::API
 
   # Importmap helper (não registrado em API mode via hook action_controller_base)
   helper Importmap::ImportmapTagsHelper
+
+  # NOTE (Task 26.6): o railtie da `breadcrumbs_on_rails` (4.1.0) injeta o
+  # concern apenas em `ActionController::Base` — em app API-only (Rails 8)
+  # o hook não alcança `ActionController::API`. Incluímos explicitamente o
+  # concern (mesmo padrão dos includes acima: `Helpers`, `MimeResponds`,
+  # `Flash`), expondo `add_breadcrumb` (classe) e `breadcrumbs` (helper) a
+  # todos os controllers. A cadeia só é populada onde `add_breadcrumb` é
+  # chamado — no `Admin::ApplicationController` (26.6) — então o contexto
+  # API/presença mantém breadcrumbs vazio (sem impacto observável; RNF01).
+  include BreadcrumbsOnRails::ActionController
 
   # NOTE (R.2): `ActionController::API` usa `BasicImplicitRender`, que
   # responde `head :no_content` (204) quando a action não chama `render`

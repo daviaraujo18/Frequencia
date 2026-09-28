@@ -1,0 +1,55 @@
+# ARQUIVADO — não é config ativa. Removido de api-ponto/config/recurring.yml
+# em 2026-09-28 na integração da branch do Wilker (integracao/wilker).
+#
+# Motivo: o projeto migrou de Solid Queue para Sidekiq (com Redis). A agenda
+# recorrente agora vive em api-ponto/config/schedule.yml (sidekiq-cron). Com o
+# adapter `:sidekiq` (config/environments/{development,production}.rb), este
+# arquivo estava morto — nenhum código o lia (a gem solid_queue saiu do Gemfile).
+#
+# As 3 entradas de job abaixo foram migradas para schedule.yml, preservando a
+# ordem sequencial original (evita concorrência entre os três):
+#   importar_dados_pessoa      at midnight  -> cron "0 0 * * *"
+#   sincronizar_afastamentos   at 00:05     -> cron "5 0 * * *"
+#   calcular_frequencia        at 00:10     -> cron "10 0 * * *"
+# A entrada clear_solid_queue_finished_jobs foi descartada (era manutenção
+# interna do Solid Queue, sem equivalente no Sidekiq).
+#
+# Conteúdo original abaixo, preservado para referência histórica.
+
+# examples:
+#   periodic_cleanup:
+#     class: CleanSoftDeletedRecordsJob
+#     queue: background
+#     args: [ 1000, { batch_size: 500 } ]
+#     schedule: every hour
+#   periodic_cleanup_with_command:
+#     command: "SoftDeletedRecord.due.delete_all"
+#     priority: 2
+#     schedule: at 5am every day
+
+production:
+  clear_solid_queue_finished_jobs:
+    command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
+    schedule: every hour at minute 12
+  importar_dados_pessoa:
+    class: ImportarDadosPessoaJob
+    queue: default
+    schedule: at midnight every day
+  sincronizar_afastamentos:
+    class: SincronizarAfastamentosJob
+    queue: default
+    # 5 minutos depois de importar_dados_pessoa — evita concorrência entre
+    # os dois jobs (advisory locks diferentes, mas ambos iterando sobre
+    # User.where.not(cpf: nil); rodar em sequência, não em paralelo, evita
+    # sobrecarregar a Sticapi com duas varreduras simultâneas).
+    schedule: at 00:05 every day
+  calcular_frequencia:
+    class: CalcularFrequenciaJob
+    queue: default
+    # 5 minutos depois de sincronizar_afastamentos (00:05) — roda por
+    # último, depois que os dados do Pessoas (nome, afastamentos) já
+    # foram atualizados pelos dois jobs anteriores, garantindo que o
+    # pipeline de cálculo (CalculoDiarioService/ConsolidacaoMensalService)
+    # trabalhe sobre TimeRecords/dados já sincronizados. Sequencial, não
+    # paralelo, mesma lógica dos outros dois.
+    schedule: at 00:10 every day
