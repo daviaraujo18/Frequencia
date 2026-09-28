@@ -1,0 +1,43 @@
+# config/schedule.yml
+#
+# Carregado automaticamente pelo `sidekiq-cron` no boot do worker Sidekiq
+# (via require-time hook). Os jobs agendados só são registrados em produção
+# para não disparar sozinhos em dev/test. Padrão do pessoas2.
+<% if Rails.env.production? %>
+
+# Espelha os dados do sistema Pessoas (nome completo) nos Users com CPF
+importar_dados_pessoa:
+  cron: "0 0 * * *"
+  class: "ImportarDadosPessoaJob"
+  queue: default
+
+# Sincroniza afastamentos (Direitos/Deveres) da Sticapi
+sincronizar_afastamentos:
+  cron: "5 0 * * *"
+  class: "SincronizarAfastamentosJob"
+  queue: default
+
+# Sincroniza as digitais (biometria) da Intranet para a api-ponto.
+# Modelo: sync_predios_job do Pessoas2 (docs/JOB-sync-predios.md).
+sync_digitais:
+  cron: "0 3 * * *"
+  class: "SyncDigitaisJob"
+  queue: default
+
+# Cálculo de frequência — roda por último, depois que os dados do Pessoas
+# (nome, afastamentos) já foram atualizados pelos dois jobs anteriores
+# (importar_dados_pessoa 00:00, sincronizar_afastamentos 00:05), garantindo
+# que o pipeline (CalculoDiarioService/ConsolidacaoMensalService) trabalhe
+# sobre TimeRecords/dados já sincronizados. Sequencial, não paralelo —
+# mesma lógica das duas entradas acima. Migrado de config/recurring.yml
+# (Solid Queue) para cá na integração com a branch do Wilker (Sidekiq) —
+# o recurring.yml original foi arquivado em
+# docs/11-deploy/arquivo-recurring-yml-solid-queue.yml.
+calcular_frequencia:
+  cron: "10 0 * * *"
+  class: "CalcularFrequenciaJob"
+  queue: default
+
+<% else %>
+{}
+<% end %>

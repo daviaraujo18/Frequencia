@@ -1,6 +1,19 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
+  # Configurações do Sistema — painéis web de monitoramento (Exception Track
+  # e Sidekiq) montados como Rack apps isolados e protegidos pelo constraint
+  # de administrador (sessão `_api_ponto_session` + `User#admin?`). Ver
+  # PRD-CONFIGURACOES-SISTEMA.md e lib/admin_constraint.rb.
+  #
+  # NOTE (Sidekiq): o projeto migrou de Solid Queue para Sidekiq (com Redis).
+  # O Sidekiq::Web monitora os jobs reais; o agendamento recorrente usa
+  # `sidekiq-cron` (config/schedule.yml). Ver PRD-CONFIGURACOES-SISTEMA.md.
+  mount ExceptionTrack::Engine => "/exception-track", constraints: AdminConstraint.new
+
+  require "sidekiq/web"
+  mount Sidekiq::Web => "/sidekiq", constraints: AdminConstraint.new
+
   # Task 23.6 — Devise routes para o model User.
   # `path: "u"` coloca as rotas Devise em /u/sign_in, /u/sign_out etc.
   # (padrão do basic8). skip: registrations — cadastro vem do Pessoas2, não

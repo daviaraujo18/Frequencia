@@ -34,3 +34,4 @@ api-ponto/.env.development
 
 # OS
 Thumbs.db
+api-ponto/.bundle/

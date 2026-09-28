@@ -40,12 +40,16 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # Replace the default in-process memory cache store with a durable alternative.
-  config.cache_store = :solid_cache_store
+  # Cache em memória por processo. O Solid Cache (herança do scaffold Rails 8)
+  # foi removido na integração com a branch do Wilker: nenhum código usa
+  # Rails.cache hoje. Se surgir necessidade de cache compartilhado entre
+  # processos, usar :redis_cache_store (Redis já existe por causa do Sidekiq).
+  config.cache_store = :memory_store
 
   # Replace the default in-process and non-durable queuing backend for Active Job.
-  config.active_job.queue_adapter = :solid_queue
-  config.solid_queue.connects_to = { database: { writing: :queue } }
+  # A fila é processada pelo Sidekiq (com Redis). Ver config/schedule.yml e
+  # config/initializers/sidekiq.rb.
+  config.active_job.queue_adapter = :sidekiq
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).

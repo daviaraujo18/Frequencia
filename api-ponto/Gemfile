@@ -4,6 +4,12 @@ source "https://rubygems.org"
 gem "rails", "~> 8.0.4"
 # Use postgresql as the database for Active Record
 gem "pg", "~> 1.1"
+
+# Conexão (somente leitura) com o MySQL legado da Intranet TJPI — usada apenas
+# pelos jobs de sincronização (Intranet::SyncDigitaisService). Mesma versão e
+# `require: false` do Pessoas2 (não sobrecarrega o boot; carregada sob demanda
+# no serviço). Ver docs/JOB-sync-predios.md e PRD-MIGRACAO-DIGITAIS.md.
+gem "mysql2", "~> 0.5.7", require: false
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", ">= 5.0"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
@@ -27,10 +33,6 @@ gem "propshaft"
 
 # JavaScript with import maps (CDN-based, no Node.js)
 gem "importmap-rails"
-
-# Use the database-backed adapters for Rails.cache and Active Job
-gem "solid_cache"
-gem "solid_queue"
 
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
@@ -69,6 +71,19 @@ gem "ransack", "~> 4.4"
 # (sem restrição de versão, fiel ao fonte). Compatibilidade Rails 8/Ruby 3.4
 # verificada no boot (risco 🟡 do plano da Iteration 26).
 gem "breadcrumbs_on_rails"
+
+# Monitoramento de erros da aplicação (Exception Track) — painel web para
+# visualizar exceções registradas no banco (Rails/ActiveRecord; sem mongo).
+gem "exception-track"
+
+# Background jobs + monitoramento (Configurações do Sistema).
+#
+# NOTE: o projeto migrou de Solid Queue para Sidekiq (sem fila no banco, com
+# Redis) por decisão registrada no PRD-CONFIGURACOES-SISTEMA.md. O adapter de
+# Active Job é `:sidekiq` e o agendamento recorrente é feito com `sidekiq-cron`
+# (config/schedule.yml), no mesmo padrão do pessoas2.
+gem "sidekiq"
+gem "sidekiq-cron"
 
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 # gem "rack-cors"

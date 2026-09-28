@@ -1,3 +1,21 @@
+# ARQUIVADO — não é config ativa. Removido de api-ponto/config/recurring.yml
+# em 2026-09-28 na integração da branch do Wilker (integracao/wilker).
+#
+# Motivo: o projeto migrou de Solid Queue para Sidekiq (com Redis). A agenda
+# recorrente agora vive em api-ponto/config/schedule.yml (sidekiq-cron). Com o
+# adapter `:sidekiq` (config/environments/{development,production}.rb), este
+# arquivo estava morto — nenhum código o lia (a gem solid_queue saiu do Gemfile).
+#
+# As 3 entradas de job abaixo foram migradas para schedule.yml, preservando a
+# ordem sequencial original (evita concorrência entre os três):
+#   importar_dados_pessoa      at midnight  -> cron "0 0 * * *"
+#   sincronizar_afastamentos   at 00:05     -> cron "5 0 * * *"
+#   calcular_frequencia        at 00:10     -> cron "10 0 * * *"
+# A entrada clear_solid_queue_finished_jobs foi descartada (era manutenção
+# interna do Solid Queue, sem equivalente no Sidekiq).
+#
+# Conteúdo original abaixo, preservado para referência histórica.
+
 # examples:
 #   periodic_cleanup:
 #     class: CleanSoftDeletedRecordsJob

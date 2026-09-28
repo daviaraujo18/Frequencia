@@ -108,6 +108,12 @@
             <% end %>
           <% end %>
         <% end %>
+
+        <%# Item "Configurações do Sistema" (PRD-CONFIGURACOES-SISTEMA.md) —
+            integrado da branch do Wilker. Painéis de monitoramento (Exception
+            Track e Sidekiq::Web) montados como Rack apps isolados e protegidos
+            pelo AdminConstraint em config/routes.rb. %>
+        <%= render "layouts/sistema/configuracoes_nav" %>
       </ul>
     </nav>
   </div>

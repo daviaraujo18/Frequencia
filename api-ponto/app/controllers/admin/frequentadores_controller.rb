@@ -13,6 +13,12 @@ module Admin
     # continuam vindo do `User` local (não existem no pessoas2), ligado via
     # `cpf`.
     def index
+      # Resumo do espelhamento de digitais da Intranet (SyncDigitaisService).
+      # Opção A (só exibição): contamos os usuários com digital preenchida para
+      # mostrar no topo da listagem. Não há campo de origem no schema — a coluna
+      # `users.digitais_hash` é populada exclusivamente pelo job de sync.
+      @total_com_digitais = User.com_digitais.count
+
       # Task 23.7 — CanCanCan: autorização explícita para leitura.
       # Admin/gestor/operador podem visualizar.
       authorize! :read, :all
