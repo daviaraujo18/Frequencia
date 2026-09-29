@@ -16,7 +16,11 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: .ruby-version
+          # Fixado na versão REAL medida (ruby -v = 3.3.8; Gemfile.lock rails
+          # 8.0.5). `.ruby-version`/`.tool-versions` dizem `ruby-4.0.0`, que NÃO
+          # existe — o job quebrava antes de rodar. Mesmo pin do `.gitlab-ci.yml`
+          # (paridade dev/prod). Ver docs/progress/iteration_chore_gitlab-ci.md.
+          ruby-version: '3.3.8'
           bundler-cache: true
 
       - name: Scan for common Rails security vulnerabilities using static analysis
@@ -31,7 +35,11 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: .ruby-version
+          # Fixado na versão REAL medida (ruby -v = 3.3.8; Gemfile.lock rails
+          # 8.0.5). `.ruby-version`/`.tool-versions` dizem `ruby-4.0.0`, que NÃO
+          # existe — o job quebrava antes de rodar. Mesmo pin do `.gitlab-ci.yml`
+          # (paridade dev/prod). Ver docs/progress/iteration_chore_gitlab-ci.md.
+          ruby-version: '3.3.8'
           bundler-cache: true
 
       - name: Lint code for consistent style
@@ -66,7 +74,11 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: .ruby-version
+          # Fixado na versão REAL medida (ruby -v = 3.3.8; Gemfile.lock rails
+          # 8.0.5). `.ruby-version`/`.tool-versions` dizem `ruby-4.0.0`, que NÃO
+          # existe — o job quebrava antes de rodar. Mesmo pin do `.gitlab-ci.yml`
+          # (paridade dev/prod). Ver docs/progress/iteration_chore_gitlab-ci.md.
+          ruby-version: '3.3.8'
           bundler-cache: true
 
       # ADR-0006 / débito B1 do review final da 29.2: a suíte tem testes que
