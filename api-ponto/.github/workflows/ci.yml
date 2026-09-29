@@ -69,9 +69,64 @@ jobs:
           ruby-version: .ruby-version
           bundler-cache: true
 
+      # ADR-0006 / débito B1 do review final da 29.2: a suíte tem testes que
+      # leem o espelho `Pessoas::*`, que vive num banco próprio
+      # (`frequencia_pessoas_espelho_test`) com schema copiado do Pessoas2.
+      # `db:test:prepare` NÃO o cria (a conexão tem `database_tasks: false`),
+      # então sem este passo os testes do espelho quebravam no CI. Passos
+      # idênticos aos documentados no README (seção "How to run the test suite").
+      #
+      # SEM `|| true`: o CI tem de FALHAR se o banco não puder ser criado. A
+      # primeira versão tolerava a falha, o que — somado ao
+      # `skip_sem_espelho!` dos testes — deixava a suíte VERDE com 19 skips,
+      # isto é, sem exercitar o espelho nenhuma vez. Seria um gate que passa
+      # sem executar (o mesmo anti-padrão do `bin/brakeman` com
+      # `--ensure-latest`, ver lessons.md). O `skip` é rede de segurança para
+      # a máquina do dev; no CI o setup é obrigatório.
+      - name: Create the Pessoas mirror test database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done
+          # A role pode já existir (idempotência) — só esse caso é tolerado.
+          #
+          # A role PRECISA de senha: a imagem oficial do Postgres aplica
+          # `host all all all scram-sha-256` (as linhas `trust` de loopback do
+          # initdb são substituídas), e as conexões do runner chegam pelo
+          # bridge como 172.17.0.1 — NÃO caem na regra `trust` do loopback.
+          # Sem senha aqui (`rolpassword = NULL`) e com `PESSOAS_DB_PASSWORD: ""`
+          # o `test:pessoas_schema:load` abortava com
+          # `fe_sendauth: no password supplied`. A senha é local ao runner
+          # efêmero; a mesma é passada em `PESSOAS_DB_PASSWORD` no passo abaixo.
+          psql -h localhost -U postgres -d postgres -c "CREATE ROLE \"app.frequencia\" LOGIN PASSWORD 'app'" 2>/dev/null || true
+          createdb -h localhost -U postgres -O "app.frequencia" frequencia_pessoas_espelho_test 2>/dev/null || true
+          # Prova de que o banco EXISTE antes de seguir: sem esta checagem, uma
+          # falha do `createdb` só apareceria como skips lá na frente.
+          psql -h localhost -U postgres -d postgres -tAc \
+            "SELECT 1 FROM pg_database WHERE datname = 'frequencia_pessoas_espelho_test'" | grep -q 1
+
       - name: Run tests
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
+          # As credenciais `pessoas_db` (host/user/password do banco espelho)
+          # vêm de Rails encrypted credentials no ambiente real. Em CI limpo
+          # elas podem não existir, e o `database.yml` do bloco `pessoas` fica
+          # sem host/port — por isso as variáveis abaixo sobrepõem o essencial
+          # para o banco do espelho em localhost (o `database.yml` usa
+          # `ENV.fetch(..., credentials)`). Mesmo assim, o
+          # `test/support/pessoas_espelho_helper.rb` (`skip_sem_espelho!`) é a
+          # rede de segurança para quem roda a suíte SEM o setup.
+          PESSOAS_DB_HOST: localhost
+          PESSOAS_DB_PORT: 5432
+          PESSOAS_DB_USERNAME: app.frequencia
+          # Senha da role criada no passo "Create the Pessoas mirror test
+          # database" acima. Sem ela, a auth `scram-sha-256` da imagem oficial
+          # rejeita a conexão vinda do bridge (ver comentário daquele passo).
+          PESSOAS_DB_PASSWORD: app
+          PESSOAS_DB_DATABASE: frequencia_pessoas_espelho_test
           # REDIS_URL: redis://localhost:6379/0
-        run: bin/rails db:test:prepare test
+        run: |
+          bin/rails db:test:prepare
+          bin/rails test:pessoas_schema:load
+          bin/rails test

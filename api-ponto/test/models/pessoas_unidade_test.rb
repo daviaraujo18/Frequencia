@@ -6,6 +6,10 @@ require "test_helper"
 class PessoasUnidadeTest < ActiveSupport::TestCase
   include PessoasEspelhoHelper
 
+  # Débito B1: em CI/máquina limpos sem o schema do espelho, PULA em vez de
+  # explodir com PG::UndefinedTable (ver `skip_sem_espelho!`).
+  setup { skip_sem_espelho! }
+
   test "exposes the three optional gestor associations with explicit keys" do
     {
       gestor: "gestor_id",
