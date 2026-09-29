@@ -2,6 +2,37 @@
 require "rubygems"
 require "bundler/setup"
 
-ARGV.unshift("--ensure-latest")
+# `--ensure-latest` REMOVIDO (chore de pipeline, triagem do CTO 2026-09-25 /
+# lição registrada em docs/governance/lessons.md).
+#
+# O `--ensure-latest` faz o Brakeman SAIR 0 sem escanear quando a gem instalada
+# está abaixo da última publicada — que é o caso permanente neste projeto (o
+# lock fixa 8.0.5 e a publicada é 8.0.6). Efeito: o gate de segurança do CI
+# parecia verde sem nunca ter rodado ("exit 0 sozinho não prova execução").
+#
+# A versão é fixada pelo Gemfile.lock (determinística); avisar sobre versão
+# nova é trabalho de `bundle outdated`, não de um gate. Sem o flag, o scan roda
+# de verdade e o alerta de versão, se houver, aparece como aviso no relatório —
+# sem alterar o exit code.
+#
+# Flags anti-drift (ruling do CTO — M2, 2026-09-29): tornam o ledger
+# `config/brakeman.ignore` um REGISTRO DE ACEITAÇÃO auditável, não um silenciador.
+#   --ensure-ignore-notes              → exit 8 se uma entrada aceita não tiver
+#                                        `note` (a justificativa é load-bearing).
+#   --ensure-no-obsolete-ignore-entries → exit 9 se uma entrada do ledger não
+#                                        casar mais com nenhum warning (ledger
+#                                        nunca é re-congelado; rearmar o fingerprint
+#                                        é o contrato).
+# Injetadas no ARGV para que qualquer invocação (`bin/brakeman --no-pager`) já as
+# carregue. Não usamos `--no-exit-on-warn` nem `-x EOLRails` (o `Medium`
+# `Unmaintained Dependency`/EOLRails é time bomb, tratado estruturalmente).
+ANTI_DRIFT_FLAGS = %w[
+  --ensure-ignore-notes
+  --ensure-no-obsolete-ignore-entries
+].freeze
+
+ANTI_DRIFT_FLAGS.each do |flag|
+  ARGV << flag unless ARGV.include?(flag)
+end
 
 load Gem.bin_path("brakeman", "brakeman")
