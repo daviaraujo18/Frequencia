@@ -85,3 +85,61 @@
 **Problema:** Os `add_foreign_key` copiados literalmente falharam com `column "tipos_vinculo_id" referenced in foreign key constraint does not exist`. O `schema.rb` do Pessoas2 omite `column:` quando a coluna segue as inflexões **dele** (`tipos_vinculo` → `tipo_vinculo_id`); o Frequencia não tem essas inflexões e infere outro nome. Além disso, sem `ActiveRecord::Schema[6.0]` o Rails 8 cria `datetime` com precisão 6, diferente do banco real.
 **Solução:** `column:` explícito em todas as FKs copiadas e `ActiveRecord::Schema[6.0].define`. O teste de divergência compara os blocos `create_table` byte a byte e as FKs por tabela e coluna.
 **Lição:** Schema copiado entre apps com Rails e inflexões diferentes não é portável literalmente: fixe a versão de compatibilidade do `Schema[...]` e torne explícito tudo o que depende de inflexão. Obs.: o projeto usa Minitest 6, sem `minitest/mock` (`Object#stub` não existe); prefira dados reais ou injeção de dependência.
+
+---
+
+### 2026-09-29 — `bin/rails runner` em `RAILS_ENV=test` deixa lixo no banco de teste e falsifica o mutation testing
+
+**Contexto:** Tarefa 29.2 (Sprint 29) — verificação manual independente do Bug 12 (`valid?` do model × `insert_all!` no banco) via `bin/rails runner` em `RAILS_ENV=test`.
+**Problema:** O runner **não** roda dentro da transação do teste, então os registros criados persistem em `api_ponto_test`. `gestores_individuais` e `gestor_individual_gerenciados` **não têm arquivo de fixture**, logo `fixtures :all` (que faz DELETE + insert apenas das tabelas com fixture) não as limpa. O resultado foi 1 gestor e 2 vínculos órfãos apontando para `user_id=1` (os `users` de fixture são recriados com outros ids). Pior: na rodada de mutation testing seguinte, **todos** os testes falharam com `RuntimeError: Foreign key violations found in your fixture data` — 17 e 21 **erros** com 0 assertions, que pareciam mutações mortas mas eram só o banco sujo. Um mutation testing que "mata" a mutação por erro de carga não prova nada.
+**Solução:** Limpar as tabelas sem fixture (`DELETE FROM` direto) antes de rodar a suíte; e, ao fazer mutation testing, **provar o baseline verde imediatamente antes de mutar** — uma mutação "pega" aparece como **1 falha limpa** (com assertions contadas), não como erro em massa com 0 assertions. Preferir `bin/rails test` com um teste dedicado (dentro da transação) a `bin/rails runner` para verificação de comportamento; se usar o runner, limpar depois.
+**Lição:** Tabela sem arquivo de fixture não é limpa por `fixtures :all` — é estado persistente no banco de teste. Antes de confiar num resultado negativo de mutation testing, confira que o baseline estava verde e que a falha é `Failure` (com assertions), não `Error` de carga: sujeira de banco imita mutação morta.
+
+---
+
+### 2026-09-29 — `uniqueness` com `conditions:` valida o registro NOVO por inteiro: não espelha índice UNIQUE parcial
+
+**Contexto:** Tarefa 29.2 (Sprint 29) — índice UNIQUE **parcial** em `(gestor_individual_id, user_id) WHERE ativo` (decidido para permitir histórico de re-vínculo) acompanhado da validação equivalente no model.
+**Problema:** `validates :user_id, uniqueness: { scope: :gestor_individual_id, conditions: -> { where(ativo: true) } }` — o `conditions` filtra as linhas **existentes** na query, mas a validação continua rodando para **qualquer** registro novo, inclusive um que seja ele próprio inativo. Resultado: um vínculo novo `ativo: false` (histórico legado) era barrado com "User já está em uso" quando o par já tinha um ativo — **embora o índice parcial do banco o aceitasse** (`insert_all!` passava). Validação e constraint discordavam num quadrante, e os testes não cobriam esse lado (só testavam criar inativo quando *não* havia ativo).
+**Solução:** `if: :ativo?` na validação, para que ela só rode quando o próprio registro é ativo — espelhando o predicado do índice. Cobrir os **4 quadrantes** pelos **dois lados** (validação Rails e `insert_all!`): ativo/ativo (barra), ativo/inativo (passa), inativo/ativo (passa — era o furo), inativo/inativo (passa).
+**Lição:** Ao reproduzir um índice UNIQUE **parcial** em validação de model, o predicado do índice tem de valer para **ambos** os lados da comparação. `conditions:` só restringe o conjunto de linhas consultadas; quem decide *se* a validação roda é o `if:`/`unless:`. Índice parcial sem validação espelhada (ou vice-versa) gera divergência silenciosa que só aparece no quadrante não testado.
+
+---
+
+### 2026-09-29 — Validação de invariante deve rodar no EVENTO, não em todo save (senão "algema" o registro)
+
+**Contexto:** Tarefa 29.2 (Sprint 29) — `validate :gestor_user_nao_e_gerido_ativo` em `GestorIndividual`, guardando o invariante "o login do gestor não pode ser um gerido ativo dele" (Bug 15).
+**Problema:** a validação rodava em **todo** `save`. Quando um vínculo de auto-gerência "tardia" já estava persistido (criado por upsert/`insert_all!`, o caminho documentado da importação), o gestor virava um registro **inoperante**: `update!(nome:)`/`update!(orgao:)` e até `desativar!` (que usa `update!`) levantavam `RecordInvalid`, deixando `ativo=true` para sempre. O estado era **auto-perpetuante** — não havia caminho de recuperação pela aplicação (só `update_column`/SQL escapo). Um único dado ruim transformava o registro em intocável.
+**Solução:** restringir o gatilho ao evento que muda o invariante: `validate :gestor_user_nao_e_gerido_ativo, if: -> { new_record? || will_save_change_to_gestor_user_id? }`. Renomear um gestor não cria nem desfaz auto-gerência, logo não deve revalidar. Efeito colateral positivo: elimina o `+1 SELECT` que a validação custava em todo save (o `exists?` só roda quando o login é (re)definido).
+**Lição:** validação que depende de estado externo (outra tabela, associação) deve ser **event-scoped** (`will_save_change_to_X?` / `new_record?`). Rodá-la em todo save cria um modo de falha pior que o bug original: o registro fica impossível de corrigir pela própria aplicação. Sempre dê um caminho de recuperação in-app (aqui, `desativar!` precisava continuar funcionando) e teste explicitamente "edição de campo irrelevante ao invariante deve passar".
+
+---
+
+### 2026-09-29 — Invariante cruzando duas tabelas: os DOIS lados devem concordar sobre os 4 quadrantes de `ativo`
+
+**Contexto:** Tarefa 29.2 (Sprint 29) — invariante de auto-gerência guardado em dois models (`GestorIndividual` e `GestorIndividualGerenciado`), porque um `CHECK` no Postgres não pode consultar outra tabela. O concern `Desativavel` centralizou `desativar!`/`ativo?`/`scope :ativos`, mas **não** alcança as validações de invariante — a regra ficou duplicada.
+**Problema:** a correção do Bug 12 (`if: :ativo?` na validação de **par**) foi aplicada só de um lado. A validação de **auto-gerência do vínculo** ficou sem o filtro, então os dois lados **discordavam** sobre o mesmo vínculo inativo: o lado do gestor o ignorava (promover ex-gerido é legítimo desde o Bug 15) e o índice do banco também, mas o lado do vínculo o **barrava** — a importação da 29.3 falharia ao reconciliar o vínculo histórico via ActiveRecord, embora o banco o aceitasse (`insert_all!` OK). Três rodadas seguidas de Bug Finder acharam a mesma classe de bug, cada vez num eixo diferente (par, auto-gerência, agora entre os dois lados).
+**Solução:** aplicar o mesmo `if: :ativo?` no lado do vínculo, fixando o invariante como *"nenhum vínculo ATIVO liga o gestor a si mesmo"* — idêntico nos dois models e no índice. Testar os **4 quadrantes de `ativo`** (ativo/ativo, ativo/inativo, inativo/ativo, inativo/inativo) **pelos dois lados** (validação Rails de cada model + `insert_all!` no banco).
+**Lição:** ao guardar um invariante em mais de um ponto (validação de model A, validação de model B, constraint de banco), o único jeito de não gerar divergência silenciosa é declarar a regra **uma vez** e cobrir a matriz inteira nos dois lados. Divergência aparece sempre no quadrante que ninguém testou — e o caminho que falha é o da importação, não o do usuário.
+
+---
+
+### 2026-09-29 — `RecordInvalid#message` consulta `activerecord.errors.messages.record_invalid`, não `errors.messages.record_invalid`
+
+**Contexto:** Tarefa 29.2 (Sprint 29), Bug 8 do Bug Finder — `e.message` de qualquer `ActiveRecord::RecordInvalid` do app saía como `"Translation missing: pt-BR.activerecord.errors.messages.record_invalid"`. O CTO promoveu a blocker da 29.3 (é a mensagem que o operador verá quando o upsert da importação falhar).
+**Problema:** o palpite natural foi adicionar `record_invalid` em `errors.messages` (o bloco que o `pt-BR.yml` já tinha, com `blank`, `invalid`, `taken` etc.). Um teste que consultava `I18n.t("activerecord.errors.messages.record_invalid", default: nil)` **refutou o palpite**: retornava `nil`. O `ActiveRecord::RecordInvalid` consulta o namespace **`activerecord.`**; o `errors.messages.record_invalid` é apenas fallback do `ActiveModel`, e só funciona se o namespace específico não tiver a chave.
+**Solução:** definir a chave **nos dois caminhos** para que concordem independentemente de qual seja consultado — `errors.messages.record_invalid` e `activerecord.errors.messages.record_invalid` (mais `restrict_dependent_destroy`, usada pelo `dependent: :restrict_with_exception`). Verificado em runtime: `e.message` passou a ser `"1 erro impediu este registro de ser salvo: Nome não pode ficar em branco"`.
+**Lição:** ao consertar tradução "Translation missing", **não adivinhe o caminho da chave — leia-o da própria mensagem de erro** (ela imprime o caminho completo procurado) e **prove por teste** que a chave resolve com `I18n.t(caminho, default: nil)`. Namespaces de i18n têm fallback em cascata (`activerecord.` → `errors.`), e acertar só o fallback parece funcionar em uns pontos e falhar em outros.
+
+---
+
+---
+
+### 2026-09-29 — Callback de validação NUNCA deve chamar `reload` na instância do chamador
+
+**Contexto:** Tarefa 29.2-D7 (Sprint 29). O Code Reviewer achou que a validação de auto-gerência lia `gestor_individual.gestor_user_id` de uma instância possivelmente **stale** (carregada antes de outra instância salvar o login): `GestorIndividualGerenciado.new(gestor_individual: stale, ...)` gravava auto-gerência. O fix aplicado foi `gestor = gestor.reload if gestor.persisted?` dentro do callback.
+**Problema:** o `reload` **muta o objeto do chamador** (`vinculo.gestor_individual.equal?(g) == true`) e **descarta mudanças pendentes**. No caminho normal de escrita (carregar o gestor → resolver o login **sem salvar** → gravar o vínculo — exatamente o fluxo da importação), o `reload` apagava o `gestor_user` recém-atribuído, a validação lia `nil` do banco e o código **gravava um vínculo de auto-gerência ATIVA**: `vinculo.save => true`, `g.changed == []`, auto-gerência no banco. O fix de um falso-positivo criou um falso-negativo **pior** — auto-autorização persistida na cascata da 29.4/29.5. Efeito colateral adicional: atributos pendentes (`nome`, `orgao`) também eram perdidos silenciosamente.
+**Solução:** ler o valor do outro lado **sem recarregar a instância** — somar o valor **em memória** (`gestor.gestor_user_id`, cobre o login pendente do chamador) e o valor **no banco** via `Model.where(id:).pick(:coluna)` (cobre o login salvo por outra instância; `pick` não instancia nem muta nada). Custo: 1 query por validação, o mesmo do `reload`. Brinde: `pick` devolve `nil` para registro ausente, eliminando um `ActiveRecord::RecordNotFound` cru que o `reload` levantava quando o gestor fora apagado por outra sessão.
+**Lição:** **`reload` dentro de callback de validação é sempre suspeito.** Validação deve ser observadora — não pode mutar o objeto que está sendo validado nem os que recebeu. Quando o invariante precisa "ver o outro lado atualizado", leia o valor com uma query pontual (`pick`/`where(...).exists?`) em vez de recarregar a instância. Testar sempre os dois cenários opostos: valor **pendente em memória** e valor **salvo por outra instância** — um fix que resolve só um dos lados troca o bug de sinal.
+
+---
