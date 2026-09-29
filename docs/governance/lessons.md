@@ -143,3 +143,32 @@
 **Lição:** **`reload` dentro de callback de validação é sempre suspeito.** Validação deve ser observadora — não pode mutar o objeto que está sendo validado nem os que recebeu. Quando o invariante precisa "ver o outro lado atualizado", leia o valor com uma query pontual (`pick`/`where(...).exists?`) em vez de recarregar a instância. Testar sempre os dois cenários opostos: valor **pendente em memória** e valor **salvo por outra instância** — um fix que resolve só um dos lados troca o bug de sinal.
 
 ---
+
+---
+
+### 2026-09-29 — Config lida só de credentials quebra em CI limpo (o `master.key` não é versionado)
+
+**Contexto:** Tarefa 29.2 (Sprint 29), débito B1 do review final. O CI precisa do banco do espelho `frequencia_pessoas_espelho_test`, e o bloco `pessoas` do `config/database.yml` lia `Rails.application.credentials.dig(:pessoas_db, ...)` para host/usuário/senha/porta.
+**Problema:** o `credentials.yml.enc` é versionado, mas o `master.key` **não** (corretamente ignorado). Em CI limpo — ou em qualquer máquina sem a chave — `credentials.dig(:pessoas_db, :username)` devolve `nil`, o Postgres recebe **usuário vazio** e a conexão falha **antes de qualquer teste rodar**, com um erro que parece problema de banco e não de configuração. O bloco `pessoas` era o único do arquivo sem fallback por ENV.
+**Solução:** `ENV.fetch("PESSOAS_DB_*", Rails.application.credentials.dig(...))` — ENV com precedência, credentials como fallback. Mesmo padrão que o próprio arquivo já usava no bloco `intranet_*` (produção). Verificado nos dois sentidos: sem ENV conecta como o usuário das credentials; com ENV, o usuário passa a ser o da variável (a sobreposição funciona).
+**Lição:** **credencial que só existe em `credentials.yml.enc` é um beco sem saída em CI.** Todo bloco de `database.yml` que precise rodar em runner limpo deve aceitar override por ENV (`ENV.fetch("X", credentials...)`). Ao adicionar um serviço externo à suíte, teste o caminho "sem `master.key`" — é o cenário do CI, e ele falha de um jeito que se disfarça de problema de banco.
+
+---
+
+### 2026-09-29 — Suíte que depende de banco auxiliar não preparado: `skip` explícito em vez de erro de conexão
+
+**Contexto:** Tarefa 29.2 (Sprint 29). Os testes do espelho Pessoas (`test/support/pessoas_espelho_helper.rb` e 3 arquivos que o incluem) leem um banco separado (`frequencia_pessoas_espelho_test`) com schema carregado à parte (`RAILS_ENV=test bin/rails test:pessoas_schema:load`).
+**Problema:** sem esse banco — CI limpo, máquina nova, clone recém-feito — os testes explodiam com `PG::UndefinedTable`, **19 erros** que pareciam falha de código. Um erro de conexão esconde o problema real ("falta um passo de setup") e polui o sinal da suíte; um amigo desenvolvedor conclui que "a suíte está quebrada".
+**Solução:** guarda `skip_sem_espelho!` chamada no `setup` dos testes afetados: se a conexão falhar ou as tabelas não existirem, `skip` com o comando exato do setup na mensagem. Verificado: com as tabelas removidas → **19 skips, 0 erros**; com o banco → roda normalmente, **0 skips**. O `skip` mantém o sinal honesto de cobertura.
+**Lição:** teste que depende de banco/serviço auxiliar deve detectar a ausência e **pular com o motivo**, nunca estourar erro de infraestrutura. `skip` aparece no relatório e diz o que fazer; `PG::UndefinedTable` parece bug. Combine com o preparo correto no CI — o skip é rede de segurança, não substituto do setup.
+
+---
+
+### 2026-09-29 — Validação de auth do Postgres em CI tem de rodar no CONTAINER: o `pg_hba` local (`trust`) engana
+
+**Contexto:** Bloco de esteira da Sprint 29 — passo "Create the Pessoas mirror test database" do `ci.yml` + bloco `pessoas` de test do `database.yml`. A "correção do falso-verde" havia sido validada **na máquina do dev**, onde "com ENV o usuário passou a ser o da variável" foi tido como prova suficiente de que o setup funcionaria no runner.
+**Problema:** a validação no dev usou o `.pg_hba.conf` **local**, que tem `trust` no loopback e **não exercita** a rota de rede nem a auth do runner. A imagem oficial do Postgres (`postgres`/`postgres:17`) aplica, após o entrypoint, `host all all all scram-sha-256` — as linhas `trust` de loopback do initdb são substituídas. Conexões do runner chegam pelo bridge como `172.17.0.1` (comprovado com `inet_client_addr()`), ou seja, caem na regra **scram**. Resultado: a role `app.frequencia` criada **sem senha** (`CREATE ROLE ... LOGIN`, `rolpassword = NULL`) + `PESSOAS_DB_PASSWORD: ""` faziam o `test:pessoas_schema:load` abortar com `fe_sendauth: no password supplied` (**EXIT=1**). O CI estava **vermelho como escrito** e a falha só apareceria no primeiro push — a etapa "antes" nunca tinha sido executada num runner.
+**Solução:** re-validar a sequência (`CREATE ROLE` → `createdb` → `test:pessoas_schema:load`) **dentro de um container `postgres:17` oficial**, com o env exato do CI. A correção escolhida foi a de menor superfície: dar senha explícita à role (`CREATE ROLE "app.frequencia" LOGIN PASSWORD 'app'`) e passar a mesma em `PESSOAS_DB_PASSWORD`. Após a correção: `db:test:prepare` EXIT=0, `test:pessoas_schema:load` EXIT=0 e os testes do espelho **19 runs/68 assertions/0 skips** contra o container. `POSTGRES_HOST_AUTH_METHOD: trust` também resolveria, mas trocar a auth do cluster inteiro é superfície maior que a senha de uma role.
+**Lição:** **a máquina do dev não é o CI.** Validação de esteira que dependa de auth de Postgres, rota de rede ou preparo de banco auxiliar deve ser executada num container oficial **equivalente ao `services:` do workflow** (mesma imagem, mesmas ENV), lendo as conexões pelo bridge — o `trust` do loopback local esconde exatamente o caso `scram-sha-256` que o runner impõe. Corrija a auth preferindo a mudança de menor superfície (senha da role, não a auth do cluster) e mantenha o gate `psql ... | grep -q 1` sem `|| true` — ele é o que impede o CI de ficar verde sem preparar o banco.
+
+---
