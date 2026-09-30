@@ -1,9 +1,47 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# CI do Frequencia no GitHub Actions (remote de DESENVOLVIMENTO: origin/upstream).
+#
+# ⚠️⚠️ ESTE ARQUIVO PRECISA FICAR NA **RAIZ DO REPOSITÓRIO** (`Frequencia/`).
+#     O repositório é um **MONOREPO**: a raiz git contém `api-ponto/` (app Rails),
+#     `docs/`, `PRD-*.md`, `SPRINT-PLAN.md`. O **GitHub Actions só descobre
+#     workflows em `.github/workflows/` na RAIZ** do repo — NÃO há descoberta
+#     automática em subpasta. Por isso este arquivo NÃO pode voltar para
+#     `api-ponto/.github/`: quando vivia lá, o GitHub **nunca o executou** (não
+#     falhava — não existia). É o MESMO defeito de monorepo já corrigido no
+#     `.gitlab-ci.yml` (commit `7db515c`). **NÃO mova de volta.**
+#
+# ⚠️  Os comandos (`bin/brakeman`, `bin/rubocop`, `bin/rails`), o `Gemfile` e os
+#     binstubs vivem em `api-ponto/`, NÃO na raiz. Da RAIZ, `bin/brakeman` falha
+#     com `command not found` (exit 127) — não existe `bin/` na raiz. Por isso:
+#       • `defaults.run.working-directory: api-ponto` — TODOS os steps `run:`
+#         executam dentro de `api-ponto/`. É o equivalente ao `cd api-ponto` do
+#         `before_script` do `.gitlab-ci.yml`. **NÃO remova** achando que é
+#         ruído: sem ele nada é encontrado a partir da raiz.
+#       • `working-directory: api-ponto` no step `ruby/setup-ruby` — obrigatório
+#         e **NÃO** coberto pelo `defaults`: por doc oficial, `defaults.run` só
+#         afeta steps `run:`, **NÃO** steps `uses:`. Sem ele o `bundler-cache`
+#         procura `Gemfile.lock`/`.ruby-version`/`.tool-versions` na RAIZ e não
+#         acha (a app é em `api-ponto/`).
+#     ⚠️  `defaults.run` TAMBÉM não se aplica a `actions/checkout` — que deve
+#         mesmo rodar na raiz (o checkout é do repo inteiro).
+#     ⚠️  O `ruby-version: '3.3.8'` explícito abaixo **sobrepõe** o
+#         `api-ponto/.ruby-version` (que diz `ruby-4.0.0`, inexistente).
+#
+# Origem: fork de paridade com o `.gitlab-ci.yml` (produção). Ver
+# `docs/progress/iteration_chore_github-workflows.md` e `iteration_chore_gitlab-ci.md`.
+# ═════════════════════════════════════════════════════════════════════════════
 name: CI
 
 on:
   pull_request:
   push:
     branches: [ main ]
+
+# Step `run:` executam DENTRO de `api-ponto/` (a app Rails); o repo é monorepo.
+# NÃO cobre steps `uses:` (checkout/setup-ruby) — esses têm tratamento próprio.
+defaults:
+  run:
+    working-directory: api-ponto
 
 jobs:
   scan_ruby:
@@ -22,6 +60,10 @@ jobs:
           # (paridade dev/prod). Ver docs/progress/iteration_chore_gitlab-ci.md.
           ruby-version: '3.3.8'
           bundler-cache: true
+          # ⚠️ OBRIGATÓRIO: `defaults.run` NÃO afeta steps `uses:`. Sem isto, o
+          # `bundler-cache` procura `Gemfile.lock`/`.ruby-version` na RAIZ do
+          # monorepo e não os acha — a app Rails vive em `api-ponto/`.
+          working-directory: api-ponto
 
       - name: Scan for common Rails security vulnerabilities using static analysis
         run: bin/brakeman --no-pager
@@ -41,6 +83,10 @@ jobs:
           # (paridade dev/prod). Ver docs/progress/iteration_chore_gitlab-ci.md.
           ruby-version: '3.3.8'
           bundler-cache: true
+          # ⚠️ OBRIGATÓRIO: `defaults.run` NÃO afeta steps `uses:`. Sem isto, o
+          # `bundler-cache` procura `Gemfile.lock`/`.ruby-version` na RAIZ do
+          # monorepo e não os acha — a app Rails vive em `api-ponto/`.
+          working-directory: api-ponto
 
       - name: Lint code for consistent style
         run: bin/rubocop -f github
@@ -65,7 +111,12 @@ jobs:
       #   options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
+      # ⚠️ Este passo roda ANTES do checkout, então `api-ponto/` AINDA NÃO EXISTE:
+      # o `defaults.run.working-directory: api-ponto` acima faria o runner falhar
+      # ("working directory does not exist"). Sobrescreve-se para a RAIZ (`.`),
+      # que existe sempre. Este `apt-get` não depende da app — só de rede.
       - name: Install packages
+        working-directory: .
         run: sudo apt-get update && sudo apt-get install --no-install-recommends -y build-essential git libpq-dev libyaml-dev pkg-config
 
       - name: Checkout code
@@ -80,6 +131,10 @@ jobs:
           # (paridade dev/prod). Ver docs/progress/iteration_chore_gitlab-ci.md.
           ruby-version: '3.3.8'
           bundler-cache: true
+          # ⚠️ OBRIGATÓRIO: `defaults.run` NÃO afeta steps `uses:`. Sem isto, o
+          # `bundler-cache` procura `Gemfile.lock`/`.ruby-version` na RAIZ do
+          # monorepo e não os acha — a app Rails vive em `api-ponto/`.
+          working-directory: api-ponto
 
       # ADR-0006 / débito B1 do review final da 29.2: a suíte tem testes que
       # leem o espelho `Pessoas::*`, que vive num banco próprio
