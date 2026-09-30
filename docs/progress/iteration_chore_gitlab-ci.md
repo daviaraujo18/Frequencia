@@ -389,13 +389,83 @@ real do TJPI — o único resíduo que nenhuma validação local fecha.
   (schema load, espelho, skips, brakeman). O `ci.yml` de GitHub tem a mesma estrutura já
   provada em container `postgres:17`.
 
+## ⛔ BLOQUEIO — a chore NÃO fecha a "definição de pronto" em produção
+
+**Estado: bloqueada por infraestrutura. NÃO declarar concluída.**
+
+O pipeline **foi criado** no GitLab (evidência real do projeto, 2026-09-30 — não
+inferência), com os três jobs enfileirados:
+
+```
+security  → pending
+quality   → created
+test      → created
+```
+
+Mas o `security` não sai de `pending`. Ao abrir o job, o GitLab responde:
+**"não existem runners online atribuídos"**. O job está travado esperando um
+runner que não existe — **nenhum arquivo que o projeto versiona resolve isso**.
+
+### O que está PROVADO (evidência real do GitLab)
+
+- O GitLab **lê** o `.gitlab-ci.yml` e **cria o pipeline** com os 3 jobs. É a
+  primeira confirmação vinda do próprio GitLab nesta chore: a correção do
+  monorepo (arquivo na raiz) está validada na prática. Antes, com o arquivo em
+  `api-ponto/`, ele não criava pipeline nenhum.
+
+### O que NÃO está provado (e é o que importa)
+
+- **Que o job `test` executa.** Ninguém nunca o viu rodar num runner real. A
+  razão de existir desta chore era exatamente esta verificação.
+
+### A "definição de pronto" em produção permanece ABERTA
+
+`iteration_29.md:559` registra que a 29.0 não fecha a DoD em produção enquanto o
+`.gitlab-ci.yml` não existir **e rodar**. O primeiro critério foi atendido
+(arquivo na raiz, pipeline criado); o segundo **não**. Os gates de teste das
+29.0/29.4/29.6 seguem sem cobertura em produção.
+
+### Risco residual (suposto, não medido)
+
+A semântica de rede já foi reproduzida em Docker real; o `cd api-ponto` foi
+provado a partir da raiz, com controle negativo. O que resta não verificável é o
+**executor do runner**: `apt-get` exigindo root, acesso ao registry institucional,
+e se ele se comporta como a nossa reprodução. "Risco pequeno" **não é**
+"verificado" — e a verificação era o objetivo.
+
+### Quinta variação do mesmo erro de método
+
+Esta chore produziu cinco artefatos que **pareciam funcionar** e não funcionavam:
+
+| # | Aparência | Realidade |
+|---|---|---|
+| 1 | Testes passam no Postgres local | `trust` no loopback ≠ `scram-sha-256` |
+| 2 | Provado com `gitlab-ci-local` | A engine publica porta em `localhost` |
+| 3 | `brakeman` saía 0 | Saía 0 **sem escanear** (`--ensure-latest`) |
+| 4 | YAML, comandos e rede validados | O GitLab **não lia** o arquivo (estava em `api-ponto/`) |
+| 5 | Pipeline criado com 3 jobs | **Nenhum runner** para executá-lo |
+
+Nenhuma dessas provas exercitava a mesma condição do ambiente real. Regra
+registrada em `lessons.md`: **antes de provar, perguntar se a prova exercita a
+MESMA condição** — onde a ferramenta procura o artefato e como resolve a rede.
+
+### Desbloqueio (ação da infra TJPI, fora do nosso alcance)
+
+Registrar um runner no projeto (`Settings → CI/CD → Runners`). Verificar também
+se ele exige **`tags:`** — o `.gitlab-ci.yml` **não declara nenhuma tag**, então
+o job só roda em runner marcado para *"run untagged jobs"*. Se o runner
+institucional exigir tag, a correção é uma linha, mas só dá para saber com o
+runner no ar.
+
 ## Pendências / débitos abertos
 
 | Débito | Dono | Critério de pronto |
 |---|---|---|
+| **Registrar um runner no projeto (destrava esta chore)** | **infra TJPI** | `security`/`quality`/`test` saem de `pending`/`created` e executam |
 | Bump Rails ≥ 8.1.x (remove o `Medium` EOLRails) | a definir | `bin/brakeman --no-pager` = EXIT=0 |
 | Unificar versão do Ruby (3 fontes) | a definir | `.ruby-version` = `.tool-versions` = imagem do CI = `ruby -v` |
 | Publicar imagem `.../frequencia/ruby:3.3.8` no registry institucional | infra | trocar a linha `image:` do `.gitlab-ci.yml` |
 | Definir `PESSOAS_DB_PASSWORD` como variável de projeto no GitLab | infra/dono | remover o default `"app"` do YAML |
 | Limpar as 77 offenses do RuboCop (17 arquivos, pré-existentes) | a definir | `bin/rubocop -f github` = EXIT=0 |
+| Mover `.github/workflows/ci.yml` para a raiz do repo (mesmo defeito do monorepo) | a definir | GitHub Actions encontra o workflow; `ruby-version` já corrigido |
 | Registrar em `lessons.md` as duas lições desta chore | Code Specialist | — |
