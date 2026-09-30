@@ -223,3 +223,15 @@
 3. Confiar no **`--ensure-latest`** que saía 0 **sem escanear** (gate que passa sem executar).
 4. Validar um **arquivo que o GitLab não lê** (subpasta de monorepo).
 > Regra prática: antes de "provar" o funcionamento, pergunte **"esta prova exercita a MESMA condição do ambiente real — inclusive ONDE a ferramenta procura o artefato e COMO ela resolve a rede?"**. Se não, é uma prova de conteúdo, não de integração. Para arquivos de configuração de ferramenta, a primeira verificação é de **descoberta/localização**, não de sintaxe. E: **um modelo copiado de outro projeto só vale se a ESTRUTURA do repositório for a mesma** (monorepo ≠ app único na raiz).
+
+---
+
+### 2026-09-30 — Governança: raiz de documentação ambígua (D4) — ponteiro de caminho absoluto é um acoplamento a vencer pelo git, não por uma árvore "espelho"
+
+**Contexto:** O `AGENTS.md` da raiz do workspace (acima da raiz git `Frequencia/`) declarava como "Fonte de verdade" o caminho `workspace_integração/docs/`. Existiam **três** árvores de `docs/` ao mesmo tempo: `workspace_integracao/docs/` (parada em 2026-09-21, não versionada, vive ACIMA da raiz git), `Frequencia/docs/` (viva, versionada, 97 arquivos rastreados) e `pessoas2/docs/` (projeto irmão, outra taxonomia).
+**Problema:** um agente que seguisse o `AGENTS.md` ao pé da letra lia e regenerava documentação **morta** (sem commit, invisível para o time), agravando a defasagem da árvore viva. Já ocorreu na sessão: um `/summarize` foi iniciado com a taxonomia errada. A árvore morta sequer é versionada — nenhuma mudança nela chega ao repositório, o que a torna uma armadilha silenciosa: parece correta, mas evaporaria.
+**Solução:** repontar o `AGENTS.md` (11 ocorrências: linhas 7/27/36/37/45/66–71) para `Frequencia/docs/` e corrigir a taxonomia da Seção 4 (o layout vivo é numerado `00-contexto/`…`12-plano-implementacao/` + `adr/`/`specs/`/`quality/`/`governance/`/`progress/` — **não** `inception/`/`analysis/`/`knowledge/`, que são do `pessoas2`). Neutralizar a árvore morta fica **proposto** (regra do usuário: não apagar sem aprovação explícita).
+**Lição:** (a) **um caminho absoluto num arquivo de governança é uma dependência de configuração como qualquer outra** — quando ele aponta para fora da raiz git, o alvo pode divergir sem que o git avise, porque não há versionamento que acuse o drift; a primeira verificação ao carregar contexto é **confirmar que a raiz apontada é a versionada** (medida: `git ls-files docs | wc -l > 0`). (b) **Duas cópias de uma mesma árvore de docs são uma armadilha de método, não uma redundância inofensiva**: cedo ou tarde um agente lê a cópia parada; a única cópia saudável é a versionada, e a morta deve virar **ponteiro/symlink** (ou ser removida, com aprovação), nunca coexistir. (c) **`AGENTS.md` acima da raiz git é, por construção, não versionado** — o próprio arquivo manda mantê-lo "na raiz do repositório"; se o time depende dele, ele precisa migrar para dentro do repo (`Frequencia/AGENTS.md`) para que suas mudanças sejam revisáveis e propagadas com o código.
+
+---
+

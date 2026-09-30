@@ -1,12 +1,12 @@
 # _context.md — governance
-> Gerado em: 2026-09-30 | Fontes: docs/governance/lessons.md, docs/adr/ (0000–0007), AGENTS.md (raiz), docs/progress/iteration_chore_gitlab-ci.md | Palavras: ~470
+> Gerado em: 2026-09-30 | Fontes: docs/governance/lessons.md, docs/adr/ (0000–0007), AGENTS.md (raiz), docs/progress/iteration_chore_gitlab-ci.md | Palavras: ~500
 > Atualizar quando: lição registrada em lessons.md; ADR nova; mudança nas regras/configurações do AGENTS.md (raiz); mudança do ambiente medido (Ruby/Rails).
 
 ## O que esta pasta contém
 Diretrizes de governança do AI Workflow aplicadas ao Frequência. As regras canônicas vivem no `AGENTS.md` da raiz (lido por OpenCode/Antigravity); a pasta guarda o registro de **lições aprendidas** não cobertas por iteration/quality/ADRs (não há pasta `rules/` aqui — desvio de estrutura, ver `docs/_context.md`). Os ADRs vivem em `docs/adr/` (fora desta pasta, mas catalogados aqui).
 
 ## Pontos-chave para agentes
-### lessons.md (22 lições — 2026-09-10 a 2026-09-29)
+### lessons.md (23 lições — 2026-09-10 a 2026-09-30)
 - **Ambiente real medido (2026-09-30):** Ruby **3.3.8** (`ruby -v`) e Rails **8.0.5** (`Gemfile.lock`); no Frequencia, preferir binstubs `bin/*` a `bundle exec` (`bundle exec rails` falha com `invalid switch in RUBYOPT`).
 - Lições de auth (Sprint 23): Rolify `scopify` só cria scopes `global`/`class_scoped`/`instance_scoped`; rota custom Devise exige `devise_scope :user`; coexistência sessão legada × Warden exige `skip_before_action :verify_signed_out_user`. Timing side-channel: phantom work, nunca `sleep`.
 - Lições da Sprint 29 (a maioria): `uniqueness` com `conditions:` valida o registro NOVO por inteiro e **não espelha índice UNIQUE parcial**; validação de invariante deve rodar **no evento** (`will_save_change_to_X?`), nunca em todo save (senão "algema" o registro); os **dois lados** de invariante cruzando tabelas devem concordar sobre os **4 quadrantes de `ativo`**; callback de validação **nunca** deve chamar `reload` na instância do chamador; `RecordInvalid#message` consulta `activerecord.errors.messages.record_invalid`.
@@ -19,10 +19,10 @@ Diretrizes de governança do AI Workflow aplicadas ao Frequência. As regras can
 ### AGENTS.md (raiz — `/home/davi.queiroz/Área de trabalho/workspace_integração/AGENTS.md`)
 - Identidade: sistema Frequência, Rails 8 API-only custom, Devise 5, CanCanCan 3.6, Rolify 6, Pagy 9, AdminLTE 4 + Bootstrap 5.3, importmap (sem Node).
 - Configuração: TASK_MODE=STANDARD, COMMIT_MODE=manual, MEMORY_MODE=classic, SUGGESTION_LEVEL=1, BUG_LEVEL=1.
-- ⚠️ **DOCS_PATH ambíguo (dívida D4):** o `AGENTS.md` aponta para `workspace_integração/docs/` (árvore **paralela defasada**, inode distinto, parada em 2026-09-21, não versionada); a fonte **real** é `Frequencia/docs/` (versionada). Processar sempre a árvore do `Frequencia`.
+- ✅ **DOCS_PATH (dívida D4) — CORRIGIDA em 2026-09-30:** o `AGENTS.md` apontava para `workspace_integracao/docs/` (árvore paralela defasada, parada em 2026-09-21, **não versionada** — vive ACIMA da raiz git). Foi repontado para `Frequencia/docs/` (11 ocorrências) e a taxonomia da Seção 4 foi corrigida (layout numerado, não `inception/`/`analysis/`/`knowledge/`). **Processar sempre `Frequencia/docs/`.** A neutralização física da árvore morta (deletar/substituir por symlink) fica **proposta e pendente de aprovação do dev** (não apagar sem aprovação explícita). Resta avaliar migrar o `AGENTS.md` para dentro do repo (`Frequencia/AGENTS.md`, versionado) — hoje ele é não-versionado por viver acima da raiz git.
 
 ## Estado atual
-- **22 lições registradas** (era "6" no snapshot anterior); cabeçalho diz ~13 lições — defasado. Todas com data e evidência de execução.
+- **23 lições registradas** (+1 em 2026-09-30: raiz de docs ambígua / D4); todas com data e evidência de execução.
 - **ADRs 0000–0007** (era "0001–0005" no snapshot anterior); o índice `docs/README.md` já lista `0000`–`0007`.
 - **Dívida de versão do Ruby — DÍVIDA ABERTA (dono pendente):** três fontes conflitantes, **nenhuma** igual ao medido — `AGENTS.md` diz Ruby 4.0.0 / Rails 8.0.4; `.ruby-version`/`.tool-versions` dizem `ruby-4.0.0` (**não existe**); snapshot anterior deste arquivo dizia 3.4.2. **Medido 2026-09-30: Ruby 3.3.8 / Rails 8.0.5.** Não unificar por conta própria (blast radius da toolchain mise/asdf); há decisão de dono pendente.
 - LIÇÕES deste ciclo (chore do fork): nenhuma lição do `iteration_chore_gitlab-ci.md` ficou pendente — as duas últimas (fail-fast + alias) já estão em `lessons.md`.
