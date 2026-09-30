@@ -228,8 +228,129 @@
     payload (`data_criacao` \|\| `dataCriacao`; idem `data_exclusao`) + teste com o payload **real** (🔴 F2).
   - Impacto no código: `app/services/importar_gestores_individuais_service.rb` (aplicar_gestor/aplicar_estado/
     encontrar_gestor/nome_do_gestor) + testes do serviço/repos que assertam `"Gestor individual"` (grep).
-  - Status: ⬜ Pendente (não iniciado). **Não** bloqueia o commit já aprovado da 29.3; **bloqueia** o consumo
-    em 29.4/29.6.
+  - Status: ✅ **Implementado, ✅ Aprovado** (Code Specialist 2026-09-30 — branch `feature/demanda-29-3-complemento`,
+    worktree `wt-29.3-d1-d4`; **Code Reviewer 2026-09-30 — `docs/quality/review_report_29_3_d1_d4.md`, 0 blockers**).
+    **COMMIT_MODE=manual** → sem commit/push; commit liberado com **stage seletivo**. Detalhes na subseção abaixo.
+    **D4 reforçado (2026-09-30):** o achado 🟡1 do review (contrato `verificar_contrato!` frouxo para o campo de
+    exclusão) foi corrigido — verificação **por campo e por linha** + 3 testes + 4 mutações mortas (subseção
+    "29.3-D4 — endurecimento do contrato"). **Re-revisado 2026-09-30 — 🟡1 FECHADO** (0 blockers; ver seção de
+    re-review em `docs/quality/review_report_29_3_d1_d4.md`).
+
+#### 29.3-D1..D4 — implementação (Code Specialist, 2026-09-30)
+
+- **Arquivos:** `api-ponto/app/services/importar_gestores_individuais_service.rb` (modificado) e
+  `api-ponto/test/services/importar_gestores_individuais_service_test.rb` (modificado; +15 testes → 35).
+- **D1 (Ruling 3 / 🟡2):** `aplicar_estado` do gestor foi **removido** do loop; o `ativo`/`data_exclusao` do
+  gestor agora é **recalculado pós-loop** (`recalcular_gestores_tocados` → `recalcular_gestor`) para os ids
+  tocados: `ativo = true` sse `GestorIndividualGerenciado.where(gestor_individual_id:).ativos.exists?`; havendo
+  ativo, `data_exclusao = nil`; senão `ativo = false` e `data_exclusao = maximum(:data_exclusao)` (exclusão mais
+  recente entre os vínculos). O `ativo` do **PAR** continua 1:1 com o legado. Usa `.ativos` (índice parcial).
+- **F1 (ADR-0008 regra 5):** `encontrar_gestor` passa a devolver `[gestor, origem]`; linha com
+  `id_vinculo_gestor` presente casa **só** por `id_legado` do gestor (`nil`/novo se não houver) — **não** usa mais
+  a ponte CPF nesse ramo. `aplicar_gestor` só reancora `id_legado`/`gestor_cpf` **na criação**.
+- **D2 (Ruling 1):** quando o casamento veio por `id_legado` do gestor (`origem == :por_chave`) e o CPF resolvido
+  diverge do `gestor_cpf` gravado, a linha vira `nao_resolvido` (motivo contém `"conflito de identidade"`); o CPF
+  e o `gestor_user` do gestor existente **não** são tocados e o vínculo **não** é criado.
+- **D3 (Ruling 2):** fallback `"Gestor individual <CPF>"` trocado por `MARCADOR_SEM_NOME = "(sem nome — CPF "`;
+  precedência em `aplicar_nome`: nome real do Pessoas substitui o marcador (ou preenche nome em branco), mas o
+  marcador **não** sobrescreve um nome real já gravado.
+- **D4 (🔴 F2):** leitura tolerante a ambos os casings (`valor_da_linha(linha, :data_criacao, :dataCriacao)`;
+  idem exclusão) + `verificar_contrato!`, que **aborta alto** (`ArgumentError`) se **nenhuma** linha trouxer
+  qualquer um dos casings conhecidos de data (evita tratar todo excluído como ativo em silêncio). Teste com
+  payload em **camelCase** (o formato do consumidor real Pessoas2) **e** em snake_case, mais o caso de contrato.
+- **Medições (worktree próprio):** direcionados do serviço **35 runs / 123 assertions / 0 failures**;
+  serviço+job+rake+models **98/274/0**; `test/models` + `test/controllers/admin` **518/1800/0** (baseline exato);
+  suíte completa **938 runs / 3289 / 1 failure + 11 errors** (923 baseline + 15 novos; as 12 pré-existentes
+  intactas — 9× `SessionsController` + 2× `PasswordsController` `redirect_to` Devise + 1× timezone em
+  `presenca_endpoints_test.rb:171`); RuboCop 0 offenses; Zeitwerk OK.
+- **Mutation testing — 9 mutações, todas MORTAS:** M1 sem recálculo pós-loop (3 falhas); M2 projeção sempre
+  inativa (5); M3 `data_exclusao` = mínima (1); M4 sem guarda de identidade (1); M5 F1 volta à ponte CPF com
+  `id_legado` presente (1); M6 sem tolerância camelCase (1); M7 sem verificação de contrato (1); M8 marcador
+  antigo (2); M9 marcador sobrescreve nome real (1).
+- **Ambiente:** o worktree `wt-29.3-d1-d4` não tem bundle próprio nem `app/assets/builds/application.css`
+  (ambos não versionados). Testes rodaram com `BUNDLE_PATH` apontando ao bundle do checkout principal e com o
+  `application.css` copiado temporariamente do principal (removido após a medição; gitignored). Sem a cópia, a
+  suíte acusa ~110–174 errors de `ActionView::Template::Error: asset 'application.css'` (ambiente, não regressão).
+- **Suposições registradas (D4):** o casing **real** do endpoint `gestores_individuais` **não foi provado** daqui
+  (fato de sistema externo; não há amostra/dump em disco). O que foi medido: a gem faz `JSON.parse` cru sem
+  `key_transform` (`sticapi_client-4.0.4/lib/sticapi_client.rb:222`), logo o casing é o que o servidor envia; o
+  Pessoas2 lê camelCase. A tolerância cobre ambos os sentidos; **antes da importação real**, ainda se recomenda
+  uma amostra real/contrato do endpoint para confirmar (e o `verificar_contrato!` transforma uma mudança de
+  formato em erro alto, não em corrupção silenciosa).
+
+### 📋 Relatório de Revisão — Code Reviewer (Complemento 29.3-D1..D4)
+
+- **Arquivo:** `docs/quality/review_report_29_3_d1_d4.md` — veredito **✅ APROVADO, 0 blockers** (🟡 4 / 🟠 1 / 🟢 3).
+- **Os 4 rulings do ADR-0008 estão cumpridos e provados:** D1 (projeção pós-loop determinística), D2 (guarda de
+  identidade), D3 (marcador de nome + precedência), F1 (reancoragem só na criação) — cada um com mutação morta.
+  **D4 cumprido parcialmente na 1ª passada:** a tolerância bidirecional funciona (M6 morre), mas o
+  `verificar_contrato!` era **frouxo** — um payload com o casing de **exclusão** mudado para um terceiro formato
+  passava em silêncio e o excluído entrava ATIVO sem `data_exclusao` (o risco de pior caso do próprio F2; medido
+  com harness descartável). **🟡1 CORRIGIDO e FECHADO no re-review de 2026-09-30** (contrato por campo e por
+  linha; ver subseção "🔁 Re-review do 🟡1").
+- **Medições independentes (worktree próprio):** serviço 35/123/0; direcionados (serviço+job+rake+`test/models`)
+  89 runs / **274 assertions** / 0/0; `test/models`+`test/controllers/admin` 518/1800/0 (**baseline exato**);
+  suíte completa 938/3289/1F+11E (12 pré-existentes: 9 Sessions + 2 Passwords Devise + 1 timezone); RuboCop 0
+  offenses; Zeitwerk OK. **Mutation testing: M1–M9 todas MORTAS** (reproduzidas independentemente). Idempotência
+  preservada (2ª/3ª execução = 0 criações; `updated_at` do gestor estável). `application.css` temporário
+  **removido** (só `.keep`); stage limpo.
+- **Achados não bloqueantes para o commit (bloqueiam a importação real / 29.4-29.6):** 🟡1 `verificar_contrato!`
+  não cobria o campo de exclusão (corrupção silenciosa de `ativo` se o casing de exclusão mudar) — **✅ FECHADO
+  no re-review (2026-09-30)**; 🟡2 F1 duplica a
+  PESSOA-gestor quando a base veio da ponte CPF e depois chega `id_vinculo_gestor`; 🟡3 D2 descarta a linha
+  inteira em mudança benigna de CPF (motivo acionável, mas perde vínculo legítimo); 🟡4 higiene de stage
+  (`log`/`tmp` rastreados); 🟠1 suíte segue sem o payload real (débito de sistema externo).
+- **Commit:** liberado (`COMMIT_MODE=manual`) com **stage seletivo** (2 arquivos de código/teste + 2 `.md`;
+  nunca `git add -A`). Fechamento da rastreabilidade é pré-requisito da próxima tarefa.
+
+#### 29.3-D4 — endurecimento do contrato (achado 🟡1 do review; Code Specialist, 2026-09-30)
+
+- **Status:** ✅ **Implementado, ✅ re-revisado — 🟡1 FECHADO** (Code Reviewer 2026-09-30 — seção de re-review em
+  `docs/quality/review_report_29_3_d1_d4.md`). Fecha o único achado do review que tocava o eixo de
+  risco do próprio ADR-0008 (corrupção silenciosa de `ativo`). `COMMIT_MODE=manual` → sem commit/push.
+- **Defeito (reproduzido):** `verificar_contrato!` usava `linhas.any? { ... }` sobre a **linha inteira** — bastava
+  UMA das 4 chaves (criação **ou** exclusão) casar para "perdoar" a linha. Payload com `data_criacao`
+  (reconhecida) e a **exclusão** num 3º casing não previsto (ex.: `dataExclusao2`, `data_exclusao_legado`)
+  passava em silêncio e o vínculo entrava **ATIVO sem `data_exclusao`**. Também o `any?` sobre a **lista** era
+  frouxo: uma linha reconhecida "protegia" as demais.
+- **Correção (`app/services/importar_gestores_individuais_service.rb`):** contrato **por campo e por linha**.
+  Para cada linha, cada campo de data é checado isoladamente (`verificar_campo_de_data!`):
+  (a) casing conhecido presente → OK; (b) ausente o conhecido **mas** há uma chave que "parece" com o campo
+  (mesma palavra distintiva após normalizar casing/separadores — `chave_normalizada`) → **falha ALTO**
+  (`ArgumentError` apontando o campo); (c) nenhuma chave parecida → **campo ausente de verdade** (legítimo:
+  vínculo nunca excluído) → OK. Rede secundária mantida: se nenhuma linha traz qualquer casing conhecido,
+  aborta (troca global de formato). A distinção "ausente legítimo × variante desconhecida" é feita pela
+  **chave**, não pelo valor — por isso o campo de exclusão ausente **não** é falso positivo.
+- **Testes (+3 → 38 no serviço):** (1) criação reconhecida + exclusão em `dataExclusao2` → **falha ALTO** e
+  nada é gravado; (2) linha OK + linha com exclusão em `data_exclusao_legado` → falha (prova **por linha**);
+  (3) linha **sem campo de exclusão algum** → **passa** e o vínculo entra ativo (prova o não-falso-positivo).
+- **Mutation testing — 4 mutações novas, todas MORTAS:** M10 per-field check vira no-op (2 falhas); M11
+  `chave_normalizada` quebrada (2); M12 sem o `return` de "ausente legítimo" (1 erro — rejeitaria payload
+  válido); M13 remove o per-field, volta ao `any?` sobre a linha (2). Sanity pós-restauração: 38/136/0.
+- **Medições (worktree próprio):** serviço **38 runs / 136 assertions / 0 failures**; suíte completa
+  **941 runs / 3295 assertions / 1 failure + 12 errors** (938+3 novos). Os 12 pré-existentes reproduzem
+  **isolados** (1 timezone em `presenca_endpoints_test.rb` + 11 Devise `redirect_to`: 9 Sessions + 2 Passwords);
+  o **13º erro** é a variação **flaky/order-dependent** já conhecida (`NoMethodError: undefined method 'ativos'
+  for Pessoas::Vinculo` por `remove_method` destrutivo em teste de job) — pré-existente, não toca o meu diff
+  (o serviço nunca usa `Pessoas::Vinculo.ativos`). RuboCop 0 offenses; Zeitwerk OK.
+- **Suposição (inalterada):** o casing **real** do endpoint segue **não provado** (fato de sistema externo; sem
+  dump/cassette). A correção estreita a janela de corrupção sem provar o casing real — a obtenção de amostra
+  real permanece como débito 🟠1 do review.
+
+##### 🔁 Re-review do 🟡1 (Code Reviewer, 2026-09-30 — `review_report_29_3_d1_d4.md`, seção de re-review)
+
+- **Veredito:** ✅ **FECHADO**, 0 blockers. Probes independentes: exclusão em 3º casing **aborta** (Q1, nada
+  gravado); linha OK + linha ruim **aborta** (Q2, furo do `any?` sobre a lista fechado); linha sem exclusão
+  **passa** (Q3). M10–M13 **todas mortas** (reproduzidas: 2 / 1 / 1 erro / 2; M11 com 1 falha vs 2 declaradas
+  pelo autor — morta de todo modo). Métricas batidas: serviço **38/136/0**; serviço+job+rake **45/153/0**;
+  `test/models`+`test/controllers/admin` **518/1800/0**; suíte **941/3295/1F+12E** (2ª execução exata; o 13º
+  erro da 1ª é a flaky `Pessoas::Vinculo.ativos`, isola e passa, não toca o diff). RuboCop 0; Zeitwerk OK.
+- **Risco residual (🟡A, não-bloqueante):** a heurística é substring de `chave_normalizada` — (a) uma variante
+  **renomeada** sem a palavra (`data_fim`) ainda passa em silêncio (B1); (b) um campo homônimo que **contém** a
+  palavra (`observacao_exclusao`, `exclusao_motivo`) com o campo real **ausente** é **rejeitado** (A1/A2 — falso
+  positivo). **Não afeta o payload real**, cujas chaves (`pessoas2/app/models/gestao_individual.rb:23`) são
+  `dataCriacao`/`dataExclusao` (casing conhecido) + `observacao` (não-homônima). Observação para payload futuro.
+- **Commit:** segue liberado com **stage seletivo** (`COMMIT_MODE=manual`).
 
 ### Tarefa 29.4 — `AutorizacaoFrequencia` — cascata de visualização
 - User Story: Como gestor, quero ver apenas a frequência de quem eu gerencio (hierarquia, gestão individual ou permissão geral) para respeitar a regra de acesso do legado.
@@ -432,6 +553,17 @@ Caminho crítico: ~~D1–D4~~ (D1/D4 ✅ decididas 2026-09-29) → 29.2 ✅ → 
 > **Métricas:** direcionados 29.2 **82/236/0** · 29.0 **10/75/0** (+ locale 14/87/0) · `test/models` + `test/controllers/admin` **518/1800/0** (baseline exato) · suíte completa **896/3149** com os mesmos **12 pré-existentes** (11× `redirect_to` Devise + 1× timezone) · RuboCop dos 9 arquivos **0 offenses**.
 > **Único impedimento ao commit:** higiene do stage — `config/credentials.yml.enc` (Sprint 8) + `log/*.log` e `tmp/cache/bootsnap/load-path-cache` (rastreados, ignorados) **fora** do commit. Usar **stage seletivo**, nunca `git add -A`.
 > **Pendência não-blocker da 29.0 (débito B1) — ✅ FECHADA em 2026-09-29:** o `ci.yml` passou a criar `frequencia_pessoas_espelho_test` e a rodar `test:pessoas_schema:load` antes da suíte, **com checagem de existência do banco sem `|| true`** — se o `createdb` falhar, o passo **quebra o CI** (antes o `|| true` + `skip_sem_espelho!` deixariam a suíte **verde com 19 skips**, um gate que passa sem executar — o mesmo anti-padrão do `bin/brakeman` com `--ensure-latest`). O `skip` fica como rede de segurança para a máquina do dev, não para o CI. Causa-raiz extra corrigida: o bloco `pessoas` do `database.yml` (test) lia só credentials — em CI limpo, sem `master.key`, a conexão falharia antes de qualquer teste; agora `ENV.fetch("PESSOAS_DB_*", credentials)`. **STILL OPEN (chore de design do CTO):** o `ci.yml` é **GitHub Actions** (`runs-on: ubuntu-latest`, `ruby-version: .ruby-version` → `ruby-4.0.0`), mas o remote de produção é **GitLab** (`gitlab.tjpi.jus.br`) e **não existe `.gitlab-ci.yml`** — este passo provavelmente **não roda no CI real**. O fork do CI para runner self-hosted é a pendência que trava a "definição de pronto" em produção.
+
+> **`docs/quality/review_report_29_3.md`** — 2026-09-30 — Tarefa 29.3 (importação idempotente de gestores individuais)
+> **Veredito:** ✅ APROVADO (🔴 0 · 🟡 3 · 🟠 1 · 🟢 3); decisões (1)/(2) ratificadas com ressalva ao CTO; idempotência provada (2ª execução = 0 criações).
+> **Addendum:** os rulings do CTO (ADR-0008) fecharam as ressalvas e o 🟡2 (order-dependence) → origem do complemento **29.3-D1..D4**.
+
+> **`docs/quality/review_report_29_3_d1_d4.md`** — 2026-09-30 — **Complemento 29.3-D1..D4** (+ F1), branch `feature/demanda-29-3-complemento` (worktree `wt-29.3-d1-d4`)
+> **Veredito:** ✅ **APROVADO, 0 blockers** (🟡 4 · 🟠 1 · 🟢 3).
+> **Rulings do ADR-0008:** D1/D2/D3/F1 ✅ cumpridos e provados (cada um com mutação morta); **D4 ⚠️ parcial** — tolerância bidirecional funciona (M6 morre), mas o `verificar_contrato!` é frouxo e não cobre o casing do campo de **exclusão** (excluído entra ATIVO sem `data_exclusao` se o casing mudar; risco de pior caso do F2).
+> **Métricas:** serviço 35/123/0 · `test/models`+`test/controllers/admin` **518/1800/0** (baseline exato) · suíte **938/3289/1F+11E** (12 pré-existentes) · RuboCop 0 · Zeitwerk OK · **M1–M9 todas MORTAS** (reproduzidas) · idempotência preservada.
+> **Não bloqueiam o commit:** 🟡1 endurecer `verificar_contrato!` · 🟡2 duplicação da base mista de F1 · 🟡3 acionabilidade do conflito de identidade · 🟡4 stage seletivo · 🟠1 payload real ausente. **Commit liberado** com stage seletivo (nunca `git add -A`).
+> **🔁 Re-review (2026-09-30):** 🟡1 **FECHADO** — contrato por campo e por linha (probes Q1/Q2 abortam, Q3 passa; M10–M13 todas mortas). Serviço `38/136/0`; suíte `941/3295/1F+12E`. Risco residual 🟡A (heurística substring: variante renomeada passa / homônimo com campo ausente é rejeitado) **não afeta o payload real** (`dataCriacao`/`dataExclusao` = casing conhecido). **0 blockers.**
 
 ## 🧭 Ruling do CTO — M2 (Brakeman gate / job `scan_ruby`), 2026-09-29
 

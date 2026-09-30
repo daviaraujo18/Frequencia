@@ -287,3 +287,57 @@ Se a chave real for camelCase, `momento_exclusao` é sempre `nil` ⇒ **todo reg
    um defeito real de um dos lados.
 3. **Normalizar na borda é defesa em profundidade, não preciosismo:** aceitar ambos os casings (`linha[:data_criacao] ||
    linha["dataCriacao"]`) transforma um risco de corrupção silenciosa em robustez por alguns caracteres.
+
+---
+
+### 2026-09-30 — Medir a suíte num git worktree sem os artefatos NÃO versionados produz centenas de "falhas" que não são regressão
+
+**Contexto:** Complemento 29.3-D1..D4 (Sprint 29). A tarefa foi executada num **git worktree** isolado
+(`wt-29.3-d1-d4`) — decisão correta, para não colidir com o `Frequencia/` e o `wt-29.3` (um acidente anterior
+aconteceu por agentes compartilharem diretório). O worktree tinha o código, mas **não** tinha dois artefatos de
+execução: o `vendor/bundle` (dependências) e o `app/assets/builds/application.css` (saída do pipeline de assets).
+**Problema:** a primeira medição de `test/models test/controllers/admin` deu `518 runs / 1156 assertions / 110
+errors` — contra o baseline conhecido `518/1800/0`. Os 110 errors eram **todos**
+`ActionView::Template::Error: The asset 'application.css' was not found in the load path` (o layout `admin` o
+referencia). Na suíte completa, o mesmo defeito inflou para **174 errors**. Ambos os artefatos são gitignored
+(`api-ponto/log/`+`api-ponto/tmp/` e `app/assets/builds/`), então `git status` ficava **limpo** e nada no worktree
+denunciava a ausência — o número parecia uma regressão grave introduzida pelo patch. (O bundle foi resolvido com
+`BUNDLE_PATH` apontando ao checkout principal, que tem `vendor/bundle/ruby/3.3.0`; o `application.css` foi copiado
+temporariamente do principal e removido após a medição.)
+**Lição (duas):**
+1. **Um worktree é um checkout limpo: tudo que é gitignored NÃO existe lá.** Antes de rodar a suíte, um worktree
+   novo precisa de **estado de execução** além do código — bundle e assets compilados. Se o número divergir do
+   baseline, a **primeira** hipótese é artefato ausente, não regressão: classifique as mensagens de erro por
+   **assinatura** (`grep | sort | uniq -c`) antes de atribuir a causa ao diff. Aqui `110× a mesma mensagem de
+   asset` foi a pista que descartou a regressão em segundos.
+2. **Isso é a mesma lição central da sessão numa terceira roupagem:** o baseline "923/12 pré-existentes" só vale
+   para o **ambiente em que foi medido**. Reproduzir a medição fora dele mede o ambiente, não o código. A regra
+   prática: **reproduza primeiro o baseline conhecido no ambiente novo** (aqui, `518/1800/0`) — se ele não
+   reproduz, o ambiente não é comparável.
+
+---
+
+### 2026-09-30 — Uma verificação de contrato que passa "se ALGUMA pista aparecer" não protege o campo de pior risco
+
+**Contexto:** Complemento 29.3-D4 (Sprint 29), achado 🟡1 do Code Reviewer. Para o risco de *casing* das chaves
+de data do payload do Intranet, o serviço ganhou um `verificar_contrato!` que abortava se **nenhuma** linha
+trouxesse **nenhum** dos casings conhecidos — expresso como
+`linhas.any? { |l| l.key?(:data_criacao) || l.key?(:dataCriacao) || l.key?(:data_exclusao) || l.key?(:dataExclusao) }`.
+
+**Problema:** o predicado era um `any?` sobre a **linha inteira** (e outro sobre a **lista**). Bastava que **uma**
+das quatro chaves casasse para a linha ser "perdoada". Medido: um payload com `data_criacao` reconhecida **e** a
+**exclusão** num terceiro casing (`dataExclusao2`) passava em silêncio e o vínculo entrava **ATIVO sem
+`data_exclusao`** — a corrupção que o próprio contrato existia para impedir. O `any?` sobre a lista era o segundo
+furo: uma linha 100% reconhecida "protegia" as demais. A suíte (35 testes do serviço) estava 100% verde.
+
+**Lição (duas):**
+1. **Um contrato deve ser por CAMPO crítico e por LINHA, nunca por "alguma chave conhecida apareceu".** Se o risco
+   é a perda silenciosa do campo X, o predicado tem de falar **de X** — `linha.key?(:x) || linha.key?(:x_camel)`
+   para **cada** linha —, não de um OR de campos onde a presença de outro campo "perdoa". O OR de campos é uma
+   verificação decorativa: ela *parece* verificar e não verifica a condição que importa.
+2. **Distinguir "campo ausente de verdade" de "campo presente num formato desconhecido" — pela CHAVE, não pelo
+   valor.** Endurecer sem falso positivo exige separar dois casos que um `key?` simples confunde: ausência
+   legítima (nem todo vínculo tem exclusão) e variante de casing (chave `dataExclusao2`/`data_exclusao_legado`).
+   A discriminação é reconhecer que a chave **parece** com o campo (mesma palavra distintiva após normalizar
+   casing/separadores) sem **ser** o casing conhecido → falha ALTO; se não há nenhuma chave parecida, é ausência
+   real → passa. **Prove sempre os dois sentidos** (o caso que deve falhar e o payload válido que deve passar).

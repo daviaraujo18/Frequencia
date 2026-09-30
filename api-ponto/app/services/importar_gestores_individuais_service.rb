@@ -26,16 +26,27 @@
 #   - `gestor_individual_gerenciados.id_legado` = `id` da linha legada
 #     (a chave do PAR — o índice UNIQUE do par ativo/histórico depende disso);
 #   - `gestores_individuais.id_legado` = `id_vinculo_gestor` (a chave da
-#     PESSOA-gestor; estável e única por vínculo, então reimportar não cria um
-#     gestor novo por gerido).
+#     PESSOA-gestor; estável por vínculo).
 #   - `gestores_individuais.gestor_cpf` é a ponte de casamento documentada na
 #     29.2 (Bug 10) — casa a linha legada com o gestor já importado quando o
 #     `id_vinculo_gestor` vier ausente/divergente.
 #
-# ⚠️ Este mapeamento é o único consistente com os índices UNIQUE criados na
-# 29.2, mas o critério da tarefa diz apenas "upsert por id_legado" — está
-# isolado em `encontrar_gestor`/`chave_do_gestor` justamente para ser
-# ratificado ou trocado pelo CTO sem tocar no resto desta classe.
+# ── Complemento 29.3-D1..D4 (ADR-0008, CTO 2026-09-30) ─────────────────────
+# Quatro patches decididos pelos rulings do CTO, aplicados nesta mesma linha
+# de entrega:
+#   - D1 — `ativo`/`data_exclusao` do GESTOR são PROJEÇÃO determinística dos
+#     vínculos, recalculada PÓS-LOOP (`recalcular_gestores_tocados`), nunca
+#     "a última linha do payload vence". O `ativo` do PAR preserva 1:1 o dado
+#     do Intranet. Lê via `GestorIndividualGerenciado.ativos` (índice parcial).
+#   - D2 — guarda de identidade: se o `gestor_cpf` resolvido divergir do CPF do
+#     gestor casado por `id_legado` do gestor, a linha vira `nao_resolvido`
+#     (conflito de identidade) — nunca reescreve CPF/`gestor_user` do existente.
+#   - D3 — nome não resolvido usa marcador explícito de sistema
+#     `"(sem nome — CPF <cpf>)"`, substituível quando o Pessoas volta (nome
+#     real sempre prevalece sobre o marcador).
+#   - D4 — tolerância ao casing das chaves de data do payload legado
+#     (`data_criacao` \|\| `dataCriacao`; idem exclusão), com verificação de
+#     contrato que falha alto se nenhum casing conhecido estiver presente.
 #
 # ── Modo de escrita (CTO, 2026-09-29 / ADR-0007) ───────────────────────────
 # ActiveRecord (create/update!), NUNCA `upsert_all`: o invariante de
@@ -58,6 +69,12 @@
 #     nunca via `desativar!` — o método data a exclusão ao momento da chamada,
 #     que não é a data do legado (ADR-0007, regra 4).
 class ImportarGestoresIndividuaisService
+  # D3 (ADR-0008, regra 6) — marcador explícito de sistema para "nome não
+  # resolvido no Pessoas". Diferente do antigo `"Gestor individual <CPF>"`
+  # (que se parecia com nome real e "grudava" por `||=`), este é
+  # inconfundível e substituível quando o Pessoas volta.
+  MARCADOR_SEM_NOME = "(sem nome — CPF "
+
   # Relatório final da importação. `nao_resolvidos` é enumerável (nada é
   # silenciosamente ignorado) — cada item traz o id legado e o motivo.
   Resultado = Struct.new(:importados, :atualizados, :nao_resolvidos, :dry_run, keyword_init: true) do
@@ -98,6 +115,11 @@ class ImportarGestoresIndividuaisService
     @importados = 0
     @atualizados = 0
     @nao_resolvidos = []
+    # D1: ids dos gestores tocados nesta execução, para o recálculo PÓS-LOOP.
+    # Guardamos só o id (e recarregamos no recálculo) — assim não dependemos da
+    # instância Ruby (que pode estar stale se o mesmo gestor vier em várias
+    # linhas).
+    @gestores_tocados = {}
   end
 
   def call(registros = nil)
@@ -106,9 +128,15 @@ class ImportarGestoresIndividuaisService
     # (indifferent access), senão `l[:matricula_gestor]` seria `nil` sobre um
     # Hash de chaves string — e a importação inteira viraria "não resolvido".
     linhas = Array(registros || carregar_registros).map { |linha| normalizar_linha(linha) }
+    verificar_contrato!(linhas)
     pares = mapa_matricula_cpf(linhas)
 
     linhas.each { |linha| importar_linha(linha, pares) }
+
+    # D1 (ADR-0008, Ruling 3): o `ativo`/`data_exclusao` do GESTOR é projeção
+    # dos vínculos e só pode ser calculado DEPOIS de todas as linhas do gestor
+    # (nunca "a última linha do payload vence"). Em dry-run não há escrita.
+    recalcular_gestores_tocados unless @dry_run
 
     Resultado.new(
       importados: @importados,
@@ -129,6 +157,99 @@ class ImportarGestoresIndividuaisService
   def normalizar_linha(linha)
     hash = linha.respond_to?(:with_indifferent_access) ? linha : linha.to_h
     hash.with_indifferent_access
+  end
+
+  # --- D4 (F2): casing das chaves de data do payload legado ------------------
+  #
+  # A gem faz `JSON.parse(response.body)` CRU (sem `key_transform`), então o
+  # casing das chaves é exatamente o que o servidor envia. Dois consumidores
+  # reais do MESMO endpoint divergem: o Pessoas2 lê `dataCriacao`/`dataExclusao`
+  # (camelCase, `pessoas2/app/models/gestao_individual.rb:23`) e a doc da gem
+  # diz `data_criacao`/`data_exclusao` (snake_case). NÃO temos amostra real.
+  # Se o real for camelCase e lermos só snake_case, `momento_exclusao` seria
+  # sempre `nil` ⇒ todo excluído entraria ATIVO sem `data_exclusao` (corrupção
+  # silenciosa de `ativo`, com a suíte verde). Solução: aceitar AMBOS os
+  # casings, explicitamente.
+  def valor_da_linha(linha, *chaves)
+    chaves.each do |chave|
+      valor = linha[chave]
+      return valor if valor.present?
+    end
+    nil
+  end
+
+  def data_criacao_da_linha(linha)
+    valor_da_linha(linha, :data_criacao, :dataCriacao)
+  end
+
+  def data_exclusao_da_linha(linha)
+    valor_da_linha(linha, :data_exclusao, :dataExclusao)
+  end
+
+  # Contrato de dados (D4 reforçado — achado 🟡1 do review): a verificação é
+  # POR CAMPO e POR LINHA, não por "alguma chave conhecida apareceu".
+  #
+  # O contrato anterior usava `any?` sobre a linha inteira: bastava UMA das 4
+  # chaves casar para a linha ser "perdoada". Consequência medida: uma linha com
+  # `data_criacao` (reconhecida) e a EXCLUSÃO num casing não previsto (ex.:
+  # `dataExclusao2`, `data_exclusao_legado`) passava em silêncio e o vínculo
+  # entrava ATIVO SEM `data_exclusao` — exatamente a corrupção silenciosa de
+  # `ativo` que o F2/ADR-0008 existe para matar.
+  #
+  # Regra nova, por campo crítico:
+  #   - se a linha traz o casing conhecido daquele campo → OK;
+  #   - se NÃO traz, mas tem ALGUMA chave que "parece" com o campo (mesma
+  #     palavra distintiva, ex.: contém `exclusao`) → é variante de casing
+  #     desconhecida: falha ALTO (não vira `nil` silencioso);
+  #   - se NÃO traz nada que se pareça com o campo → o campo está ausente de
+  #     verdade (legítimo: nem todo vínculo tem exclusão) → OK.
+  # A ausência legítima se distingue da variante desconhecida pela CHAVE, não
+  # pelo valor — por isso o campo de exclusão ausente NÃO é falso positivo.
+  #
+  # `registros: []` não é violação.
+  def verificar_contrato!(linhas)
+    return if linhas.empty?
+
+    linhas.each do |linha|
+      verificar_campo_de_data!(linha, "exclusão", :data_exclusao, :dataExclusao, "exclusao")
+      verificar_campo_de_data!(linha, "criação", :data_criacao, :dataCriacao, "criacao")
+    end
+
+    # Rede secundária: se NENHUMA linha trouxer qualquer casing conhecido, o
+    # formato pode ter mudado por inteiro (nomes de campo reescritos, sem a
+    # palavra distintiva). Mantém a proteção original contra essa troca global.
+    reconhecido = linhas.any? do |linha|
+      linha.key?(:data_criacao) || linha.key?(:dataCriacao) ||
+        linha.key?(:data_exclusao) || linha.key?(:dataExclusao)
+    end
+    return if reconhecido
+
+    raise ArgumentError,
+          "payload de gestores_individuais fora do contrato: nenhuma linha traz " \
+          "data_criacao/dataCriacao nem data_exclusao/dataExclusao (casing do endpoint mudou?)"
+  end
+
+  # Verifica UM campo de data em UMA linha (detalhes em `verificar_contrato!`).
+  # `palavra` é o termo distintivo do campo, usado para reconhecer variantes de
+  # casing desconhecidas (mesma palavra, chave diferente).
+  def verificar_campo_de_data!(linha, rotulo, chave_snake, chave_camel, palavra)
+    return if linha.key?(chave_snake) || linha.key?(chave_camel)
+
+    variante = linha.keys.find { |chave| chave_normalizada(chave).include?(palavra) }
+    return if variante.nil?
+
+    raise ArgumentError,
+          "payload de gestores_individuais fora do contrato: o campo de #{rotulo} " \
+          "vem numa chave desconhecida (#{variante.inspect}); esperado #{chave_snake}/#{chave_camel}. " \
+          "Casing do endpoint mudou?"
+  end
+
+  # Compara nomes de chave ignorando casing e separadores: `data_exclusao`,
+  # `dataExclusao` e `DataExclusao` viram todos "dataexclusao". Assim uma
+  # variante com o MESMO nome em outro casing é reconhecida (e rejeitada) em
+  # vez de virar `nil` silencioso.
+  def chave_normalizada(chave)
+    chave.to_s.downcase.gsub(/[^a-z0-9]/, "")
   end
 
   # Um único mapa matrícula→CPF para toda a importação (a folha é lida uma
@@ -173,7 +294,18 @@ class ImportarGestoresIndividuaisService
   # A escrita real (ou a simulação, em dry-run). Isolada para que o dry-run
   # percorra EXATAMENTE o mesmo caminho de resolução — só não persiste.
   def aplicar(id_registro, linha, gestor_cpf, gerido_user)
-    gestor = encontrar_gestor(gestor_cpf, chave_do_gestor(linha))
+    id_legado_do_gestor = chave_do_gestor(linha)
+    gestor, origem = encontrar_gestor(gestor_cpf, id_legado_do_gestor)
+
+    # D2 (ADR-0008, Ruling 1): linha casada por `id_legado` do gestor cujo CPF
+    # resolvido DIVERGE do CPF gravado é conflito de identidade → não resolvido.
+    # Nunca reescrever o CPF nem o `gestor_user` do gestor existente (evita
+    # auto-autorização na cascata por id reaproveitado).
+    if origem == :por_chave
+      conflito = conflito_de_identidade(gestor, gestor_cpf)
+      return registrar_nao_resolvido(id_registro, conflito) if conflito
+    end
+
     vinculo = GestorIndividualGerenciado.find_or_initialize_by(id_legado: id_registro)
     criacao = gestor.new_record? || vinculo.new_record?
 
@@ -183,13 +315,14 @@ class ImportarGestoresIndividuaisService
     end
 
     gestor_user = User.find_by(cpf: gestor_cpf)
-    momento_exclusao = tempo(linha[:data_exclusao])
+    momento_exclusao = tempo(data_exclusao_da_linha(linha))
 
     ActiveRecord::Base.transaction do
-      aplicar_gestor(gestor, linha, gestor_cpf, gestor_user, momento_exclusao)
+      aplicar_gestor(gestor, linha, gestor_cpf, gestor_user)
       aplicar_vinculo(vinculo, gestor, gerido_user, momento_exclusao)
     end
 
+    @gestores_tocados[gestor.id] = true
     registrar_resultado(criacao)
   rescue ActiveRecord::RecordInvalid => e
     # Bug 8 (blocker da 29.3): `e.message` cru cai em "Translation missing"
@@ -208,14 +341,27 @@ class ImportarGestoresIndividuaisService
     registrar_nao_resolvido(id_registro, "#{e.class}: #{e.message}")
   end
 
-  def aplicar_gestor(gestor, linha, gestor_cpf, gestor_user, momento_exclusao)
-    gestor.id_legado = chave_do_gestor(linha)
-    gestor.gestor_cpf = normalizar_cpf(gestor_cpf)
-    gestor.nome ||= nome_do_gestor(gestor_cpf)
+  # Aplica os campos do GESTOR que vêm da linha legada. NÃO define
+  # `ativo`/`data_exclusao` do gestor: isso é projeção pós-loop (D1).
+  def aplicar_gestor(gestor, linha, gestor_cpf, gestor_user)
+    novo = gestor.new_record?
+
+    # F1 (ADR-0008, regra 5): o `id_legado` do gestor reancora SÓ na criação.
+    # Uma linha com `id_vinculo_gestor` presente casa por `id_legado` (e um
+    # gestor já existente encontrado assim já tem o id). Uma linha SEM
+    # `id_vinculo_gestor` casa pela ponte CPF e NÃO reancora — reancorar em
+    # toda linha movia o gestor entre linhas e colidia com o índice UNIQUE
+    # parcial `index_gestor_individual_gerenciados_on_par_ativo`.
+    gestor.id_legado = chave_do_gestor(linha) if novo
+
+    # D2: o CPF de um gestor EXISTENTE nunca é reescrito (o conflito já foi
+    # barrado em `aplicar`). Só a criação grava o CPF.
+    gestor.gestor_cpf = normalizar_cpf(gestor_cpf) if novo
+
+    aplicar_nome(gestor, gestor_cpf)
     gestor.observacao = linha[:observacao].presence
-    gestor.data_criacao_legado = tempo(linha[:data_criacao])
+    gestor.data_criacao_legado = tempo(data_criacao_da_linha(linha))
     gestor.gestor_user = gestor_user
-    aplicar_estado(gestor, momento_exclusao)
 
     gestor.save!
   end
@@ -232,9 +378,42 @@ class ImportarGestoresIndividuaisService
   # legado PULA a validação de auto-gerência (só o NOT NULL do banco segura) e
   # é um estado implausível. Regra: excluído no legado ⇒ inativo; senão ativo.
   # E `data_exclusao` é gravada direto no atributo — nunca `desativar!`.
+  # Vale para o PAR (`GestorIndividualGerenciado`); o GESTOR é recalculado
+  # pós-loop (D1).
   def aplicar_estado(registro, momento_exclusao)
     registro.data_exclusao = momento_exclusao
     registro.ativo = momento_exclusao.nil?
+  end
+
+  # --- D1 (ADR-0008, Ruling 3): projeção determinística do estado do gestor --
+
+  def recalcular_gestores_tocados
+    @gestores_tocados.each_key do |gestor_id|
+      recalcular_gestor(GestorIndividual.find(gestor_id))
+    end
+  end
+
+  # Semântica (ADR-0008, regra 1-2): `ativo` do gestor = true sse existe ≥ 1
+  # vínculo ATIVO; `data_exclusao` do gestor reflete o conjunto de vínculos
+  # ativos (nulos por construção) e, sem nenhum ativo, preserva a exclusão
+  # mais recente entre os vínculos. Independe da ordem do payload.
+  #
+  # Usa `gestor_individual_gerenciados.ativos` — que aciona o índice UNIQUE
+  # parcial `WHERE ativo` (fecha o Bug 16).
+  def recalcular_gestor(gestor)
+    escopo = GestorIndividualGerenciado.where(gestor_individual_id: gestor.id)
+
+    if escopo.ativos.exists?
+      gestor.ativo = true
+      gestor.data_exclusao = nil
+    else
+      gestor.ativo = false
+      ultima = escopo.maximum(:data_exclusao)
+      gestor.data_exclusao = ultima if ultima.present?
+    end
+
+    gestor.save! if gestor.changed?
+    gestor
   end
 
   # --- identidade -----------------------------------------------------------
@@ -244,15 +423,36 @@ class ImportarGestoresIndividuaisService
     inteiro_positivo(linha[:id_vinculo_gestor])
   end
 
-  # Upsert idempotente do gestor, tolerante a bases parcialmente importadas:
-  #   1. pela chave estável (`id_legado` = id_vinculo_gestor);
-  #   2. senão pela ponte `gestor_cpf` (importação anterior sem id_vinculo);
-  #   3. senão, novo.
+  # Upsert idempotente do gestor, tolerante a bases parcialmente importadas.
+  # Retorna `[gestor, origem]` para que `aplicar` aplique a guarda de
+  # identidade (D2) só quando o casamento veio pelo `id_legado`.
+  #
+  # F1 (ADR-0008, regra 5): linha com `id_vinculo_gestor` PRESENTE casa SÓ por
+  # `id_legado` do gestor (`nil`/novo se não houver) — NÃO usa a ponte CPF, o
+  # que evita reancorar/mover um gestor existente. Linha sem `id_vinculo_gestor`
+  # usa a ponte `gestor_cpf` (base importada antes de o vínculo existir).
   def encontrar_gestor(gestor_cpf, id_legado)
-    por_chave = id_legado.present? ? GestorIndividual.find_by(id_legado: id_legado) : nil
-    return por_chave if por_chave
+    if id_legado.present?
+      por_chave = GestorIndividual.find_by(id_legado: id_legado)
+      return [ por_chave, :por_chave ] if por_chave
 
-    GestorIndividual.where(gestor_cpf: normalizar_cpf(gestor_cpf)).order(:id).first || GestorIndividual.new
+      [ GestorIndividual.new, :novo ]
+    else
+      por_ponte = GestorIndividual.where(gestor_cpf: normalizar_cpf(gestor_cpf)).order(:id).first
+      return [ por_ponte, :por_ponte_cpf ] if por_ponte
+
+      [ GestorIndividual.new, :novo ]
+    end
+  end
+
+  # D2: motivo do conflito se o CPF resolvido divergir do CPF do gestor casado
+  # por `id_legado` do gestor; `nil` se concordam (ou se o gestor não tem CPF).
+  def conflito_de_identidade(gestor, gestor_cpf)
+    resolvido = normalizar_cpf(gestor_cpf)
+    return if gestor.gestor_cpf.blank? || gestor.gestor_cpf == resolvido
+
+    "conflito de identidade: o id_legado do gestor pertence ao CPF #{gestor.gestor_cpf}, " \
+      "mas esta linha resolveu o CPF #{resolvido} — CPF e login do gestor existente não foram tocados"
   end
 
   # --- resolução matrícula→CPF (espelha o pessoas2, incl. o fallback) -------
@@ -277,14 +477,36 @@ class ImportarGestoresIndividuaisService
     nil
   end
 
+  # --- D3 (ADR-0008, regra 6-7): nome do gestor ------------------------------
+
   # O payload legado não traz o nome do gestor; o Pessoas é a autoridade
-  # cadastral. Fallback determinístico porque `nome` é obrigatório no model e a
-  # linha legada é válida — não podemos descartá-la só por falta de nome.
-  def nome_do_gestor(gestor_cpf)
-    Pessoas::Pessoa.find_by(cpf: gestor_cpf)&.nome.presence || "Gestor individual #{normalizar_cpf(gestor_cpf)}"
+  # cadastral. `nome` é obrigatório no model, então quando não há nome real
+  # gravamos um MARCADOR explícito de sistema — nunca descartamos a linha.
+  # Regra de precedência: o nome real do Pessoas SEMPRE ganha do marcador (uma
+  # reimportação substitui o marcador), mas o marcador NÃO sobrepõe um nome
+  # real já gravado por outro caminho. Nunca reescrevemos um nome real por
+  # outro valor que não seja o nome real do Pessoas.
+  def aplicar_nome(gestor, gestor_cpf)
+    cpf = normalizar_cpf(gestor_cpf)
+    nome_real = nome_do_pessoas(cpf)
+
+    if nome_real.present?
+      gestor.nome = nome_real if gestor.nome.blank? || nome_de_sistema?(gestor.nome)
+    elsif gestor.nome.blank?
+      gestor.nome = "#{MARCADOR_SEM_NOME}#{cpf})"
+    end
+  end
+
+  def nome_do_pessoas(cpf)
+    Pessoas::Pessoa.find_by(cpf: cpf)&.nome.presence
   rescue StandardError => e
-    Rails.logger.warn("[ImportarGestoresIndividuaisService] falha ao ler nome do gestor #{gestor_cpf}: #{e.class} - #{e.message}")
-    "Gestor individual #{normalizar_cpf(gestor_cpf)}"
+    Rails.logger.warn("[ImportarGestoresIndividuaisService] falha ao ler nome do gestor #{cpf}: #{e.class} - #{e.message}")
+    nil
+  end
+
+  # Reconhece o marcador de sistema (D3), para não tratá-lo como nome real.
+  def nome_de_sistema?(nome)
+    nome.to_s.start_with?(MARCADOR_SEM_NOME)
   end
 
   # --- utilidades -----------------------------------------------------------
