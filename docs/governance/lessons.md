@@ -209,3 +209,17 @@
 **Lição (duas):**
 1. **`gitlab-ci-local` NÃO expõe este bug** — ele publica as portas em `localhost`, semântica divergente do executor docker real. A prova anterior passou e **não valia** para este aspecto. Para semântica de rede de services, a prova tem de ser **Docker real com rede própria e sem publicar porta**.
 2. Ao fork-ar CI entre provedores, **cada suposição de rede/ambiente do arquivo original precisa ser re-verificada, não herdada** — `ports:` de um provedor vira `alias` no outro; variáveis como `DATABASE_URL`/`PGPASSWORD` que "funcionavam" podem não ter sido percebidas por estarem num job que nunca rodou. E **um comentário que afirma uma garantia falsa é pior que nenhum**: o comentário dizia que o `|| true` do `CREATE ROLE` cobria a falha de auth, quando ele usa o MESMO caminho de autenticação e falharia junto — a cobertura real era `PGPASSWORD` + `until pg_isready` + o `createdb -O` em cascata.
+
+---
+
+### 2026-09-30 — Monorepo: o GitLab só lê `.gitlab-ci.yml` na RAIZ do repo (validar conteúdo ≠ validar que a ferramenta o encontraria)
+
+**Contexto:** Chore do fork do CI (Sprint 29). O `.gitlab-ci.yml` foi criado em `api-ponto/.gitlab-ci.yml`, seguindo o modelo `pessoas2/.gitlab-ci.yml`. Validamos o YAML, o schema do GitLab (`gitlab-ci-local`), a sequência do job `test` em container, o fail-fast, etc.
+**Problema:** o repositório `Frequencia` é um **MONOREPO** — a raiz git contém `api-ponto/` (app Rails), `docs/`, `PRD-*.md`, `SPRINT-PLAN.md`. O **GitLab só lê o `.gitlab-ci.yml` na raiz do repositório**; **não há descoberta automática em subpasta**. Logo o pipeline **nunca foi criado**: o stage `test` não "falhou" — **não existia**. Toda a validação de conteúdo era real, mas o arquivo não era lido pela ferramenta. O modelo `pessoas2` **não se aplicava**: é um app Rails **único na raiz** (não é monorepo), com o arquivo na raiz e sem `cd`.
+**Solução:** mover para a raiz (`Frequencia/.gitlab-ci.yml`) + **`cd api-ponto` no `before_script` global** (o `before_script` e o `script` rodam no mesmo shell, então o `cd` persiste e todos os comandos relativos a `api-ponto/` continuam válidos). Provado: sem `cd`, `bin/brakeman`/`bin/rails` da raiz → **EXIT=127**; com `cd`, a sequência do `test` roda (db:test:prepare EXIT=0, load EXIT=0, espelho 19/68/0). Comentário no topo do arquivo explica o monorepo e o `cd`.
+**Lição (a mais importante da sessão):** **validar o CONTEÚDO de um artefato não é validar que a ferramenta o LERIA no lugar certo.** Esta foi a **quarta variação do mesmo erro de método** nesta sessão, e todas passaram pelo mesmo furo: a validação media algo *parecido* com a condição real, mas não a condição real.
+1. Validar a auth do Postgres **no dev** (loopback `trust`) em vez de no container `scram`.
+2. Validar o job no **`gitlab-ci-local`**, que publica porta em `localhost` (semântica divergente do executor real) — a prova passou e não valia.
+3. Confiar no **`--ensure-latest`** que saía 0 **sem escanear** (gate que passa sem executar).
+4. Validar um **arquivo que o GitLab não lê** (subpasta de monorepo).
+> Regra prática: antes de "provar" o funcionamento, pergunte **"esta prova exercita a MESMA condição do ambiente real — inclusive ONDE a ferramenta procura o artefato e COMO ela resolve a rede?"**. Se não, é uma prova de conteúdo, não de integração. Para arquivos de configuração de ferramenta, a primeira verificação é de **descoberta/localização**, não de sintaxe. E: **um modelo copiado de outro projeto só vale se a ESTRUTURA do repositório for a mesma** (monorepo ≠ app único na raiz).

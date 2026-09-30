@@ -23,8 +23,43 @@ RR-S2).
 - [x] **RR-S1** — dar sinal aos exits 8/9 das flags anti-drift mesmo com o `EOLRails` vivo
 - [x] **RR-S2** — `PESSOAS_DB_DATABASE` deixa de ser decorativo (bloco `pessoas` de test passa a ler a ENV)
 - [x] **Blocker do fail-fast** — `allow_failure: true` em security/quality p/ o `test` executar + débito dono/prazo/critério
+- [x] **Blocker do MONOREPO** — arquivo movido para a raiz do repo + `cd api-ponto` no `before_script` (GitLab só lê a raiz)
 - [x] Decisão sobre o `.github/workflows/ci.yml` (manter/de-brittle — ver §Decisão)
 - [x] Dívida registrada: divergência de versão do Ruby (não alterar `.ruby-version`/`.tool-versions`)
+
+## 🔴 Correção pós-review — arquivo estava na SUBPASTA (monorepo); GitLab só lê a raiz
+
+**Causa (anterior a todos os achados anteriores):** o repositório é um **MONOREPO** — a raiz
+git é `Frequencia/` e contém `api-ponto/` (app Rails), `docs/`, `PRD-*.md`, `SPRINT-PLAN.md`,
+`opencode.json`. O `.gitlab-ci.yml` foi criado em **`api-ponto/.gitlab-ci.yml`**, mas o
+**GitLab só lê o `.gitlab-ci.yml` na raiz do repositório** — **não há descoberta automática
+em subpasta**. Logo o pipeline **nunca foi criado**: o stage `test` não "falhou", ele **não
+existia**. Todos os achados anteriores (fail-fast, B1/B2/B3) continuam válidos, mas nenhum
+se aplicava porque o arquivo não era lido.
+
+**O modelo `pessoas2` não se aplicava:** `pessoas2` é um app Rails **único na raiz** (não é
+monorepo), com `.gitlab-ci.yml` na raiz e sem `cd` nenhum. Seguimos um modelo for de contexto.
+
+**Correção:**
+1. `api-ponto/.gitlab-ci.yml` → **`Frequencia/.gitlab-ci.yml`** (raiz do git).
+2. **`cd api-ponto` no `before_script` global.** Escolhido em vez de `BUNDLE_GEMFILE` +
+   prefixar cada `bin/`: o `before_script` e o `script` rodam no **mesmo shell**, então o
+   `cd` **persiste** e **todo o resto do arquivo continua válido sem alteração** (menor
+   superfície, menos pontos de erro). Prefixar `api-ponto/bin/*` exigiria mexer em 6 comandos
+   e não resolveria o `bundle install` (que depende do cwd do `Gemfile`). Os `services:` não
+   dependem do cwd (confirmado — resolvem por alias).
+3. **Comentário no topo** explicando monorepo + por que o `cd` existe (para o próximo dev não
+   "limpar" o `cd` e quebrar em silêncio).
+
+**Prova (a partir da RAIZ do monorepo):**
+
+| Cenário | Resultado |
+|---|---|
+| **Controle negativo — SEM `cd`** (`bin/brakeman`/`bin/rubocop`/`bin/rails` da raiz) | **EXIT=127** (não encontrado); `Gemfile`/`bin/` não existem na raiz |
+| **Positivo — COM `cd api-ponto`** (um shell, como o GitLab) | `cwd` passa a `.../Frequencia/api-ponto`; `db:test:prepare` **EXIT=0**; `test:pessoas_schema:load` **EXIT=0**; espelho **19/68/0/0/0** |
+| `bin/brakeman` (RR-S1) de dentro do `cd` | base **3** / nota vazia **8** / obsoleta **9** |
+| `bin/rubocop` de dentro do `cd` | `bin/brakeman` = 0 offenses |
+| Schema GitLab na raiz | `json schema validated` (security/quality `allow_failure=true`, test `false`) |
 
 ## Entregável 1 — `.gitlab-ci.yml`
 
@@ -302,6 +337,7 @@ Comandos executados **exatamente** como no `.gitlab-ci.yml` (fonte de verdade; a
 | 2026-09-29 | **Review rejeitou: 3 blockers no job `test` (B1/B2/B3)** | corrigidos: alias `postgres`, `DATABASE_URL`, `PGPASSWORD` + comentário falso + `default-libmysqlclient-dev` |
 | 2026-09-29 | Prova de rede **real** (docker network própria, sem publicar porta) | `localhost` recusado (EXIT=2); alias `postgres` ok (EXIT=0); sequência completa verde |
 | 2026-09-29 | Débito `quality` ganha dono: `chore/limpeza-rubocop-77`, prazo 2026-10-13 | S2 do reviewer fechado |
+| 2026-09-30 | **Blocker do MONOREPO:** arquivo estava em `api-ponto/`; GitLab só lê a raiz | movido p/ `Frequencia/.gitlab-ci.yml` + `cd api-ponto`; provado positivo/negativo |
 | 2026-09-29 | **Re-review do Code Reviewer** (repro Docker independente) | ✅ **Aprovado** — B1/B2/B3 fechados, 0 blockers |
 
 ## Commits

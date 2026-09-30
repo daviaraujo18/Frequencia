@@ -16,7 +16,9 @@ Acompanha as sprints do Frequência, com um `iteration_N.md` por sprint. Sprints
 ### iteration_chore_gitlab-ci.md
 - Chore `chore/gitlab-ci-fork` (AGILE): cria `.gitlab-ci.yml` para o runner **GitLab** (remote real `gitlab.tjpi.jus.br`; o `ci.yml` de GitHub tem `ruby-version: .ruby-version` → `ruby-4.0.0` inexistente e **não roda em produção**). Corrige **RR-S1** (exits 8/9 do Brakeman) e **RR-S2** (`PESSOAS_DB_DATABASE` deixa de ser decorativo).
 - `.gitlab-ci.yml`: stages security/quality/test; service `postgres:17`; job `test` cria o banco espelho. 3 blockers (B1 alias `postgres`, B2 `DATABASE_URL`, B3 `PGPASSWORD`) achados e **fechados** no re-review. `allow_failure: true` em security/quality, `test` DURO (fail-fast impedia o `test` de rodar).
-- **✅ Re-review APROVADO (0 blockers). Commitada e PUSHADA** para branch de teste no GitLab: `3ae995d` (fix RR-S1/S2), `ccba59f` (CI), `6382de6` (docs). **Pendente: 1 run real no runner do TJPI** (validação ambiental; sem `glab`/token aqui, não foi lido).
+- **✅ Re-review APROVADO (0 blockers). Commitada e pushada** para branch de teste no GitLab: `3ae995d` (fix RR-S1/S2), `ccba59f` (CI), `6382de6` (docs).
+- ⚠️ **CORREÇÃO DE ESTADO (2026-09-30): o pipeline ainda NÃO foi criado no GitLab.** O repo é **MONOREPO** (raiz git = `Frequencia/`, app Rails em `api-ponto/`) e o `.gitlab-ci.yml` tinha sido criado em **`api-ponto/`** — o GitLab **só lê o arquivo na RAIZ** (sem descoberta em subpasta), então o pipeline não existia e o `test` não rodou (não falhou: não existia). **Ação:** arquivo **movido para a raiz** (`Frequencia/.gitlab-ci.yml`) + `cd api-ponto` no `before_script` global para os comandos resolverem. Estado real: **"arquivo correto, agora na raiz, mas ainda não lido pelo GitLab"** — pendente 1 run real no runner do TJPI.
+- **Pendente:** 1 run real no runner do TJPI (validação ambiental; sem `glab`/token aqui, não foi lido).
 
 ### iteration_23.md / 24.md / 26.md
 - 23: Devise + CanCanCan + Rolify; bug-hunting de `POST /u/password` encerrado (timing side-channel via phantom work, mantido pelo CTO).
