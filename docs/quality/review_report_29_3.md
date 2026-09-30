@@ -137,3 +137,26 @@ O payload legado **não traz nome** (confirmado no fonte da gem `sticapi_client-
 - [ ] **(Oportunístico)** Refinar o rótulo do 🟢19 e estreitar o `rescue StandardError` (🟡3); tratar o placeholder de nome "grudento" (🟠1).
 
 **Nenhum item acima é bloqueio do commit desta tarefa.** Todas as ações pré-commit estão satisfeitas no working tree atual (a única pendência é a disciplina de stage, e `COMMIT_MODE=manual` deixa o commit ao dev).
+
+---
+
+## Addendum — Rulings do CTO (2026-09-30)
+
+> Aplicado **após** este review, em `docs/adr/0008-semantica-estado-gestor-individual-e-identidade-legado.md`
+> e em `docs/progress/iteration_29.md` (§🧭 Rulings do CTO — Tarefa 29.3). O conteúdo do review acima
+> permanece como registro da revisão; abaixo, o que foi **decidido** sobre as três pendências.
+
+- **Decisão (1) — identidade:** ratificada, e **fechada** o risco de id reaproveitado: divergência de
+  `gestor_cpf` para o mesmo `id_legado` do gestor vira `nao_resolvido` (conflito de identidade), sem
+  reescrever CPF/`gestor_user`. A reciclagem de `id_vinculo_gestor` **não foi confirmada** (hipótese a
+  verificar com a TI), mas a guarda torna a decisão robusta independentemente dela.
+- **Decisão (2) — nome:** adotado marcador explícito de sistema `"(sem nome — CPF <cpf>)"`, substituível
+  numa reimportação com o Pessoas de volta (mata o 🟠1 "gruda" por `||=`).
+- **Achado 🟡2 — semântica de `ativo`:** decidida por **evidência do legado** (`presenca_gestorindividual`
+  guarda `ativo` na **linha do par**; autorização do legado = "*algum* vínculo ativo"): `GestorIndividual#ativo`
+  é **projeção** (ativo sse ≥ 1 vínculo ativo), determinística, recalculada pós-loop. **A opção (c) é
+  impossível** (não existe estado de gestor no legado).
+- **Achado adicional do CTO — 🔴 F1:** reimportação que reative um vínculo com `id_vinculo_gestor` presente
+  colidiria com o índice UNIQUE parcial — regra de reancoragem corrigida (só na criação / recriação).
+- **Complemento:** **29.3-D1/D2/D3** (correções de código/teste) entram antes da 29.4/29.6, na mesma linha
+  de entrega da 29.3.

@@ -175,8 +175,61 @@
 - **Arquivo:** `docs/quality/review_report_29_3.md` — veredito **✅ APROVADO, 0 blockers** (🟡 3 / 🟠 1 / 🟢 3).
 - **Medições independentes (worktree próprio):** direcionados 27/97/0/0; `test/models` + `test/controllers/admin` 518/1800/0 (**baseline exato**); suíte completa 923 runs (896+27); RuboCop 6 arquivos 0 offenses; Zeitwerk OK.
 - **Confirmado por medição:** a mutação do Bug 8 (`e.message` no lugar de `full_messages`) está **morta**; a **13ª variação** (`Pessoas::Vinculo.ativos` some por `remove_method` destrutivo em `dashboard_controller_test.rb`) **reproduz sozinha sem os arquivos da 29.3** (seeds 1 e 2) — pré-existente, não regressão.
-- **Ressalvas ao CTO (não bloqueiam o commit; bloqueiam o consumo na 29.4/29.6):** (1) `id_vinculo_gestor` reutilizado por outra pessoa → gestor casado só por `id_legado` sem guarda (mapeamento ratificado com ressalva); (2) nome placeholder `"Gestor individual <CPF>"` é dado sintético que parece real e pode "grudar" por `||=` (decisão ratificada com ressalva).
+- **Ressalvas ao CTO (não bloqueiam o commit; bloqueiam o consumo na 29.4/29.6):** (1) `id_vinculo_gestor` reutilizado por outra pessoa → gestor casado só por `id_legado` sem guarda (mapeamento ratificado com ressalva); (2) nome placeholder `"Gestor individual <CPF>"` é dado sintético que parece real e pode "grudar" por `||=` (decisão ratificada com ressalva). **→ RESOLVIDAS pelo CTO em 2026-09-30 (ver §🧭 Rulings do CTO — Tarefa 29.3; ADR-0008).**
 - **Achados 🟡 não bloqueantes:** stage seletivo (log/tmp rastreados); `GestorIndividual#ativo` é order-dependent com geridos ativos+excluídos (última linha vence — resolvido antes da 29.4/29.6); rótulo do 🟢19 impreciso no caminho insert/update.
+
+### 🧭 Rulings do CTO — Tarefa 29.3 (2026-09-30)
+
+> **Fonte das decisões:** `docs/adr/0008-semantica-estado-gestor-individual-e-identidade-legado.md` (Aceito).
+> As duas ressalvas do review e o achado 🟡2 estão **resolvidos**. A 29.3 passa a ter um complemento
+> **29.3-D1/D2/D3** (correções de código/teste) que entra **antes** da 29.4/29.6.
+
+- **Ruling 1 — identidade do gestor (ressalva (1) do review).** `encontrar_gestor` casa por `id_legado` do
+  gestor (primário) e por `gestor_cpf` (ponte). **Novo:** se o `gestor_cpf` resolvido **divergir** do CPF do
+  gestor casado por `id_legado`, a linha vira **`nao_resolvido` (conflito de identidade)** — nunca reescrever
+  o CPF nem o `gestor_user` do gestor existente (evita auto-autorização na cascata via id reaproveitado).
+  A reciclagem de `id_vinculo_gestor` por outra pessoa **não foi confirmada** (hipótese a verificar com a
+  TI/Sticapi); a guarda elimina a dependência da hipótese e é barata. Mapeamento ratificado.
+- **Ruling 2 — nome do gestor (ressalva (2) do review).** Adotar **marcador explícito de sistema**
+  `"(sem nome — CPF <cpf>)"` no lugar do fallback `"Gestor individual <CPF>"` (que se parece com dado real e
+  **gruda** por `||=`). `nome` real do Pessoas sempre prevalece; o marcador é a representação canônica de
+  "não resolvido" e é substituível numa reimportação com o Pessoas de volta.
+- **Ruling 3 — semântica de `ativo` do gestor (achado 🟡2).** **Decisão: (b) — "`ativo` sse existe ≥ 1
+  vínculo ativo; `false` sse todos inativos".** Determinada por **evidência do legado**, não por preferência:
+  `presenca_gestorindividual` guarda `ativo`/`dataExclusao` na **linha do PAR** (`vinculado_id` + `frequentador`),
+  não existe entidade "gestor" com estado próprio, e a autorização do legado é *"existe **alguma** linha ativa
+  de X para Y"* (`RegistroFrequenciaValidator.java:65/150/167`). A 29.3 é uma **agregação** sem análogo no legado;
+  **a opção (c) é impossível** (não há estado de gestor no legado). Logo: `GestorIndividual.ativo` é **projeção
+  determinística** dos vínculos (recalculada **pós-loop**, nunca "última linha vence"); `data_exclusao` do gestor
+  = exclusão mais recente entre os vínculos **ativos**. Lê via `GestorIndividualGerenciado.ativos` (usa o índice
+  parcial — **fecha o Bug 16**). O `ativo` do **par** preserva 1:1 o dado do Intranet.
+- **Achado adicional do CTO — 🔴 F2 (casing das chaves do payload):** o único consumidor conhecido do endpoint,
+  o Pessoas2 (`pessoas2/app/models/gestao_individual.rb:23`), lê as datas como **`json["dataCriacao"]`/
+  `json["dataExclusao"]` (camelCase)**, enquanto a doc da gem e o serviço da 29.3 leem **`data_criacao`/
+  `data_exclusao` (snake_case)**. Os testes só ingestam dump (parse stubado) e **nunca exerceram o payload real**.
+  Se a chave real for camelCase, `momento_exclusao` é sempre `nil` ⇒ **todo excluído entra ATIVO sem
+  `data_exclusao`** (e o `ativo` do gestor derivado idem). **Bloqueia a importação real em produção (não o
+  commit):** provar o casing por chamada real/amostra **antes** de rodar; normalizar para aceitar ambos.
+- **Achado adicional do CTO — 🔴 F1 (reimportação/reactivação):** reancorar o gestor em **toda** linha com a
+  identidade derivada do CPF faz uma reimportação que **reative** um vínculo com `id_vinculo_gestor` presente
+  apontar para outra linha de gestor e colidir com `index_gestor_individual_gerenciados_on_par_ativo`
+  (UNIQUE parcial `WHERE ativo`). Regra nova: `id_legado` do gestor reancora **só na criação** ou quando a linha
+  legada **recria** um vínculo após exclusão legada; linha com `id_vinculo_gestor` presente casa **só** por
+  `id_legado` do gestor (`nil` se não houver). Fecha o furo.
+- **Complemento 29.3 — patches de correção (pré-29.4/29.6, mesma linha de entrega da 29.3):**
+  - **29.3-D1** — semântica de `ativo`/`data_exclusao` do gestor derivada pós-loop + determinismo por ordem +
+    uso de `.ativos` (Ruling 3 / 🟡2 / F1). Testes: gestor com vínculos ativos **e** inativos em ordens opostas;
+    reativação de vínculo; `data_exclusao` do gestor.
+  - **29.3-D2** — guarda de identidade (Ruling 1). Teste: `id_vinculo_gestor` reutilizado com outro CPF →
+    `nao_resolvido`, CPF e `gestor_user` do gestor existente intactos.
+  - **29.3-D3** — marcador de nome de sistema + precedência do nome real (Ruling 2). Testes: placeholder não
+    gruda; reimportação com Pessoas corrige o nome.
+  - **29.3-D4 (bloqueia a importação real em produção, não o commit)** — normalizar o casing das chaves do
+    payload (`data_criacao` \|\| `dataCriacao`; idem `data_exclusao`) + teste com o payload **real** (🔴 F2).
+  - Impacto no código: `app/services/importar_gestores_individuais_service.rb` (aplicar_gestor/aplicar_estado/
+    encontrar_gestor/nome_do_gestor) + testes do serviço/repos que assertam `"Gestor individual"` (grep).
+  - Status: ⬜ Pendente (não iniciado). **Não** bloqueia o commit já aprovado da 29.3; **bloqueia** o consumo
+    em 29.4/29.6.
 
 ### Tarefa 29.4 — `AutorizacaoFrequencia` — cascata de visualização
 - User Story: Como gestor, quero ver apenas a frequência de quem eu gerencio (hierarquia, gestão individual ou permissão geral) para respeitar a regra de acesso do legado.
@@ -197,6 +250,7 @@
   - [ ] `includes(:gestor, :gestor_substituto, :gestor_excepcional)` ao percorrer a cadeia; log quando `user.cpf` presente e `por_user` → nil (carried do review)
   - [ ] **Regra D8 (CTO, 2026-09-29):** a cascata nunca chama `valid?` no caminho de leitura (todos os caminhos do `index` incluso) — ver seção `🧭 Plano do CTO — Tarefa 29.2`
   - [ ] **Gestão individual (Bug 16):** consumir os geridos via `GestorIndividualGerenciado.ativos.where(gestor_individual: ...)`, nunca `GestorIndividual#gerenciados` cru (que não filtra por `ativos` e não usa o índice parcial)
+  - [ ] **Semântica de `ativo` do gestor (ADR-0008, CTO 2026-09-30):** `GestorIndividual#ativo` é **projeção** — `true` sse existe ≥ 1 vínculo ativo (passo 4 = *algum* vínculo ativo, fiel ao legado `isVinculadoGestorDoFrequentador`). Consome o resultado da **29.3-D1**; não recalcular aqui
   - [ ] Testes de precedência/negação usam o schema real (ADR-0006), não stubs
   - [ ] PORO `AutorizacaoFrequencia.new(usuario).pode_ver?(frequentador)` avalia em ordem, retornando no primeiro match: (1) próprio (user.id/CPF), (2) role `visualiza_frequentadores` ou admin, (3) role `visualiza_terceirizados` **e** alvo TERCEIRIZADO, (4) `GestorIndividual` **ativo** vinculado, (5) gestor atual/substituto/excepcional de qualquer unidade na cadeia ascendente da lotação principal vigente do alvo
   - [ ] Retorna também o **motivo** (`:proprio`, `:role_geral`, `:terceirizado`, `:gestor_individual`, `:hierarquia`, `:negado`) para auditoria

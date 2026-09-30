@@ -260,3 +260,30 @@
 2. **Mutação sobrevivente por prova fraca.** A mutação "trocar `errors.full_messages` por `e.message` no serviço" (que é o Bug 8, *load-bearing* da task) **não matou nenhum teste**: o locale pt-BR já corrigido faz `e.message` conter "inválido", então a asserção `assert_includes motivo, "inválido"` passava nas duas formas. Só ao **mutar e medir** ficou claro que o teste não exercitava a condição real ("usa `full_messages`, não `e.message`"). O discriminante é o **wrapper** que só o `e.message` carrega (`Validation failed:` / `1 erro impediu este registro de ser salvo:`).
 **Solução:** (a) trocar o par `define_singleton_method`+`remove_method` por **salvar o método original (`klass.method(:x)`) e restaurá-lo no `ensure`** — o gem Minitest 6 não traz mais `Object#stub`, então o helper foi escrito à mão (`com_stub_de_classe`); zero vazamento. (b) Fortalecer o teste do Bug 8 com `refute_match(/erro impediu este registro|Validation failed/, motivo)`, que **distingue as duas implementações**; com ele a mutação é morta (verificado: baseline verde, mutado vermelho, restaurado verde).
 **Lição:** ao stubar método de classe em Minitest, **nunca** use `remove_method` no teardown isolado — salve e restaure o `Method` original. E a regra da sessão vale para o próprio teste: **rode a mutação e veja o teste ficar vermelho** antes de declarar a cobertura; uma asserção que passa tanto na implementação certa quanto na errada não prova nada (aqui, asserir a presença do texto "inválido" passava nas duas — o wrapper do `e.message` é o que discrimina). Um teste que quebra sozinho em certa ordem de seed **não é regressão nova** até ser reproduzido sem os arquivos da mudança.
+
+---
+
+### 2026-09-30 — Consumir um payload externo por *dump* exercita a SUA cópia das chaves, não as chaves REAIS
+
+**Contexto:** Tarefa 29.3 (Sprint 29). A importação lê `SticapiClient::Intranet.gestores_individuais`. Nos testes, o
+payload é injetado (`registros:`) com chaves **snake_case** (`data_criacao`, `data_exclusao`), exatamente como a doc da
+gem (`sticapi_client/lib/sticapi_client/intranet.rb:42`). O serviço lê `linha[:data_criacao]` / `linha[:data_exclusao]`;
+a suíte passa verde.
+
+**Problema:** o **único consumidor conhecido em produção** do mesmo endpoint, o Pessoas2, lê `json["dataCriacao"]` /
+`json["dataExclusao"]` — **camelCase** (`pessoas2/app/models/gestao_individual.rb:23`). Dois consumidores reais do mesmo
+endpoint divergem no *casing* da chave; pelo menos um está errado. Como o serviço **nunca** viu um payload real (o parse
+é stubbed tanto na unidade quanto no repo), o teste mediu o formato que **nós** escolhemos, não o que o servidor envia.
+Se a chave real for camelCase, `momento_exclusao` é sempre `nil` ⇒ **todo registro excluído no legado entra ATIVO sem
+`data_exclusao`** — a corrupção mais silenciosa possível de um campo de auditoria, com a suíte 100% verde.
+
+**Lições:**
+1. **Um dump de entrada só prova o parser contra as chaves que VOCÊ escreveu.** Antes de consumir payload de terceiro
+   em produção, a primeira verificação é de **contrato de dados**: capture **uma amostra real** (ou o código do endpoint)
+   e confirme os nomes/formatos das chaves. Vale o mesmo raciocínio da lição do monorepo: **validar o conteúdo que você
+   controla ≠ validar o artefato/contrato real.**
+2. **Dois consumidores do mesmo endpoint são evidência de contrato, e divergência entre eles é um SINAL, não ruído.**
+   Antes de assumir um formato, compare com quem já consome a mesma API (aqui, `pessoas2`); a divergência aponta para
+   um defeito real de um dos lados.
+3. **Normalizar na borda é defesa em profundidade, não preciosismo:** aceitar ambos os casings (`linha[:data_criacao] ||
+   linha["dataCriacao"]`) transforma um risco de corrupção silenciosa em robustez por alguns caracteres.
