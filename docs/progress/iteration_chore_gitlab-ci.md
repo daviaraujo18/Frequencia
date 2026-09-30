@@ -306,36 +306,32 @@ Comandos executados **exatamente** como no `.gitlab-ci.yml` (fonte de verdade; a
 
 ## Commits
 
-**COMMIT_MODE=manual — NADA foi commitado/pushado.** Comandos preparados (stage seletivo,
-nunca `git add -A`):
+Branch `chore/gitlab-ci-fork` (base = `73726e1`, HEAD da
+`feature/demanda-29-schema-gestor-individual`). Três commits, stage seletivo,
+nunca `git add -A`. A ordem é `fix:` → `ci:` → `docs:` de propósito: o
+`.gitlab-ci.yml` referencia o RR-S1 e o RR-S2, então o commit que os introduz vem
+antes.
 
-```bash
-cd Frequencia
-git add api-ponto/.gitlab-ci.yml \
-        api-ponto/.github/workflows/ci.yml \
-        api-ponto/bin/brakeman \
-        api-ponto/config/database.yml \
-        docs/governance/lessons.md \
-        docs/progress/iteration_chore_gitlab-ci.md
+| Commit | Assunto | Arquivos |
+|---|---|---|
+| `3ae995d` | `fix:` devolve sinal aos exits 8/9 do Brakeman e torna o database do espelho parametrizável | `bin/brakeman`, `config/database.yml` |
+| `ccba59f` | `ci:` cria o fork do CI no GitLab e destrava o workflow do GitHub | `.gitlab-ci.yml` (novo), `.github/workflows/ci.yml` |
+| `6382de6` | `docs:` rastreabilidade da chore de CI e lições de método | `lessons.md`, `iteration_chore_gitlab-ci.md`, `review_report_chore_gitlab_ci.md` (novo) |
 
-git commit -m "chore(ci): cria .gitlab-ci.yml para o runner GitLab e torna os gates visíveis
+**Push: FEITO.** `git push -u gitlab chore/gitlab-ci-fork` — branch de **teste**
+criada no repo institucional (`gitlab.tjpi.jus.br/administrativo/frequencia`),
+**nunca `main`**. Objetivo: disparar o pipeline e validar o job `test` no runner
+real do TJPI — o único resíduo que nenhuma validação local fecha.
 
-- .gitlab-ci.yml com stages security/quality/test (fork do ci.yml de GitHub
-  para o runner GitLab, remote de produção), com o passo do banco do espelho.
-- bin/brakeman: da sinal aos exits 8/9 das flags anti-drift, mascarados pelo
-  exit 3 do exit_on_warn enquanto o Medium EOLRails existir (RR-S1).
-- config/database.yml: PESSOAS_DB_DATABASE deixa de ser decorativo no bloco
-  pessoas de test (RR-S2).
-- ci.yml: fixa ruby-version em 3.3.8 (a real medida; .ruby-version dizia
-  4.0.0, inexistente) para paridade dev/prod.
+> **Correção de registro:** a versão anterior desta seção afirmava "NADA foi
+> commitado/pushado", com os comandos apenas "preparados". O texto ficou obsoleto
+> **dentro do próprio commit que o continha** (`6382de6`) — a commit tornou falsa
+> a afirmação que ela mesma carregava. O git é a fonte: os 3 commits acima e o
+> push existem.
 
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
-```
-
-> Ficam **FORA** do stage: `api-ponto/config/credentials.yml.enc`,
-> `api-ponto/log/*.log`, `api-ponto/tmp/cache/bootsnap/load-path-cache` (ruído de
-> working tree; o `credentials.yml.enc` é alteração do dev, fora do sprint).
-> O push (para branch de teste, nunca `main`) é do coordenador, após o review.
+> Ficaram **FORA** de todo stage (preservados, não revertidos):
+> `api-ponto/config/credentials.yml.enc` (alteração do dev, fora do sprint),
+> `api-ponto/log/*.log`, `api-ponto/tmp/cache/bootsnap/load-path-cache`.
 
 ## Notas
 
@@ -346,7 +342,10 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
   não tem nenhum). Criar de `develop` produziria um `.gitlab-ci.yml` que referencia flags e
   passos inexistentes. A branch foi criada **do HEAD da 29** para preservar a base da qual o
   fork depende. **Merge target: `feature/demanda-29-schema-gestor-individual`**, não `develop`.
-- **COMMIT_MODE=manual:** nenhum commit/push executado.
+- **COMMIT_MODE=manual:** os 3 commits e o push da branch de teste foram
+  executados com aprovação explícita do dev, após o Code Reviewer (aprovado, 0
+  blockers) e a esteira local (liberada, zero falha nova). **Sem push para
+  `main`** — o merge target é `feature/demanda-29-schema-gestor-individual`.
 - **Higiene:** `config/credentials.yml.enc`, `log/*.log`, `tmp/cache/*` ficam FORA do stage
   (ruído de working tree). `.gitlab-ci.yml` é untracked → exige `git add` explícito.
 - **Prova não executada:** o job `test` no GitLab real (registry `.tjpi.jus.br` inacessível
