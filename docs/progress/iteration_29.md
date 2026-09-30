@@ -440,6 +440,104 @@
 
 Caminho crítico: ~~D1–D4~~ (D1/D4 ✅ decididas 2026-09-29) → 29.2 ✅ → **29.2-D7** ✅ → **29.3 ∥ 29.4** → 29.6 → 29.7 → 29.8. Paralelo: 29.3 ∥ 29.4 (ambas desbloqueadas); 29.0 deve fechar (CI) antes de depender do espelho em produção. D2/D3 (baseline `can :read` e feature flag) seguem para a 29.7; aprovação explícita do usuário pendente para a 29.7.
 
+## Baseline canônico da suíte (medição, Code Specialist, 2026-09-30)
+
+> **Fonte canônica.** Esta seção substitui todos os números de suíte espalhados pelos relatórios
+> de tarefa (29.2, 29.2-D7, 29.3, 29.3-D1..D4) e pela §Riscos abaixo. Toda comparação de
+> "falha nova vs. falha conhecida" deve ser feita contra **esta** tabela.
+> Medição: worktree isolado `wt-29.4`, base `integration/sprint-29` @ `67ba6af` **limpo**
+> (nenhuma alteração de código; só `log/test.log` e `tmp/cache/bootsnap` — artefatos gitignored),
+> `RAILS_ENV=test`, `bin/rails test`, Ruby 3.3.8 / Rails 8.0.5, paralelização padrão
+> (`workers: :number_of_processors`).
+
+### Número canônico
+
+**941 runs · 3302 assertions · 1 failure · 11 errors · 0 skips** (determinístico — 3/3 execuções idênticas)
+
+| # | runs | assertions | failures | errors | skips | EXIT |
+|---|------|-----------|----------|--------|-------|------|
+| 1 | 941 | 3302 | 1 | 11 | 0 | 1 |
+| 2 | 941 | 3302 | 1 | 11 | 0 | 1 |
+| 3 | 941 | 3302 | 1 | 11 | 0 | 1 |
+
+A variância observada **nesta** linha base é **zero**. A flakiness documentada na §Riscos existe
+sob a *ordem/seed específica* de certas execuções, mas não se manifestou em 3 execuções completas
+consecutivas — a suíte paralela usa `bin/rails test` (random seed por execução); as 3 idênticas
+foram coincidência de cobertura, não determinismo estrutural (ver "Flaky comprovado" abaixo).
+
+### As 12 falhas pré-existentes (todas reproduzem no `67ba6af` limpo)
+
+Determinísticas — aparecem em **3/3** execuções completas e **2/2** isoladas:
+
+| # | arquivo:linha do teste | assinatura (classe + 1ª linha) | origem no app |
+|---|------------------------|-------------------------------|---------------|
+| 1 | `test/integration/presenca_endpoints_test.rb:171` (assert :187) | `Failure` — `Expected: "15/07/2026 11:30:45" / Actual: "15/07/2026 14:30:45"` (offset +3h = America/Fortaleza) | formatação do horário no endpoint de sincronização |
+| 2 | `test/controllers/users/passwords_controller_test.rb:42` | `DRb::DRbRemoteError: private method 'redirect_to' ... Users::PasswordsController (NoMethodError)` | `app/controllers/users/passwords_controller.rb:44` |
+| 3 | `test/controllers/users/passwords_controller_test.rb:74` | `NoMethodError: private method 'redirect_to' ... Users::PasswordsController` | `app/controllers/users/passwords_controller.rb:44` |
+| 4 | `test/controllers/users/sessions_controller_test.rb:17` | `NoMethodError: private method 'redirect_to' ... Users::SessionsController` | `app/controllers/users/sessions_controller.rb:43` |
+| 5 | `test/controllers/users/sessions_controller_test.rb:26` | idem | idem |
+| 6 | `test/controllers/users/sessions_controller_test.rb:53` | idem | idem |
+| 7 | `test/controllers/users/sessions_controller_test.rb:165` | idem | idem |
+| 8 | `test/controllers/users/sessions_controller_test.rb:198` | idem | idem |
+| 9 | `test/controllers/users/sessions_controller_test.rb:214` | idem | idem |
+| 10 | `test/controllers/users/sessions_controller_test.rb:231` | idem | idem |
+| 11 | `test/controllers/users/sessions_controller_test.rb:265` | idem | idem |
+| 12 | `test/controllers/users/sessions_controller_test.rb:281` | idem | idem |
+
+Total: **11 erros Devise (9 Sessions + 2 Passwords) + 1 falha timezone** — bate com o nº
+documentado na §Riscos. Isolados: `users/sessions+passwords` → `23 runs / 77 assertions / 0 failures / 11 errors` (2/2);
+`presenca_endpoints_test.rb` → `42 runs / 142 assertions / 1 failure / 0 errors` (2/2).
+
+**Causa-raiz dos 11 Devise (medida, não suposta):** `redirect_to` é **privado** e
+propriedade de `ActionController::Flash` (`ActionController::Metal` está auto-omitido sob
+`config.api_only = true`; `instance_method(:redirect_to).owner == ActionController::Flash`,
+`private_method_defined?(:redirect_to) == true` em `Users::SessionsController`). Os dois
+controllers custom chamam `redirect_to` de **dentro de `super do`/bloco**:
+`Users::SessionsController#create` (`app/controllers/users/sessions_controller.rb:43`) e
+`Users::PasswordsController#create` (`app/controllers/users/passwords_controller.rb:44`) — dentro do
+bloco o `self`/implicit-receiver deixa de ser o controller na versão do Devise 5.0.4 / Rails 8.0.5
+deste lockfile. Reproduz isolado e determinístico; **não** é flaky nem da 29.x.
+
+### Flaky comprovado — 13º erro (`Pessoas::Vinculo.ativos`)
+
+**Diferente do que a §Riscos afirma, este NÃO é um "flaky de paralelização". É uma dependência de ordem DETERMINÍSTICA.**
+
+- **Assinatura:** `NoMethodError: undefined method 'ativos' for class Pessoas::Vinculo`.
+- **Mecanismo:** `test/controllers/dashboard_controller_test.rb` faz, no `setup`/`teardown`
+  (linhas 17 e 21), `Pessoas::Vinculo.singleton_class.remove_method(:ativos)`. `Pessoas::Vinculo.ativos`
+  é um **`scope` real** de negócio (`app/models/pessoas/vinculo.rb:22`, consumido por
+  `app/controllers/admin/dashboard_controller.rb:31` via `Pessoas::Vinculo.ativos.count`). O
+  `remove_method` **não restaura** o scope original — **mata o método para o processo inteiro**.
+  Provado: `respond_to?(:ativos)` `true` → `false` após o `remove_method`, e a chamada seguinte
+  levanta `NoMethodError`.
+- **Vítima concreta:** `test/controllers/admin/configuracoes_sistema_test.rb:72` (teste
+  "menu Configurações do Sistema aparece para admin" — loga como admin e faz `get dashboard_path`,
+  disparando `current_user.admin?` → `Pessoas::Vinculo.ativos.count`). Reproduzido 2/2 com
+  `PARALLEL_WORKERS=1 bin/rails test dashboard_controller_test.rb configuracoes_sistema_test.rb`
+  → `15 runs / 41 assertions / 0 failures / 1 error` (dashboard roda **antes**, mata o scope, o
+  `configuracoes_sistema` quebra).
+- **Por que aparece só às vezes na suíte completa:** `configuracoes_sistema_test.rb` **passa isolado**
+  (9/18/0) e o `dashboard_controller_test.rb` também (6/30/0). O erro só aparece quando os dois
+  caem no **mesmo worker** com o dashboard primeiro. Como a distribuição de arquivos por worker é
+  não-determinística (por isso a suíte é "flaky"), a colisão acontece em ~1/3 das execuções — as 3
+  medições desta baseline **não** a pegaram, mas a colisão é **100% determinística quando ocorre**.
+- **Correção de registro:** a §Riscos lista `configuracoes_sistema_test.rb:72` como "flaky transitória
+  que passa isolada e não é da 29.x". A segunda parte confere (é pré-existente); a primeira é
+  **imprecisa** — não é flaky *per se*, é **order-dependent destrutiva** causada por um `remove_method`
+  em outro arquivo. O `pessoas_espelho_helper_test.rb:22` também citado na §Riscos **não** é
+  order-dependent por esta causa (é `skip_sem_espelho!` em CI sem schema — comportamento de skip, não
+  erro); nas 3 execuções desta baseline ele fez **skip**, não falhou.
+
+### Como usar
+
+- **Falha nova** = algo fora das 12 linhas acima, **e** reproduzível isolado no `67ba6af` limpo.
+- Ao ver `undefined method 'ativos' for Pessoas::Vinculo`: é o **13º**, order-dependent — rode o
+  arquivo isolado (`configuracoes_sistema_test.rb` passa sozinho) e não confunda com regressão.
+- Baseline de subconjuntos mantida: `test/models` + `test/controllers/admin` = **518 runs / 1800 assertions / 0/0**.
+- **Divergência de `assertions` corrigida:** os docs registram 3295 / 3106 / 3094; a medição real
+  desta base é **3302** (3/3). `runs` = 941 confere. Os 879/3106 e 874/3094 eram estados de código
+  intermediários (pós-Bugs 12/15) e **não** são o baseline do `67ba6af`.
+
 ## Riscos
 
 - Restringir leitura pode cortar acesso legítimo hoje existente → mitigado por flag + shadow (D3).
@@ -447,8 +545,8 @@ Caminho crítico: ~~D1–D4~~ (D1/D4 ✅ decididas 2026-09-29) → 29.2 ✅ → 
 - Matrículas do Intranet sem CPF resolvível → relatório de não resolvidos (29.3), tratamento manual.
 - Semântica exata do "gestor excepcional" do Pessoas2 vs. o do Intranet não verificada 1:1 → validar com amostra na 29.8.
 - **`db/schema.rb` divergente do banco real (2026-09-29):** além da FK duplicada de `calculo_diarios` (removida), o `schema.rb` versionado está defasado em relação ao banco (`api_ponto_development` tem 25 tabelas; o banco está com mais migrations aplicadas do que o `schema.rb` reflete). `db:migrate` regenera o arquivo e o resultado é fiel ao banco — mas, por isso, **nunca** rode `db:schema:load`/`db:reset` no desenvolvimento sem revisar o dump antes. Recomenda-se chore de reconciliação `schema.rb` × migrations.
-- **Suíte completa com 12 problemas pré-existentes nesta linha** (11× `private method 'redirect_to'` nos controllers Devise da Sprint 23 + 1× timezone em `presenca_endpoints_test.rb`) — nenhum é da 29.2, mas qualquer baseline futuro precisa considerar esses números em vez do "1 falha de timezone" registrado para as sprints anteriores.
-- **A suíte é FLAKY sob paralelização (12 workers):** numa rodada apareceram 2 falhas extras transitórias (`configuracoes_sistema_test.rb:72` e `pessoas_espelho_helper_test.rb:22`) que **passam isoladas** e não reapareceram em 3 execuções seguintes. Antes de tratar uma falha nova como regressão, **rode o arquivo isolado** e repita a suíte — o total esperado é 12 (11× Devise + 1× timezone).
+- **Suíte completa com 12 problemas pré-existentes nesta linha** (11× `private method 'redirect_to'` nos controllers Devise da Sprint 23 + 1× timezone em `presenca_endpoints_test.rb`) — nenhum é da 29.2, mas qualquer baseline futuro precisa considerar esses números em vez do "1 falha de timezone" registrado para as sprints anteriores. **→ Consolidado e corrigido em §Baseline canônico da suíte (2026-09-30): 941/3302/1F+11E; as assinaturas arquivo:linha estão lá.**
+- **A suíte é FLAKY sob paralelização (12 workers):** numa rodada apareceram 2 falhas extras transitórias (`configuracoes_sistema_test.rb:72` e `pessoas_espelho_helper_test.rb:22`) que **passam isoladas** e não reapareceram em 3 execuções seguintes. Antes de tratar uma falha nova como regressão, **rode o arquivo isolado** e repita a suíte — o total esperado é 12 (11× Devise + 1× timezone). **→ CORREÇÃO (2026-09-30):** o `configuracoes_sistema_test.rb:72` **não é flaky**, é **order-dependent destrutiva** (13º erro): `dashboard_controller_test.rb` mata o scope `Pessoas::Vinculo.ativos` com `remove_method`, quebrando qualquer `get dashboard_path` de admin no mesmo worker depois dele — determinístico quando colidem. Detalhes na §Baseline canônico.
 - **Migration 29.2 é FORWARD-ONLY nos dados (Bug 1 do Bug Finder):** rollback é reversível no schema mas apaga as colunas de dado real. Exigir snapshot (`pg_dump -t gestores_individuais -t gestor_individual_gerenciados`) antes de qualquer `db:rollback` sobre dados reais. Aviso registrado no topo do arquivo da migration.
 - **Integridade do vínculo (resolvido na 29.2, 2026-09-29):** par duplicado ativo barrado por índice UNIQUE **parcial** em `ativo` (validação do model espelhando o índice via `if: :ativo?` — Bug 12); auto-gerência barrada pelos **dois lados**, com o **mesmo invariante** (*nenhum vínculo ATIVO liga o gestor a si mesmo*): no vínculo (Bug 4, com `if: :ativo?` após o Bug 18) e no gestor quando o **login é definido/alterado** (Bug 15, com o gatilho restrito ao evento após o Bug 17). Regra de revalidação aprendida aqui: **validação de invariante deve disparar no evento que muda o invariante, não em todo save** — caso contrário o registro fica travado. **Débito remanescente com destino:** `GestorIndividual#gerenciados` continua **sem** filtro por `ativos` — a cascata deve consumir `gerenciados` através do scope ativo explicitamente, usando `GestorIndividualGerenciado.ativos.where(...)` para de fato servir-se do índice parcial (Bug 16).
 - **Para a 29.3 (importação):** gravar a `data_exclusao` legada **direto no atributo**, nunca via `desativar!` (o método data a exclusão ao momento da chamada); validar `id_legado > 0` antes do upsert; normalizar/deduplicar a chave de casamento contra registros locais (`nome`/`orgao`/`gestor_cpf`) e normalizar `gestor_cpf: ""` → `nil` na borda (Bug 14); decidir explicitamente o modo de escrita (ActiveRecord × `upsert_all`) — após os Bugs 12 e 18, o caminho **ActiveRecord** passou a funcionar para vínculos históricos inativos (inclusive de auto-gerência), mas convém testar com dados reais do legado. **Atenção ao Bug 19:** se a importação usar upsert para criar/deletar vínculos, o `restrict_with_exception` do Bug 2 deixa de ser garantia (o `destroy` pode estourar `InvalidForeignKey` em vez de `DeleteRestrictionError`) — a FK é que segura.
