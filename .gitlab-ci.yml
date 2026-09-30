@@ -1,5 +1,19 @@
 # CI do Frequencia no GitLab (remote de PRODUÇÃO: gitlab.tjpi.jus.br).
 #
+# ⚠️⚠️ ESTE ARQUIVO PRECISA FICAR NA **RAIZ DO REPOSITÓRIO** (`Frequencia/`).
+#     O repositório é um **MONOREPO**: a raiz git contém `api-ponto/`, `docs/`,
+#     `PRD-*.md`, `SPRINT_*.md`, `opencode.json` — e o app Rails vive em
+#     `api-ponto/`. O **GitLab só lê o `.gitlab-ci.yml` da raiz** do repo; NÃO
+#     há descoberta automática em subpasta. Por isso este arquivo NÃO pode
+#     voltar para `api-ponto/` (foi criado lá por engano: todos os comandos
+#     teriam o pipeline "não criado", e não apenas "falho").
+# ⚠️⚠️ Por isso o `before_script` global abaixo faz `cd api-ponto`: TODOS os
+#     comandos deste arquivo (`bundle install`, `bin/brakeman`, `bin/rubocop`,
+#     `bin/rails`) são relativos à app Rails em `api-ponto/`, e o `before_script`
+#     roda no MESMO shell do `script` — o `cd` persiste e o resto do arquivo
+#     continua válido sem alteração. **NÃO remova o `cd`** achando que é ruído:
+#     sem ele nada é encontrado a partir da raiz.
+#
 # Fork do `.github/workflows/ci.yml` (GitHub Actions) para o runner GitLab —
 # decisão do CTO (2026-09-29, §Triagem Fase 2 §2). Motivo: o remote de produção
 # é o GitLab e o `ci.yml` de GitHub (`runs-on: ubuntu-latest` +
@@ -8,9 +22,9 @@
 # Brakeman não existem no ambiente real (a 29.0 não fechava a "definição de
 # pronto" em produção).
 #
-# Modelo: `pessoas2/.gitlab-ci.yml` (imagem do registry institucional), mas sem
-# atalhos pré-Rails-8 (sem `yarn`/assets, sem `db:schema:load`, sem
-# `database.gitlab`): a fonte da verdade dos passos é o `ci.yml` já provado.
+# Modelo: `pessoas2/.gitlab-ci.yml` (imagem do registry institucional). ATENÇÃO:
+# o `pessoas2` é um app Rails ÚNICO na raiz (não é monorepo) — o modelo NÃO
+# cobre o `cd api-ponto`; os passos foram portados do `ci.yml` já provado.
 
 # ── Imagem ───────────────────────────────────────────────────────────────────
 # ⚠️ DÍVIDA REGISTRADA (não resolvida nesta chore): este repo tem TRÊS versões
@@ -88,6 +102,11 @@ default:
       default-libmysqlclient-dev
     - ruby -v
     - gem install bundler --no-document
+    # Entra na app Rails. O `before_script` e o `script` rodam no MESMO shell,
+    # então este `cd` persiste para todos os comandos seguintes (que são
+    # relativos a `api-ponto/`: `bundle install`, `bin/brakeman`, `bin/rubocop`,
+    # `bin/rails`). Ver o aviso do topo do arquivo: NÃO remover.
+    - cd api-ponto
     - bundle install --jobs "$BUNDLE_JOBS"
 
 # ── security: scan real do Brakeman (M2 / ruling do CTO) ────────────────────
