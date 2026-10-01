@@ -119,4 +119,62 @@ class PessoasUnidadeTest < ActiveSupport::TestCase
 
     assert_equal [ folha, raiz ], folha.cadeia_ascendente
   end
+
+  # --- Bug 1 do Bug Finder da 29.1 ------------------------------------------
+  #
+  # A checagem de auto-referência comparava strings ("05" != "5"), então um id
+  # com zero à esquerda (dado corrompido por edição manual) escapava e a própria
+  # unidade reaparecia na cadeia. Corrigido comparando DEPOIS do `to_i`.
+  test "fails closed without querying on self-reference with a leading zero" do
+    unidade = Pessoas::Unidade.new(id: 5, ancestry: "1/05")
+
+    assert_no_queries do
+      assert_equal [ unidade ], unidade.cadeia_ascendente
+    end
+  end
+
+  # --- Bug 2 do Bug Finder da 29.1 ------------------------------------------
+  #
+  # Ids repetidos no path não existem na gem `ancestry` — é corrupção. Antes
+  # devolvia o ancestral duplicado; agora é fail-closed sem consulta.
+  test "fails closed without querying when the path repeats an id" do
+    unidade = Pessoas::Unidade.new(id: 5, ancestry: "1/1")
+
+    assert_no_queries do
+      assert_equal [ unidade ], unidade.cadeia_ascendente
+    end
+  end
+
+  # Controle negativo dos Bugs 1/2: um path LEGÍTIMO com ids distintos não pode
+  # ser confundido com corrupção — prova nos dois sentidos.
+  test "does not fail closed for a legitimate path with distinct ids" do
+    raiz = criar_unidade(descricao: "Raiz")
+    meio = criar_unidade(descricao: "Meio", parent: raiz)
+    folha = criar_unidade(descricao: "Folha", parent: meio)
+
+    assert_equal [ folha, meio, raiz ], folha.cadeia_ascendente
+  end
+
+  # --- Regra D6: elegibilidade da unidade (inativa/extinta não libera) ------
+
+  test "is eligible when active and not extinguished" do
+    assert criar_unidade(active: true).elegivel?
+  end
+
+  test "is not eligible when active is false" do
+    assert_not criar_unidade(active: false).elegivel?
+  end
+
+  test "is not eligible when active is nil" do
+    assert_not criar_unidade(active: nil).elegivel?
+  end
+
+  test "is not eligible when the serventia was extinguished today or earlier" do
+    assert_not criar_unidade(active: true, data_extincao_serventia: Date.current).elegivel?
+    assert_not criar_unidade(active: true, data_extincao_serventia: Date.current - 1).elegivel?
+  end
+
+  test "is eligible when the extinction date is in the future" do
+    assert criar_unidade(active: true, data_extincao_serventia: Date.current + 1).elegivel?
+  end
 end

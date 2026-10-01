@@ -33,6 +33,22 @@ module Pessoas
       configuracao_cadastro&.tipo_vinculo
     end
 
+    # Fonte de "TERCEIRIZADO" do alvo — Decisão D4 do CTO (2026-09-29). É o
+    # TIPO de vínculo (`tipos_vinculo.nome == "Terceirizado"`), idêntico ao
+    # `TipoVinculo#terceirizado?` do pessoas2 (`app/models/tipo_vinculo.rb:234`) —
+    # NÃO a categoria eSocial (`categorias_trabalhador.codigo_esocial`), que não
+    # tem mapeamento determinístico.
+    #
+    # Semântica fixada na 29.4: QUALQUER vínculo ATIVO com tipo Terceirizado
+    # torna a pessoa terceirizada (não só o "vínculo principal"). O espelho não
+    # materializa `vinculo_principal`; usar `.first` sobre os ativos poderia
+    # negar um terceirizado cujo vínculo Terceirizado não fosse o primeiro —
+    # falso negativo (não vaza dado). Por isso o predicado é "algum vínculo
+    # ativo" (consumido em `Pessoas::Pessoa#terceirizado?`).
+    def terceirizado?
+      tipo_vinculo&.nome == "Terceirizado"
+    end
+
     # Ponto de entrada único para a tela `admin/frequentadores` (SPRINT-PLAN
     # task 10.10) — concentra toda a query complexa (nome, órgão, filtros de
     # User local via cpf) num só método de classe, tanto pra manter o
