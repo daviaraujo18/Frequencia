@@ -144,6 +144,23 @@ herdados do ORM mantêm o padrão local (seguro por medição).
 | Avaliar adoção do helper nos restantes que "já restauram" (padronização; hoje corretos) | Code Reviewer / CTO | decisão de padronização |
 | Adicionar regra ao RuboCop que barre `remove_method` em stubs (prevenção) | CTO | regra customizada avaliada |
 
+### 🧭 Decisões do CTO — sugestões (a) e (b) (2026-10-01)
+
+> Ruling sobre as duas sugestões que sobraram da auditoria. Medições desta rodada: helper usado por **10 arquivos**; ainda há **8 arquivos** com restauração manual e **~4 variantes** de escrita (capturar `Method` + `remove_method`/`define` + `ensure`; `define` + `ensure define_method(original)`; `SCOPE_ATIVOS_REAL` no load + `teardown`; `alias_method`/`alias_method`). Nenhum dos 8 vaza hoje (medido na auditoria) — a padronização é **cosmética**.
+
+**(a) Padronizar o helper nos 8 que "já restauram" → AGENDAR (chore de baixa prioridade).**
+- **Não fazer agora.** Valor = consistência apenas; risco = tocar 8–10 arquivos de teste que hoje funcionam, em branch (`integration/sprint-29`) com worktrees paralelos ativos (conflito garantido).
+- **Dono:** Code Specialist (fluxo AGILE). **Gatilho binário:** a chore entra **quando um desses 8 arquivos for tocado por outro motivo** (bundle) **ou** na primeira suite-hygiene pós-merge da Sprint 29. Não abrir chore dedicada só para isso.
+- **Nota de escopo:** o helper **não** serve para métodos herdados do ORM (`find_by`/`new`) — esses **mantêm** o par `define_singleton_method`/`remove_method` local (documentado no próprio helper). A padronização não toca esses casos.
+
+**(b) Regra RuboCop custom que barre `remove_method` em stubs → AGENDAR como chore de PREVENÇÃO (a mais valiosa das duas).**
+- **Valor desproporcional: SIM.** O bug mordeu **duas vezes** na mesma sessão (dashboard `Pessoas::Vinculo.ativos` em `eb38b1e`; os 8 arquivos desta auditoria). É uma **classe** de bug (stub destrutivo → contaminação order-dependent da VM compartilhada), silenciosa e de diagnóstico caro. Prevenção vale mais que a padronização cosmética.
+- **Viabilidade (medida):** RuboCop **1.88.2** presente no bundle; o projeto **ainda não tem** cop custom (`.rubocop.yml` só faz `inherit_gem: rubocop-rails-omakase`; não há `lib/rubocop/` no app). Um cop custom exige: arquivo do cop + `require:` no `.rubocop.yml` + registro de departamento/`Cops` — **custo baixo, mecânica conhecida**, sem gem nova.
+- ⚠️ **Risco de falso-positivo (por isso um cop ingênuo é RUIM):** um cop que barra **todo** `remove_method` marcaria os casos **legítimos e seguros** de métodos **herdados do ORM** (`Pessoas::Pessoa.define_singleton_method(:find_by)` + `remove_method(:find_by)` em `importar_dados_pessoa_job_test.rb`, `sincronizar_afastamentos_job_test.rb`), onde o `remove_method` **cai de volta no ancestral** e é o comportamento correto. **Distinguir OWN de herdado não é decidível estaticamente** (depende de `scope`/`def self.` do model).
+- **Desenho recomendado (evita a classe de FP):** cop **config-driven com allowlist explícita** das exceções ORM conhecidas (`find_by`, `new`, …) — barra `remove_method` fora da allowlist; ou, alternativamente (mais barato e determinístico), um **meta-teste de suíte** (probe `Minitest.after_run` sobre `source_location` dos métodos OWN conhecidos, falha se algum apontar fora de `app/`/gem) — o mesmo probe que a auditoria já usou. Ambos resolvem; o cop ganha por rodar no gate `quality` do CI.
+- **Dono:** **CTO (desenho do cop)** + Code Specialist (implementação). **Gatilho binário:** implementar **junto/antes da 29.6** — a 29.6 introduz testes NOVOS (propriedade + contagem de queries) que tendem a stubar, e é exatamente o ponto de exposição apontado no review da 29.4. Se a 29.6 usar o helper (já disponível), o risco cai, mas o cop fica como rede.
+- **Pendente de aprovação do dev:** aceitar cop (com allowlist) **vs.** meta-teste; e se o gate `quality` do CI passa a **reprovar** por isso (hoje `quality` é `allow_failure: true` no `.gitlab-ci.yml`) ou só alerta.
+
 ## Arquivos alterados
 - Tarefa A: `api-ponto/test/models/autorizacao_frequencia_test.rb`
 - Tarefa B: `api-ponto/test/support/class_method_stub_helper.rb` (novo), `test/test_helper.rb`,

@@ -1,6 +1,6 @@
 # Iteration 29 — Cascata de autorização de frequência (quem vê/gerencia a frequência de quem)
 
-> Status: 🔵 Em Andamento — 29.0/29.1/29.2/29.2-D7/Bug 8 ✅ implementados, aprovados e **commitados** (`1e935cd` código, `1cf5d97` docs); **bloco de esteira** (brakeman sem `--ensure-latest`, banco do espelho no `ci.yml`, `PESSOAS_DB_*` no `database.yml`, `skip_sem_espelho!`) ✅ **re-review SEM BLOCKERS (2026-09-29) → 🔓 LIBERADO para commit seletivo** — **B1 ✅ fechado** (role `app.frequencia` com senha + `PESSOAS_DB_PASSWORD`, revalidado em container `postgres:17`, ver §RE-2 do relatório); 🟡 **M2 RULADA pelo CTO (2026-09-29) e implementada**: ledger `config/brakeman.ignore` (3 `Weak` com `note`; o `Medium` EOLRails fica fora) + flags anti-drift (exit 8/9 provados), acoplada ao fork do CI (ver §Ruling M2); débito aberto não-bloqueante: `.gitlab-ci.yml` com o passo do espelho + bump Rails ≥ 8.1.x; **D1/D4 ✅ decididas pelo CTO (2026-09-29) → 29.4 desbloqueada**; 29.3 desbloqueada (D7 ✅, Bug 8 ✅, modo de escrita = ActiveRecord); 29.4–29.8 pendentes | Período: a definir (após Sprint 28 ou conforme Gantt revisado) | Goal: Substituir o baseline "todo autenticado lê tudo" (Sprint 23.7) no domínio de frequência pela cascata de autorização do legado (`RegistroFrequenciaValidator.frequentador`) e pela regra de elegibilidade de desconsideração, com `GestorIndividual` MIGRADO do Intranet | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` §2.3, §2.5, §3, §9 itens 1 e 7
+> Status: 🔵 Em Andamento — 29.0/29.1/29.2/29.2-D7/Bug 8 ✅ implementados, aprovados e **commitados** (`1e935cd` código, `1cf5d97` docs); **bloco de esteira** (brakeman sem `--ensure-latest`, banco do espelho no `ci.yml`, `PESSOAS_DB_*` no `database.yml`, `skip_sem_espelho!`) ✅ **re-review SEM BLOCKERS (2026-09-29) → 🔓 LIBERADO para commit seletivo** — **B1 ✅ fechado** (role `app.frequencia` com senha + `PESSOAS_DB_PASSWORD`, revalidado em container `postgres:17`, ver §RE-2 do relatório); 🟡 **M2 RULADA pelo CTO (2026-09-29) e implementada**: ledger `config/brakeman.ignore` (3 `Weak` com `note`; o `Medium` EOLRails fica fora) + flags anti-drift (exit 8/9 provados), acoplada ao fork do CI (ver §Ruling M2); débito aberto não-bloqueante: `.gitlab-ci.yml` com o passo do espelho + bump Rails ≥ 8.1.x; **D1/D4 ✅ decididas pelo CTO (2026-09-29) → 29.4 desbloqueada**; 29.3 desbloqueada (D7 ✅, Bug 8 ✅, modo de escrita = ActiveRecord); **29.4 ✅** (commit `0f1fdfd`, aprovada, 10/10); **D5 ✅ decidida pelo CTO (2026-10-01)** → 29.5 desbloqueada; 29.5–29.8 pendentes | Período: a definir (após Sprint 28 ou conforme Gantt revisado) | Goal: Substituir o baseline "todo autenticado lê tudo" (Sprint 23.7) no domínio de frequência pela cascata de autorização do legado (`RegistroFrequenciaValidator.frequentador`) e pela regra de elegibilidade de desconsideração, com `GestorIndividual` MIGRADO do Intranet | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` §2.3, §2.5, §3, §9 itens 1 e 7
 
 ## Decisão de numeração (ler antes)
 
@@ -30,6 +30,7 @@
 | D2 | O que acontece com o baseline `can :read, :all` para usuários sem role | Remover **apenas** para recursos de frequência (TimeRecord, CalculoDiario, RegistroMensalFrequencia, IntervencaoFrequencia, telas `frequencia*`/`parcial`/`relatorio_*`); demais telas mantêm leitura |
 | D3 | Rollout | Feature flag (`FREQUENCIA_AUTORIZACAO_CASCATA`, default off em prod) + modo "shadow" que só loga negações durante 1 ciclo |
 | D4 | Fonte de "TERCEIRIZADO" do frequentador-alvo | ✅ **DECIDIDA pelo CTO (2026-09-29)** — a proposta estava **imprecisa**: a fonte correta é o **tipo de vínculo** (`Pessoas::Vinculo#tipo_vinculo.nome == "Terceirizado"`), **não** a categoria eSocial (`categorias_trabalhador.codigo_esocial`). Ver §"Decisão D4" |
+| D5 | Elegibilidade do **acionador** para desconsiderar um dia (passo 5 da cascata ou gestor individual?) | ✅ **DECIDIDA pelo CTO (2026-10-01)** — é **apenas o passo 5** (hierarquia); **`GestorIndividual` (passo 4) NÃO é suficiente**. A proposta do Sprint Planner ("passo 5 ou gestor individual") está **incorreta**. ⚠️ D5 **nunca estava definida** em documento nenhum antes deste ruling (a tabela parava em D4) — era um **gate da 29.5** com dependência não-escrita. Ver §"Decisão D5" |
 
 ### Decisão D1 — roles Rolify das telas de frequência (CTO, 2026-09-29)
 
@@ -57,6 +58,24 @@
   - ⚠️ **Lacuna a tratar na 29.4:** o **espelho do Frequencia NÃO tem** `terceirizado?`/scope equivalente (`grep terceirizado app/models/pessoas/` → vazio). A 29.4 terá de **implementar** o predicado (`vinculo.tipo_vinculo&.nome == "Terceirizado"`), do mesmo modo que a 29.1 expôs `gestor?`/`cadeia_ascendente`. Não é um método já pronto para consumir.
 - **O que "vínculo principal" significa:** no Intranet é o `vinculado.getVinculoPrincipal()` (único por pessoa). No espelho do Frequencia o conceito mais próximo **já mapeado** é o **vínculo ativo** (`Pessoas::Vinculo#vinculos_ativos`, estado `em_exercicio` + sem fim vencido), e o padrão do projeto (Sprint 10B) é **`.first`** (`Pessoa#vinculos_ativos`, já documentado: "sempre uma relação ActiveRecord, `.first` resolve").
 - **Risco registrado:** se o alvo tiver **mais de um** vínculo ativo no espelho e o TERCEIRIZADO não for o `.first`, o passo 3 pode negar indevidamente (falso-negativo — não vaza dado). **Ação para a 29.4:** implementar o predicado como "**algum** vínculo ativo com `tipo_vinculo.nome == 'Terceirizado'`" e **abrir um teste** com 2 vínculos ativos (1 Não-Terceirizado + 1 Terceirizado) para fixar a semântica. É a primeira vez que `Pessoas::Vinculo#vinculo_principal` é materializado no espelho — se a amostra do `pessoas2` real mostrar múltiplos ativos com frequência, o CTO promove o método explícito. **Verificar 1:1 com amostra do `pessoas2` é ação de pré-implementação da 29.4.**
+
+### Decisão D5 — elegibilidade do acionador para desconsiderar um dia (CTO, 2026-10-01)
+
+> **Contexto do ruling.** A 29.5 tem no critério de aceite a cláusula "acionador é gestor do órgão do alvo (**passo 5 ou gestor individual — confirmar D5**)". **D5 não estava definida em documento nenhum** — a tabela de decisões desta sprint parava em D4, e a única outra ocorrência de "D5" no repo é de outro PRD (`PRD-SCAFFOLD-ESTILO-BASICO8.md`, sobre paginação — sem relação). Ou seja, a 29.5 carregava uma **dependência nunca-escrita**. Este ruling a formaliza a partir da **fonte primária do legado** (não é inferência).
+
+**Decisão: o acionador elegível para desconsiderar é APENAS quem satisfaz o passo 5 (hierarquia) — gestor do órgão do alvo. O gestor individual (passo 4) NÃO é suficiente. A proposta do Sprint Planner ("passo 5 **ou** gestor individual") está INCORRETA e não deve ser seguida.**
+
+- **Evidência no legado (fonte primária lida):** `RegistroFrequenciaServices.podeDesconsiderarFrequencia(usuario, dia)` (`intranet/src/modules/presenca/services/RegistroFrequenciaServices.java:91-108`). O **único** gate de autorização do acionador é:
+  ```
+  usuario.isGestorOrgao(dia.getCalculo().getFrequentador().getVinculado().getVinculoPrincipal().getLotacaoAtual())
+  ```
+  `isGestorOrgao` (`intranet/src/modules/sistema/beans/Usuario.java:132-142`) percorre `getOrgaosGestao()` (`Vinculado.getOrgaosComoGestor` → `OrgaoDao.listOrgaosGestao`, `OrgaoDao.java:39-55`) e casa por `orgao.ehOMesmoOuEhSubordinado(orgaoGestao)`. `listOrgaosGestao` resolve **somente** pelos campos `gestorAtual`/`gestorSubstitutoAtual`/`gestorExcepcionalAtual` de órgãos **ativos** (o(s) órgão(s) em que o usuário é gestor + seus filhos lotáveis) — isso é a **hierarquia do passo 5**, idêntica à semântica de `Pessoas::Unidade#gestor?`/`cadeia_ascendente` da 29.1/29.4.
+- **`GestorIndividual` NÃO aparece no gate de desconsiderar.** `podeDesconsiderarFrequencia` **não** chama `GestorIndividualServices.isVinculadoGestorDoFrequentador`. O único bloqueio adicional é o **auto-ponto**: quando o acionador é ele mesmo um Frequentador (`frequentadorDoGestor != null`), exige `!gestorEhMesmoFrequentador` — "não desconsidera o próprio ponto" (o "próprio ponto" é medido por **Frequentador**, não por `User`/CPF).
+- **Contraste deliberado com a cascata de VISUALIZAÇÃO (`pode_ver?`, passo 4):** no `RegistroFrequenciaValidator.frequentador` (Sprint 29 → 29.4), `isVinculadoGestorDoFrequentador` **é** um dos passos (passo 4). Isto é, o legado trata **ver** e **desconsiderar** como regras **distintas**: o gestor individual **vê** (passo 4) mas **não desconsidera** (só hierarquia). Evidência cruzada: `RegistroFrequenciaValidator.validateAutorizarJustificativa`/`validateRejeitarJustificativa` (`RegistroFrequenciaValidator.java:150,167`) **também** incluem `isVinculadoGestorDoFrequentador` — ou seja, o legado só omite o gestor individual no gate de **desconsiderar um dia**, que é exatamente o escopo da 29.5.
+- **Impacto no critério de aceite da 29.5:** a cláusula "passo 5 **ou gestor individual**" deve ser **lida como apenas passo 5**. Consequência dura: um usuário que **só** é `GestorIndividual` ativo do alvo, sem ser gestor de órgão na cadeia, tem `pode_ver?` verdadeiro (passo 4) mas `pode_desconsiderar?` **falso**. A 29.5 deve testar explicitamente esse caso (gestor individual vê mas não desconsidera).
+- **Não é aditivo — é um gate de autorização em produção.** A 29.5 **não** é uma feature nova isolada: ela se integra ao fluxo de desconsiderar/deferir já existente (`app/models/time_record.rb#desconsiderar!`, `app/models/intervencao_frequencia.rb`, `app/services/registro_manual_frequencia_service.rb` — os três existem e estão em produção desde a Sprint 19). Hoje esses métodos **não** aplicam gate de acionador (o efeito foi portado sem a regra de quem pode acionar, ver `PRD-REGRAS-NEGOCIO-PRESENCA.md §3` "Status no Frequencia: ❌ não implementado"). Introduzir `pode_desconsiderar?` com o critério **correto** fecha essa lacuna; introduzi-lo com o critério **errado** (incluindo gestor individual) **ampliaria** indevidamente a autorização de um fluxo sensível em produção — por isso o ruling é a favor do subconjunto **estrito** (passo 5), *fail-closed*.
+- **Caveat de mapeamento (não bloqueia, herda a 29.4):** a hierarquia do passo 5 usa a "lotação atual" (`vinculoPrincipal.getLotacaoAtual()`); no espelho do Frequencia o conceito mapeado é a **lotação principal vigente** (`Pessoas::Lotacao.principais.vigentes`, já usada pelo passo 5 da 29.4). A 29.5 **reusa** o mesmo passo 5 da 29.4 — não reimplementa a hierarquia.
+- **Lacuna de evidência declarada (honestidade):** não há, no repo nem na fonte Java, **nenhuma** menção a gestor individual no fluxo de desconsiderar — o que confirma a decisão. A ausência é a evidência (o método é o único gate e ele não cita gestor individual). **Suposição declarada:** assumo que o legado é a autoridade canônica para "quem desconsidera" (é o `PRD §3` que o elege como fonte). Se o dev quiser **estender** a regra para incluir o gestor individual, isso é uma **decisão de produto nova** (não é port do legado) e exige aprovação explícita — registre como pergunta aberta ao dev.
 
 ## Desenvolvedores
 
@@ -401,13 +420,15 @@
 
 ### Tarefa 29.5 — Regra de elegibilidade para desconsiderar um dia
 - User Story: Como gestor, quero só conseguir desconsiderar um dia elegível de um subordinado, nunca o meu próprio, para evitar autobenefício.
-- Rastreabilidade: PRD §3 (regra irmã, `podeDesconsiderarFrequencia`)
-- Estimativa: 3 pontos | Atribuição: Dev A | Dependências: 29.4
+- Rastreabilidade: PRD §3 (regra irmã, `podeDesconsiderarFrequencia` → `RegistroFrequenciaServices.java:91-108`)
+- Estimativa: 3 pontos | Atribuição: Dev A | Dependências: 29.4; **D5 ✅ decidida pelo CTO (2026-10-01)** (ver §"Decisão D5")
+- **D5 (CTO, 2026-10-01):** o acionador elegível é **apenas o passo 5** (hierarquia) — **`GestorIndividual` (passo 4) NÃO desconsidera**, ainda que veja. A cláusula "passo 5 ou gestor individual" do critério **está incorreta** e deve ser lida como "apenas passo 5". Fonte: `podeDesconsiderarFrequencia` só chama `isGestorOrgao` (não chama `isVinculadoGestorDoFrequentador`).
+- ⚠️ **Não-aditividade (registro crítico):** a 29.5 **altera o comportamento de autorização** do fluxo de desconsiderar/deferir **já em produção** (Sprint 19: `time_record.rb#desconsiderar!`, `intervencao_frequencia.rb`, `registro_manual_frequencia_service.rb`). Hoje esses métodos **não** têm gate de acionador; a 29.5 o introduz. Critério errado **amplia** autorização — por isso o ruling é o subconjunto estrito (fail-closed).
 - Critérios de aceite:
-  - [ ] `pode_desconsiderar?(frequentador, data)`: dia com registros; não falta/meta-zero/descontado em folha; nenhum registro do dia já desconsiderado; acionador é gestor do órgão do alvo (passo 5 ou gestor individual — confirmar D5); **bloqueia o próprio ponto mesmo sendo gestor**
-  - [ ] Integrado ao fluxo da Sprint 19 (desconsiderar/deferir) sem alterar o efeito já implementado
-  - [ ] Testes para cada condição de bloqueio + autodesconsideração
-- Status: ⬜ Pendente
+  - [ ] `pode_desconsiderar?(frequentador, data)`: dia com registros; não falta/meta-zero/compensada/descontado em folha; nenhum registro do dia já desconsiderado; **acionador é gestor do órgão do alvo via passo 5 da cascata (D5: gestor individual NÃO serve)**; **bloqueia o próprio ponto mesmo sendo gestor** (identidade do alvo medida por **Frequentador** — fiel ao legado `gestorEhMesmoFrequentador`, não só `User`/CPF)
+  - [ ] Integrado ao fluxo da Sprint 19 (desconsiderar/deferir) sem alterar o efeito já implementado (só **adiciona o gate**, não muda o recálculo nem a intervenção de auditoria)
+  - [ ] Testes para cada condição de bloqueio + autodesconsideração + **caso-gate da D5: gestor individual (passo 4) vê mas NÃO desconsidera**
+- Status: ⬜ Pendente — **desbloqueada pela D5 (2026-10-01)**; resta a implementação
 
 ### Tarefa 29.6 — Scope de listagem `frequentadores_visiveis(usuario)`
 - User Story: Como gestor, quero que listagens e relatórios mostrem apenas frequentadores que posso ver, sem vazar registros por paginação/filtro.
@@ -452,13 +473,13 @@
 | 29.2-D7 | 1 | B | 29.2 (pré-condição da 29.3) |
 | 29.3 | 5 | B | 29.2, 29.2-D7 |
 | 29.4 | 5 | A | 29.0, 29.1, 29.2 |
-| 29.5 | 3 | A | 29.4 |
+| 29.5 | 3 | A | 29.4, **D5 ✅** (decidida 2026-10-01) |
 | 29.6 | 3 | A | 29.0, 29.4 |
 | 29.7 | 5 | A | 29.4–29.6 |
 | 29.8 | 2 | A | 29.7 |
 | **Total** | **33** | | |
 
-Caminho crítico: ~~D1–D4~~ (D1/D4 ✅ decididas 2026-09-29) → 29.2 ✅ → **29.2-D7** ✅ → **29.3 ∥ 29.4** → 29.6 → 29.7 → 29.8. Paralelo: 29.3 ∥ 29.4 (ambas desbloqueadas); 29.0 deve fechar (CI) antes de depender do espelho em produção. D2/D3 (baseline `can :read` e feature flag) seguem para a 29.7; aprovação explícita do usuário pendente para a 29.7.
+Caminho crítico: ~~D1–D4~~ (D1/D4 ✅ decididas 2026-09-29) → 29.2 ✅ → **29.2-D7** ✅ → **29.3 ∥ 29.4 ✅** → **29.5 (D5 ✅ 2026-10-01)** ∥ 29.6 → 29.7 → 29.8. Paralelo: 29.3 ∥ 29.4 (ambas desbloqueadas); 29.0 deve fechar (CI) antes de depender do espelho em produção. D2/D3 (baseline `can :read` e feature flag) seguem para a 29.7; aprovação explícita do usuário pendente para a 29.7. **D5 ✅ decidida (2026-10-01)** — a 29.5 estava bloqueada por uma dependência nunca-escrita; agora desbloqueada.
 
 ## Baseline canônico da suíte (medição, Code Specialist, 2026-09-30)
 
@@ -897,3 +918,10 @@ A triagem Fase 2 (§1) decidiu **"não entra no `.brakeman.ignore`; manter o war
 | **Bug 15 "tardia"** (D7 ⚪ 5 / assimetria de contrato) | 29.4/29.5 | ✅ **CONFIRMADO** — a validação do lado do gestor persistido não vê vínculo só em memória; consumir via banco |
 
 **Síntese da Fase 2:** nenhum débito precisou ser **corrigido** na triagem — 1 destino novo (B2 → chore de infra de teste), o achado do Brakeman vira **débito aceito** (chore opcional), e o **fork do CI é a única pendência que trava a "definição de pronto" em produção**.
+
+## 🧭 Registro do CTO (2026-10-01) — sessão doc-only
+
+- **D5 RULADA** (ver §"Decisão D5"): acionador de desconsiderar é **apenas o passo 5** (hierarquia); `GestorIndividual` (passo 4) **não** desconsidera. Fonte primária: `RegistroFrequenciaServices.podeDesconsiderarFrequencia` (`intranet/.../RegistroFrequenciaServices.java:91-108`). A 29.5 **desbloqueada**. **Pendente de aprovação do dev:** se quiser **estender** a regra ao gestor individual (decisão de produto, não-port) — hoje o ruling é fail-closed (subconjunto estrito).
+- **Sugestões (a) e (b) da auditoria de stubs decididas** → ver §"Decisões do CTO — sugestões (a) e (b)" em `iteration_chore_auditoria_stubs_destrutivos.md`. Resumo: (a) padronização do helper = **agendar**, dono Code Specialist, gatilho = tocar um dos 8 arquivos; (b) cop RuboCop anti-`remove_method` = **agendar como PREVENÇÃO** (a mais valiosa), dono CTO (desenho), gatilho = antes/junto da 29.6; **FP de métodos ORM exige cop com allowlist ou meta-teste**. **Pendente de aprovação do dev:** cop vs. meta-teste; `quality` reprova ou só alerta.
+- **Contexto de memória STALE — REQUER SUMMARIZER (não é tarefa do CTO):** `docs/progress/_context.md` não cita a 29.4/`43b7d84` e traz baseline antigo de 896 (atual: 986/3398/2F+11E/1skip na Fase 2). Pelo `AGENTS.md §5`, a (re)geração de `_context.md` é do agente **summarizer** — **devolvido ao coordenador**, não reescrito nesta sessão. `docs/governance/_context.md` também está defasado (cita "ADRs 0000–0007" no corpo; já há 0008). **Ação do coordenador:** acionar o summarizer para `progress/` (e `governance/`) após esta sessão.
+- **Não medido nesta sessão (declarado):** não rodei a suíte — todas as métricas citadas aqui são as já registradas nos documentos (medições prévias). Este ruling é **doc-only**; não alterei `app/`.
