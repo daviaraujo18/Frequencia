@@ -9,9 +9,12 @@ require "rake"
 # `load_tasks`) — montar um `Rake::Application` novo perderia a dependência
 # `:environment` que a task declara.
 #
-# Usamos `Minitest#stub` (restaura o método original ao fim do bloco) em vez
-# de `define_singleton_method` + `remove_method`: o segundo APAGA o método
-# real de classe e envenena os testes seguintes do mesmo processo.
+# Stubamos `.call` capturando o `UnboundMethod` REAL e reinstalando-o no
+# `ensure` (restaura ao fim do bloco, inclusive sob falha). NÃO usamos apenas
+# `define_singleton_method` + `remove_method`: o `remove_method` APAGA o método
+# real de classe e envenena os testes seguintes do mesmo processo (ver
+# docs/governance/lessons.md). O `Object#stub` do Minitest não existe neste
+# bundle (Minitest 6.0.6 sem `minitest/mock`).
 class FrequenciaImportarGestoresIndividuaisRakeTest < ActiveSupport::TestCase
   TASK_NAME = "frequencia:importar_gestores_individuais"
 
@@ -29,13 +32,7 @@ class FrequenciaImportarGestoresIndividuaisRakeTest < ActiveSupport::TestCase
 
   # Restaura o `.call` original ao fim do bloco (ver nota no teste do serviço).
   def com_call_stubado(resposta)
-    original = ImportarGestoresIndividuaisService.method(:call)
-    ImportarGestoresIndividuaisService.singleton_class.send(:remove_method, :call)
-    ImportarGestoresIndividuaisService.define_singleton_method(:call, &resposta)
-    yield
-  ensure
-    ImportarGestoresIndividuaisService.singleton_class.send(:remove_method, :call)
-    ImportarGestoresIndividuaisService.define_singleton_method(:call, original)
+    com_metodo_de_classe_stubado(ImportarGestoresIndividuaisService, :call, resposta) { yield }
   end
 
   test "imprime o relatorio e nao aborta quando tudo resolve" do

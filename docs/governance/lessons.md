@@ -376,3 +376,37 @@ não existe `minitest/mock` nem `Object#stub` — medido.)
 3. **`source_location` distingue "stub" de "scope real"** onde `Method#owner` não distingue (o stub também
    é singleton). Use `source_location` para provar que o método restaurado é o do framework, não uma cópia
    do teste.
+
+---
+
+### 2026-10-01 — `def self.` de produção também morre com `remove_method`; só método HERDADO é seguro
+
+**Contexto:** Chore `chore/auditoria-stubs-destrutivos` (Sprint 29). A lição anterior (mesmo dia) dizia
+que "os outros `remove_method` são seguros porque stubam métodos PRÓPRIOS, não scopes Rails". **Medido:
+estava errado por ordem de magnitude.** Há **8 arquivos** que vazavam métodos de produção.
+
+**Causa:** a fronteira de segurança **não** é "scope vs. não-scope" — é **own method vs. herdado**. No
+Ruby, `define_singleton_method(:m)` + `remove_method(:m)` mata qualquer método definido **na própria
+classe** (um `scope` Rails OU um `def self.m` de model/service), e só é inócuo para métodos **herdados**
+(ex.: `find_by` do ActiveRecord), onde o `remove_method` desfaz o stub e a busca cai de volta no ancestral.
+Como o processo de teste é compartilhado (mesmo com `parallelize`, cada worker roda vários arquivos em
+sequência), o método morto quebra todo arquivo seguinte — de forma **order-dependent**.
+
+**Medição (determinística, `Minitest.after_run`):** com o padrão real dos testes, some:
+`Pessoas::Vinculo.frequentadores_ativos`, `.unidades_por_vinculo`, `.orgaos_em_uso`, `.cpfs_por_orgao`,
+`.cpfs_por_nome`, `Pessoas::CategoriaTrabalhador.em_uso` (scope), `Pessoas::GestorhContrachequeMirror
+.pares_matricula_cpf_para`; **sobrevivem** `Pessoas::{Pessoa,Unidade}.find_by` (ancestral).
+**A/B discriminador (live victim):** sem fix → `NoMethodError`/`MORTO`; com fix → verde.
+
+**Solução:** helper compartilhado `test/support/class_method_stub_helper.rb` (incluído na base) —
+`com_metodo_de_classe_stubado(owner, metodo, corpo) { ... }` / a variante múltipla — capturando o
+`UnboundMethod` real e restaurando no `ensure`. Para métodos herdados do ORM, mantém-se o
+`define_singleton_method`/`remove_method` local (seguro, e não há `UnboundMethod` próprio a capturar).
+
+**Lição (duas, além das três anteriores):**
+1. **Own method, não "scope": é essa a fronteira.** `def self.` de produção é tão destrutível quanto um
+   scope. Não classifique por intuição ("é só um método próprio") — **meça**
+   (`singleton_class.instance_method(m).source_location` + `method_defined?(m, false)`).
+2. **Um `ensure` que reinstala um WRAPPER (`{ |*a| original.call(*a) }`) não é restauração.** O método
+   volta, mas fica um override permanente apontando para o arquivo de teste (`source_location` no teste).
+   Restaure o **`UnboundMethod` original** — aí `source_location` volta a `app/...`. Prove pela origem.
