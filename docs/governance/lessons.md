@@ -341,3 +341,38 @@ furo: uma linha 100% reconhecida "protegia" as demais. A suíte (35 testes do se
    A discriminação é reconhecer que a chave **parece** com o campo (mesma palavra distintiva após normalizar
    casing/separadores) sem **ser** o casing conhecido → falha ALTO; se não há nenhuma chave parecida, é ausência
    real → passa. **Prove sempre os dois sentidos** (o caso que deve falhar e o payload válido que deve passar).
+
+---
+
+### 2026-10-01 — `remove_method` num scope Rails destrói o scope de negócio para o PROCESSO inteiro
+
+**Contexto:** Chore `chore/suite-stub-nao-destrutivo` (Sprint 29), achado 🟠1 do Code Reviewer. Um teste
+(`dashboard_controller_test.rb`) stubbava `Pessoas::Vinculo.ativos` com
+`remove_method(:ativos)` + `define_singleton_method(:ativos) { lista }`, e no `teardown` outro
+`remove_method(:ativos)` "para limpar". A suíte exibia, de forma intermitente, `NoMethodError: undefined
+method 'ativos' for class Pessoas::Vinculo` em arquivos **sem nenhuma relação** com o dashboard.
+
+**Causa:** no Rails, scopes SÃO definidos como `singleton_class.define_method(name)`
+(`activerecord/lib/active_record/scoping/named.rb`). Logo o `remove_method` do `teardown` **não removia um
+stub — removia o próprio scope de negócio**, e não o reinstalava. Como o arquivo de teste compartilha a
+VM, o scope ficava morto para **todo** arquivo rodado depois dele — falsificando, por *skip*/erro, os
+testes de outros (contaminação **order-dependent**; o mesmo arquivo passava sozinho).
+
+**Solução:** par **capturar/restaurar** o `UnboundMethod` real — captura no load
+(`singleton_class.instance_method(:ativos) if respond_to?(:ativos)`) e reinstalação no `teardown`
+(`singleton_class.send(:define_method, :ativos, real)`, que roda inclusive sob falha). O stub passa a
+**redefinir** sem remover. (O `stub` do Minitest **não** é alternativa aqui: no Minitest 6.0.6 do bundle
+não existe `minitest/mock` nem `Object#stub` — medido.)
+
+**Lição (três):**
+1. **No Rails, mexer no método de um scope é mexer no MODEL, não num mock.** Nunca `remove_method` num
+   método definido pelo framework; capture o `UnboundMethod` e reinstale-o. Um stub que "limpa" com
+   `remove_method` mata código de produção no processo de teste inteiro.
+2. **Contaminação de teste é order-dependent — uma execução verde não prova nada.** O modo honesto de
+   provar é: probe determinístico (ex. `Minitest.after_run` inspecionando `respond_to?`/`source_location`
+   do método depois de rodar o arquivo **sozinho**) + A/B por seeds no **menor conjunto que discrimina**
+   (< limiar de paralelização, para a ordem ser a única variável). A suíte completa paraleliza por arquivo
+   e pode **mascarar** a varíola.
+3. **`source_location` distingue "stub" de "scope real"** onde `Method#owner` não distingue (o stub também
+   é singleton). Use `source_location` para provar que o método restaurado é o do framework, não uma cópia
+   do teste.
