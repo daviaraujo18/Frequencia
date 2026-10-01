@@ -7,25 +7,9 @@ require "test_helper"
 class AutorizacaoFrequenciaTest < ActiveSupport::TestCase
   include PessoasEspelhoHelper
 
-  # O scope de negócio `Pessoas::Vinculo.ativos` REAL, capturado no LOAD do
-  # arquivo (antes de qualquer teste rodar, portanto antes do stub destrutivo
-  # `dashboard_controller_test.rb:17` poder removê-lo). NÃO é cópia da regra:
-  # é o próprio método do model, re-instalado quando vazar (ver `setup`).
-  SCOPE_ATIVOS_REAL =
-    Pessoas::Vinculo.singleton_class.instance_method(:ativos) if Pessoas::Vinculo.respond_to?(:ativos)
-
   # Débito B1: sem o schema do espelho (CI/máquina limpa), PULA explícito.
   setup do
     skip_sem_espelho!
-    # Blindagem contra a varíola de ordem conhecida (iteração 29, débito de
-    # chore do stub destrutivo `dashboard_controller_test.rb:17`): aquele
-    # teardown faz `remove_method(:ativos)` no `Pessoas::Vinculo` e, quando o
-    # `dashboard_controller_test` sai ANTES deste arquivo na mesma ordem, mata
-    # o SCOPE real (não só o stub) — `Pessoas::Pessoa#vinculos_ativos`, que
-    # este PORO usa nos passos 3/5, levanta `NoMethodError`. Não toco o arquivo
-    # ofensor (é chore própria); aqui reinstalo o MESMO método capturado no
-    # load, sem duplicar regra de negócio.
-    restaurar_scope_ativos! unless Pessoas::Vinculo.respond_to?(:ativos)
   end
 
   # ==========================================================================
@@ -397,15 +381,6 @@ class AutorizacaoFrequenciaTest < ActiveSupport::TestCase
   end
 
   private
-
-  # --- blindagem da varíola de ordem ----------------------------------------
-
-  # Reinstala o método `ativos` capturado no load (`SCOPE_ATIVOS_REAL`), que é
-  # o próprio scope do model — não uma cópia. Idempotente e só chamado quando
-  # o stub destrutivo de outro teste já o removeu.
-  def restaurar_scope_ativos!
-    Pessoas::Vinculo.singleton_class.send(:define_method, :ativos, SCOPE_ATIVOS_REAL)
-  end
 
   # --- assertions -----------------------------------------------------------
 
