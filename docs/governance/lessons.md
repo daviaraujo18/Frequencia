@@ -449,3 +449,40 @@ sido repetida por alguém mais sênior.
 produção") estava mal justificado e poderia ter barrado a 29.5 por um motivo
 inexistente. A pergunta correta é de **priorização** (implementar sem caller
 agora, ou quando a 29.7 expuser o fluxo), não de segurança.
+
+### 2026-10-02 — Um `refute` que não pode falhar: o gate que "prova" pela condição errada
+
+**Contexto.** Task 29.5 (Sprint 29). Escrevi um teste para provar que o auto-bloqueio por
+**Frequentador** funciona (acionador e alvo são `User` DIFERENTES que resolvem para o mesmo
+`FrequentadorCache`, via stub de `find_by`). O teste era `refute pode_desconsiderar?(alvo)` — verde.
+Ao mutar o código (trocar a identidade por Frequentador por uma comparação de CPF-string), **a
+mutação sobreviveu**: o `refute` continuava verde. O gate não provava nada.
+
+**Causa (a armadilha).** O cenário do teste tinha o acionador **sem** hierarquia sobre o alvo — então
+`pode_desconsiderar?` retornava `false` de qualquer jeito, pela cláusula 6 (não é gestor do órgão).
+O `refute` passava **pela condição errada**. É a mesma classe de erro que a lição de 2026-10-02 (o
+relato "existe ⇒ está exposto"): **um negativo que não pode falhar não prova a cláusula que você
+acha que ele prova**.
+
+**Solução.** Todo teste de bloqueio precisa de um **controle positivo ao lado** — o mesmo cenário
+com a condição sob teste **neutralizada** deve **liberar**:
+```ruby
+# CONTROLE: sem o frequentador compartilhado, a hierarquia sozinha LIBERA.
+assert elegivel(acionador).pode_desconsiderar?(alvo, DATA)
+# SOB TESTE: com o frequentador compartilhado (stub), bloqueia.
+com_metodo_de_classe_stubado(FrequentadorCache, :find_by, ->(**_k){ frequentador }) do
+  refute elegivel(acionador).pode_desconsiderar?(alvo, DATA)
+end
+```
+Assim, se a cláusula de identidade for removida, o `refute` falha **naquele** cenário (o controle
+já provou que a hierarquia sozinha libera) — a mutação morre. Com o controle, as duas mutações
+(CPF-string e remoção do nível Frequentador) morreram.
+
+**Lição.**
+1. **Um `refute`/`assert_not` só prova a cláusula certa se houver um caminho em que o resultado
+   seria `true` sem ela.** Sempre emparelhe o negativo com um controle positivo do **mesmo** cenário.
+2. Ao mutar para validar um teste, mutar o ramo **sob teste**, não só um ramo qualquer — e confirmar
+   que a mutação morre **pela asserção certa** (a mensagem do controle aparece?).
+3. Aplique a pergunta da lição anterior a cada assert: **"esta prova exercita a MESMA condição do
+   ambiente real, ou passa por acaso?"** Um teste que passa por outro motivo é indistinguível de um
+   teste que passa — até você mutar.

@@ -52,6 +52,33 @@ class AutorizacaoFrequencia
     @decisoes.fetch(chave) { @decisoes[chave] = decidir(frequentador) }
   end
 
+  # Tarefa 29.5 (Decisão D5, CTO 2026-10-01) — expõe APENAS o passo 5
+  # (hierarquia) como predicado público, para que a regra de elegibilidade
+  # para DESCONSIDERAR um dia
+  # (`ElegibilidadeDesconsideracao#pode_desconsiderar?`) reuse a MESMA
+  # implementação da hierarquia em vez de reimplementá-la (o ruling D5 diz
+  # explicitamente: "a 29.5 reusa o mesmo passo 5 da 29.4 — não reimplementa").
+  #
+  # É deliberadamente RESTRITO ao passo 5: NÃO é `pode_ver?`. O legado trata
+  # ver e desconsiderar como regras DISTINTAS — `GestorIndividual` (passo 4)
+  # VÊ mas NÃO desconsidera; admin/role geral (passo 2) e próprio (passo 1)
+  # também não passam pelo gate de desconsiderar (que só chama `isGestorOrgao`).
+  # Usar `pode_ver?` aqui AMPLIARIA a autorização — exatamente o erro que a D5
+  # veda. Só a hierarquia (ser gestor do órgão do alvo) autoriza.
+  #
+  # Usa só o passo 5 da cascata (mesma resolução de lotação principal vigente,
+  # `Pessoas::Lotacao.principais.vigentes`, e mesma regra D6 de elegibilidade
+  # da unidade) — nenhuma lógica nova de hierarquia.
+  def gestor_de_orgao_do?(frequentador)
+    @frequentador = frequentador
+    reset_estado_do_alvo!
+
+    return false if usuario.blank?
+    return false if frequentador.nil?
+
+    hierarquia?
+  end
+
   private
 
   attr_reader :usuario
