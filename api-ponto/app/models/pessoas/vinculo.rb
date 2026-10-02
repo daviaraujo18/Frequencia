@@ -29,6 +29,20 @@ module Pessoas
       lotacoes.principais.merge(Pessoas::Lotacao.vigentes).order(inicio: :desc).first
     end
 
+    # Tarefa 29.6 (Sprint 29) — lista de frequentadores VISÍVEIS por um usuário
+    # (PRD §3; §9 item 1). Delegação fina para `FrequentadoresVisiveis` (o
+    # object que monta o SQL e replica a cascata da 29.4): o nome
+    # `frequentadores_visiveis(usuario)` é o contrato citado na 29.7
+    # (`accessible_by`/index). Aditivo — não altera a `Ability` (29.7) nem o
+    # PORO da 29.4.
+    #
+    # NÃO é um `scope :` clássico de propósito: além de ler `vinculos`, precisa
+    # consultar o banco `users` (outro Postgres, sem JOIN cross-database) para
+    # os passos 1/4, então a montagem vive num object dedicado e testável.
+    def self.frequentadores_visiveis(usuario)
+      FrequentadoresVisiveis.para(usuario)
+    end
+
     def tipo_vinculo
       configuracao_cadastro&.tipo_vinculo
     end
