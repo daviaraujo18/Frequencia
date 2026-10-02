@@ -1,11 +1,19 @@
 module Admin
   class FrequenciaController < Admin::ApplicationController
+    include FrequenciaAuthorization
+
     def index
       # Task 23.7 — CanCanCan: autorização explícita para leitura.
       # Admin/gestor/operador podem visualizar (todos têm :read em :all).
       authorize! :read, :all
 
+      # Task 29.7 — cascata (atrás da flag). Com a flag LIGADA, a listagem
+      # passa a mostrar só os frequentadores visíveis do usuário logado
+      # (`frequentadores_visiveis`, 29.6); em shadow, a relação é observada e
+      # logada sem restringir; desligada, nada muda.
       @registros = TimeRecord.includes(:user, :estacao_ponto).order(punched_at: :desc)
+      observar_cascata_frequencia(@registros)
+      @registros = restringir_frequencia(@registros)
 
       if params[:data].present? && data_filtro
         @registros = @registros.merge(TimeRecord.by_date(data_filtro))

@@ -518,3 +518,28 @@ unidade errada.
 2. O sintoma não aparece na leitura do código, só no resultado: um `WHERE ... AND NOT ...` que
    **nunca casa** é indistinguível de "não há caso" até você rodar o SQL do cenário real. Ao portar um
    `if` do Ruby (2-valued) para SQL, **teste o cenário que DEVE casar** — não só o que deve negar.
+
+---
+
+### 2026-10-02 — Um `Proc` passado a `define_singleton_method` REBINDA o `self`: variável de instância do teste vira `nil` dentro do stub
+
+**Contexto.** Task 29.7 (Sprint 29). Num teste de controller usei
+`com_metodo_de_classe_stubado(Pessoas::Vinculo, :cpfs_frequentadores_visiveis, ->(_u) { [ @oculto.cpf ] })`.
+O stub levantou `NoMethodError: undefined method 'cpf' for nil` — como se `@oculto` não existisse.
+
+**Causa (medida).** `define_singleton_method(:m, corpo)` **redefine `self`** para o receiver (aqui, a
+própria `Pessoas::Vinculo`) quando o `corpo` é um `Proc`/lambda. Dentro do lambda, uma variável de
+INSTÂNCIA (`@oculto`) resolve contra ESSE `self` (a classe), não contra a instância do teste — donde
+`nil`. Variáveis LOCAIS são capturadas pelo closure e **não** dependem do `self`; portanto funcionam.
+
+**Solução.** No bloco do stub, capture o valor em uma **variável local** antes de montar o lambda:
+```ruby
+cpf_oculto = @oculto.cpf
+com_metodo_de_classe_stubado(Pessoas::Vinculo, :cpfs_frequentadores_visiveis, ->(_u) { [ cpf_oculto ] }) do
+```
+(Mesma família do cuidado com `self`/implicit-receiver já registrada na causa-raiz dos 11 Devise
+`redirect_to` — lá, dentro de `super do` o receiver deixava de ser o controller.)
+
+**Lição.** Ao stubar com um `Proc`, trate o corpo como um **método da classe**: `self` é a classe-alvo,
+não o teste. Não use `@instance_vars` do teste dentro dele — capture em locais. Se um stub de classe
+"não enxerga" um dado do teste (`nil` inesperado), a causa provável é o rebind de `self`, não o dado.

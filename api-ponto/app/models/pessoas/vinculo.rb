@@ -43,6 +43,27 @@ module Pessoas
       FrequentadoresVisiveis.para(usuario)
     end
 
+    # CPFs dos frequentadores VISÍVEIS por um usuário — o ponto de entrada
+    # consumido pela `Ability` e pelos controllers de frequência na 29.7. É a
+    # projeção em CPF de `frequentadores_visiveis` (o chamador precisa de CPF
+    # porque a FK `time_records.user_id` aponta para `users` locais, ligados ao
+    # Pessoas por `users.cpf`).
+    #
+    # Existe como método de classe PRÓPRIO (`def self.`, não um `scope :`) por
+    # dois motivos: (1) o padrão do projeto (Sprint 10B/8.13) de isolar cada
+    # consulta ao banco do Pessoas num único ponto testável/stubável — o banco
+    # `pessoas_test` existe mas não tem schema carregado; e (2) a 29.7 delega a
+    # regra em vez de reimplementá-la: o conjunto de CPFs visíveis vem do
+    # `FrequentadoresVisiveis` (29.6), cuja equivalência com o PORO
+    # `AutorizacaoFrequencia#pode_ver?` é provada item a item pela 29.6.
+    def self.cpfs_frequentadores_visiveis(usuario)
+      frequentadores_visiveis(usuario)
+        .joins(:pessoa)
+        .where.not(pessoas: { cpf: nil })
+        .distinct
+        .pluck("pessoas.cpf")
+    end
+
     def tipo_vinculo
       configuracao_cadastro&.tipo_vinculo
     end

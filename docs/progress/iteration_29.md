@@ -462,12 +462,21 @@
 - Rastreabilidade: PRD §3; §9 item 1; Sprint 23.7
 - Estimativa: 5 pontos | Atribuição: Dev A | Dependências: 29.4–29.6, D2, D3, aprovação explícita
 - Critérios de aceite:
-  - [ ] Com flag ligada: `can :read` de TimeRecord/CalculoDiario/RegistroMensalFrequencia/IntervencaoFrequencia por bloco usando `pode_ver?`; `accessible_by`/index usam `frequentadores_visiveis`; `gestor` só gerencia `IntervencaoFrequencia`/`TimeRecord` de visíveis
-  - [ ] Controllers afetados mapeados e cobertos: `frequencia`, `frequencia_por_orgao`, `frequentadores`, `parcial`, `time_records`, `relatorio_terceirizados`
-  - [ ] Flag desligada: comportamento idêntico ao atual (suíte existente sem regressão)
-  - [ ] Modo shadow: loga `usuario, alvo, motivo, decisão` sem negar
-  - [ ] Endpoints `Presenca::*` (estação) intocados
-- Status: ⬜ Pendente
+  - [x] Com flag ligada: `can :read` de TimeRecord/CalculoDiario/RegistroMensalFrequencia/IntervencaoFrequencia por bloco usando `pode_ver?`; `accessible_by`/index usam `frequentadores_visiveis`; `gestor` só gerencia `IntervencaoFrequencia`/`TimeRecord` de visíveis
+  - [x] Controllers afetados mapeados e cobertos: `frequencia`, `frequencia_por_orgao`, `frequentadores`, `parcial`, `time_records`, `relatorio_terceirizados`
+  - [x] Flag desligada: comportamento idêntico ao atual (suíte existente sem regressão)
+  - [x] Modo shadow: loga `usuario, alvo, motivo, decisão` sem negar
+  - [x] Endpoints `Presenca::*` (estação) intocados
+- Status: ✅ Implementado, ✅ **Aprovado** (Code Reviewer 2026-10-02 — `docs/quality/review_report_29_7.md`; **0 blockers**; 🟡 1 / 🟠 3 / 🟢 3; 7/7 itens verificados; nenhuma fuga de autorização). **Entrega:** `FrequenciaAutorizacaoCascata` (nova — flag de 3 estados `:off`/`:shadow`/`:on` default OFF + log shadow), `Ability` (recursos de frequência por bloco via `Pessoas::Vinculo.cpfs_frequentadores_visiveis`, subtraídos do baseline quando `:on`; demais telas mantêm `can :read, :all`), `Pessoas::Vinculo.cpfs_frequentadores_visiveis` (delegação p/ 29.6), concern `FrequenciaAuthorization` e wiring dos 6 controllers. Testes (+22 runs): `test/models/frequencia_autorizacao_cascata_test.rb` (5), `test/models/ability_cascata_test.rb` (9), `test/controllers/admin/frequencia_cascata_controller_test.rb` (8). **Limite medido (CanCanCan 3.6.1):** `accessible_by` rejeita regra por bloco (`CanCan::Error`) — a regra por bloco serve `can?` por instância; a listagem SQL (`accessible_by`/index) é filtrada no controller por `cpfs_frequentadores_visiveis`. **Preserva a visão global (passo 2):** admin/`visualiza_frequentadores` não são restringidos (curto-circuito), como no PORO. **Mutation testing: 9/9 mortas** (remover `deny_frequencia_baseline!`; gestor sem escopo; `visivel_user_id?` blank→true; `restringir_frequencia` no-op; flag ligada→off; shadow loga sempre; `incluir_cpfs` ignora visíveis; `frequencia_por_orgao` ignora flag; `visao_global?` sempre true). **Medição:** arquivos-alvo 66/442/0F/0E (seeds 1/42/6000 estáveis); suíte completa **1060/3663/1F+11E/0 skip** (12 pré-existentes: 1× timezone, 11× Devise `redirect_to`; baseline pós-chore 1038/3543 → +22 runs = os testes novos); RuboCop **0 offenses após correção** — ⚠️ o registro original do Code Specialist ("0 offenses nos arquivos novos") era **FALSO num ponto**: `ability.rb` introduzia **4 offenses** em linhas novas (`:163`/`:167`, `Layout/SpaceInsideArrayLiteralBrackets`), achado do Code Reviewer (🟠2), **confirmado por medição** (`bin/rubocop` → 4 offenses) e **corrigido por autocorrect** (`-a`), com os testes re-rodados (14/79/0F/0E). As de `time_records_controller` são pré-existentes; Zeitwerk OK.
+
+#### 📋 Relatório de Revisão — Code Reviewer (Tarefa 29.7)
+
+- **Arquivo:** `docs/quality/review_report_29_7.md` — 2026-10-02 — veredito **✅ APROVADO, 0 blockers** (🟡 1 / 🟠 3 / 🟢 3); 7/7 itens verificados; **nenhuma fuga de autorização** encontrada.
+- **Métricas independentes (worktree próprio):** testes novos **22/120/0F/0E**; baseline flag OFF `ability_test` **13/82/0/0** e `controllers/admin` **182/1025/0F/0E** (sem regressão); módulos afetados **104/408/0F/0E**; `authorization_matrix` **6/140/0/0** idêntico OFF/ON; Zeitwerk OK; nenhum arquivo `Presenca::*` tocado.
+- **Reproduções independentes:** `accessible_by(TimeRecord)` com `:on` → **`CanCan::Error`** (alegação do agente **confirmada**; sem caller em produção); **probe** `manage` inclui `read` (admin preservado com `deny` antes de `manage :all`); **8 mutações reproduzidas, 8 mortas** (M1 deny remoto, M2 gestor sem escopo, M3 blank→true, M4 `restringir_frequencia` no-op, M5 `ligada?`→false, M6 órgão ignora flag, M7 shadow loga sempre, M8 substituição em vez de interseção).
+- **Falsos positivos refutados:** "`cannot :read` necessário" (hoje seria equivalente a `cannot :manage`, mas a escolha é mais precisa/futura); "shadow com alvo `User` quebraria" (PORO suporta `User` explicitamente).
+- **Pendências não-bloqueantes:** 🟡1 teste `time_records` não isola a variável; 🟠2 RuboCop: **4 offenses em linhas novas de `ability.rb`** (o HEAD tinha 0 — corrigir o registro "0 offenses"); 🟠3 usuário não-admin **sem CPF** vê zero registros sob `:on` (fail-closed; cobrir na matriz da 29.8); 🟠4 sem log de negação no `:on`. Nenhuma impede o commit.
+- **Commit:** liberado (`COMMIT_MODE=manual`) com stage seletivo de 13 arquivos + docs; excluir `log/test.log` e `tmp/cache/*`.
 
 ### Tarefa 29.8 — Matriz de aceite e auditoria
 - User Story: Como PO, quero uma matriz de cenários reais validada para decidir ligar a flag em produção.
