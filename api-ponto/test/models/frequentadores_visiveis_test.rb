@@ -53,8 +53,14 @@ class FrequentadoresVisiveisTest < ActiveSupport::TestCase
     end
 
     assert_empty divergencias, "divergências scope × PORO:\n#{divergencias.join("\n")}"
-    assert_operator verdadeiros, :>, 0, "fixture não gera nenhum par visível (teste não discrimina)"
-    assert_operator falsos, :>, 0, "fixture não gera nenhum par negado (teste não discrimina)"
+    # Números CONGELADOS (review 🟠1, 2026-10-02): 8 usuários × 13 frequentadores =
+    # 104 pares. Antes usávamos `assert_operator :> 0`, que não discriminava a
+    # fixture — foi por isso que a contagem 34/70 só saiu por probe externo.
+    # Congelar faz o teste AVISAR se a fixture mudar (em vez de descobrir por
+    # probe). Se a fixture mudar de propósito, atualize estes três números.
+    assert_equal 104, verdadeiros + falsos, "o teste de propriedade não cobriu todos os pares (fixture mudou?)"
+    assert_equal 34, verdadeiros, "mudou o número de pares VISÍVEIS (revise a fixture/regra)"
+    assert_equal 70, falsos, "mudou o número de pares NEGADOS (revise a fixture/regra)"
   end
 
   # A fixture não pode ser degenerada: cada passo da cascata precisa ter ao
@@ -88,6 +94,84 @@ class FrequentadoresVisiveisTest < ActiveSupport::TestCase
 
     # Controle positivo do D6: gestor de unidade ATIVA acima de uma INATIVA.
     assert_equal :hierarquia, AutorizacaoFrequencia.new(cena[:usuarios][:gestor_sobe_inativa]).motivo(alvo[freq[:abaixo_de_inativa].pessoa.cpf])
+  end
+
+  # ==========================================================================
+  # D4 multi-vínculo (débito D3) — o contrato por PESSOA
+  # ==========================================================================
+  #
+  # A 29.4 tem um teste com 2 vínculos ativos (1 Não-Terceirizado + 1
+  # Terceirizado) fixando a D4 ("algum vínculo ativo" → pessoa terceirizada).
+  # A 29.6 não tinha — buraco de cobertura num caso sensível. O Code Reviewer
+  # explicou por que NÃO é divergência de regra: o scope resolve terceirizado
+  # por VÍNCULO (`configuracao_cadastro_id IN ...`) e o PORO por PESSOA; a
+  # união dos vínculos aprovados equivale à pessoa aprovada. Este teste fixa
+  # exatamente esse contrato POR PESSOA — o que o chamador (a 29.7) usa.
+
+  test "D4 multi-vinculo: pessoa com vinculo Terceirizado + Nao-Terceirizado e visivel ao scope do terceirizados" do
+    cena = montar_cena
+    terc = cena[:usuarios][:terc]
+
+    pessoa = criar_pessoa(cpf: proximo_cpf_teste)
+    # 1 vínculo NÃO-Terceirizado + 1 Terceirizado, AMBOS ativos (a D4).
+    lotar(pessoa, cena[:unidades][:sem_gestor], tipo: "Efetivo")
+    lotar(pessoa, cena[:unidades][:sem_gestor], tipo: "Terceirizado")
+
+    assert_equal 2, pessoa.vinculos_ativos.count, "pre-condicao: dois vinculos ativos"
+    assert pessoa.terceirizado?, "pre-condicao (D4): ALGUM vinculo ativo Terceirizado torna a pessoa terceirizada"
+    assert AutorizacaoFrequencia.new(terc).pode_ver?(pessoa),
+           "pre-condicao: o PORO ve a pessoa terceirizada"
+
+    # Contrato POR PESSOA: a UNIÃO dos vínculos aprovados da pessoa é não-vazia
+    # sse o PORO libera a pessoa. (O scope devolve VÍNCULOS; a pessoa é visível
+    # quando QUALQUER dos seus vínculos aparece.)
+    assert pessoa_visivel_no_scope?(terc, pessoa),
+           "a pessoa terceirizada precisa ser visível (união dos seus vínculos)"
+  end
+
+  # CONTROLE NEGATIVO — prova que a asserção DISCRIMINA: sem o vínculo
+  # Terceirizado, a MESMA pessoa (com o vínculo Não-Terceirizado) NÃO é
+  # visível ao scope. Sem este par, o teste acima passaria mesmo se o scope
+  # ignorasse o tipo do vínculo (falso verde).
+  test "D4 multi-vinculo CONTROLE: sem o vinculo Terceirizado a pessoa NAO e visivel ao scope" do
+    cena = montar_cena
+    terc = cena[:usuarios][:terc]
+
+    pessoa = criar_pessoa(cpf: proximo_cpf_teste)
+    # SÓ o vínculo Não-Terceirizado (mesma pessoa/unidade do caso positivo).
+    lotar(pessoa, cena[:unidades][:sem_gestor], tipo: "Efetivo")
+
+    refute pessoa.terceirizado?, "pre-condicao: sem vinculo Terceirizado a pessoa NAO e terceirizada"
+    refute AutorizacaoFrequencia.new(terc).pode_ver?(pessoa),
+           "pre-condicao: o PORO NAO ve a pessoa nao-terceirizada"
+    refute pessoa_visivel_no_scope?(terc, pessoa),
+           "sem vinculo Terceirizado a pessoa nao pode aparecer no scope do terceirizados"
+  end
+
+  # Contrato por pessoa, restrito ao passo 3 (a role de terceirizados): para
+  # TODO alvo do fixture, a visibilidade pelo scope (união dos vínculos) bate
+  # com o PORO sobre a pessoa. É o passo que o multi-vínculo da D3 exercita, e
+  # o único em que o PORO opera por PESSOA (o passo 4 é por `User.id` — por
+  # isso o teste de propriedade geral avalia os geridos com o respectivo
+  # `User`, não com a `Pessoa`).
+  test "D4: para a role de terceirizados o contrato por pessoa bate com o PORO em todo o fixture" do
+    cena = montar_cena
+    terc = cena[:usuarios][:terc]
+    escopo_ids = FrequentadoresVisiveis.para(terc).pluck(:id).to_set
+    divergencias = []
+
+    cena[:frequentadores].each do |rotulo_freq, vinculo|
+      pessoa = vinculo.pessoa
+      visivel_scope = (escopo_ids & pessoa.vinculos_ativos.pluck(:id).to_set).any?
+      visivel_poro = AutorizacaoFrequencia.new(terc).pode_ver?(pessoa)
+
+      if visivel_scope != visivel_poro
+        divergencias << "#{rotulo_freq} (#{pessoa.cpf}): " \
+                        "scope(por pessoa)=#{visivel_scope} poro=#{visivel_poro}"
+      end
+    end
+
+    assert_empty divergencias, "divergências (por pessoa, passo 3) scope × PORO:\n#{divergencias.join("\n")}"
   end
 
   # ==========================================================================
@@ -247,6 +331,146 @@ class FrequentadoresVisiveisTest < ActiveSupport::TestCase
   end
 
   private
+
+  # ==========================================================================
+  # Auditoria/shadow (D2) — o scope emite os MESMOS eventos que o PORO
+  # ==========================================================================
+
+  test "D2: o scope LOGA pessoa_ausente quando o gestor tem cpf mas nao existe no Pessoas" do
+    gestor_pessoa = criar_pessoa(cpf: proximo_cpf_teste)
+    raiz = criar_unidade(descricao: "Raiz", active: true, gestor_id: gestor_pessoa.id)
+    # Alvo com hierarquia (força o caminho restrito, não role_geral).
+    alvo_lotado(raiz)
+    # Gestor com CPF válido mas SEM pessoa correspondente no espelho.
+    gestor = criar_usuario(cpf: proximo_cpf_teste)
+
+    log = capturar_log { FrequentadoresVisiveis.para(gestor).to_a }
+
+    assert_match(/autorizacao_frequencia\.pessoa_ausente/, log)
+    assert_includes log, gestor.cpf
+  end
+
+  test "D2: o scope LOGA pessoas_indisponivel quando o Pessoas cai na resolucao do gestor" do
+    gestor = criar_usuario(cpf: proximo_cpf_teste)
+
+    log = nil
+    com_metodo_de_classe_stubado(Pessoas::Pessoa, :por_user,
+                                 ->(_user) { raise ActiveRecord::StatementInvalid, "pessoas fora do ar (teste)" }) do
+      log = capturar_log { FrequentadoresVisiveis.para(gestor).to_a }
+    end
+
+    assert_match(/autorizacao_frequencia\.pessoas_indisponivel/, log)
+  end
+
+  test "D2: o scope LOGA unidade_inelegivel agregado — mesmo evento do PORO" do
+    gestor_pessoa = criar_pessoa(cpf: proximo_cpf_teste)
+    # Unidade INATIVA com o gestor; o alvo está lotado na subárvore ATIVA dela:
+    # o PORO nega (D6) e loga `unidade_inelegivel` (caso `sub_inativa` da cena).
+    inativa = criar_unidade(descricao: "Inativa", active: false, gestor_id: gestor_pessoa.id)
+    sub = criar_unidade(descricao: "Sub Inativa", parent: inativa, active: true)
+    pessoa_alvo = alvo_lotado(sub)
+    gestor = criar_usuario(cpf: gestor_pessoa.cpf)
+
+    # Sanidade: o PORO realmente loga neste cenário (é a negação que o shadow
+    # precisa enxergar) — sem isso, o `assert_match` abaixo poderia passar por
+    # um evento emitido noutro caminho.
+    log_poro = capturar_log { AutorizacaoFrequencia.new(gestor).pode_ver?(pessoa_alvo) }
+    assert_match(/autorizacao_frequencia\.unidade_inelegivel/, log_poro,
+                 "pre-condicao: o PORO precisa logar unidade_inelegivel neste cenario")
+
+    log = capturar_log { FrequentadoresVisiveis.para(gestor).to_a }
+
+    assert_match(/autorizacao_frequencia\.unidade_inelegivel/, log,
+                 "o scope precisa emitir unidade_inelegivel (a negação que o PORO registra)")
+    # O agregado preserva o MESMO `unidade_id` que o PORO registra: a unidade de
+    # LOTAÇÃO do alvo (`sub`), não a inativa ancestral (`inativa`).
+    assert_match(/:unidade_ids=>\[#{sub.id}\]/, log,
+                 "o agregado deve registrar a unidade de lotacao (#{sub.id})")
+    refute_match(/:unidade_ids=>\[#{inativa.id}\]/, log,
+                 "o agregado NAO deve registrar a unidade inativa ancestral")
+  end
+
+  # FIDELIDADE DE PRECEDÊNCIA (fix do review, 2026-10-02): o PORO retorna no
+  # PRIMEIRO match da cascata — um alvo liberado pelos passos 1/3/4 NUNCA chega
+  # ao passo 5 e NUNCA loga `unidade_inelegivel`. O scope precisa espelhar isso:
+  # NÃO logar para alvos já liberados por um passo anterior, mesmo com unidade
+  # inelegível na cadeia (senão o shadow da 29.7 conta negações que não ocorreram).
+  test "D2 precedencia: alvo liberado pelo passo 4 NAO gera unidade_inelegivel no scope (espelha o PORO)" do
+    cena = montar_cena
+    gestor = cena[:usuarios][:gestor]
+    pessoa_gestora = cena[:unidades][:pessoa_raiz]
+
+    # Unidade INELEGÍVEL cujo gestor é a pessoa do usuário; o alvo é lotado nela.
+    inativa = criar_unidade(descricao: "Inativa passo4", active: false, gestor_id: pessoa_gestora.id)
+    pessoa_alvo = alvo_lotado(inativa)
+    user_alvo = usuario_pessoa(pessoa_alvo)
+    # Passo 4: gestor individual ATIVO liga o usuário ao alvo (libera ANTES do passo 5).
+    gestor_individual(gestor_user: gestor, gerido: user_alvo, ativo: true)
+
+    # Sanidade: o PORO libera pelo PASSO 4 (não chega ao passo 5) e, por isso,
+    # NÃO loga — é uma negação que NÃO aconteceu.
+    assert_equal :gestor_individual, AutorizacaoFrequencia.new(gestor).motivo(user_alvo),
+                 "pre-condicao: o alvo precisa ser liberado pelo passo 4"
+    log_poro = capturar_log { AutorizacaoFrequencia.new(gestor).pode_ver?(user_alvo) }
+    refute_match(/unidade_inelegivel/, log_poro,
+                 "pre-condicao: o PORO NAO loga para alvo liberado pelo passo 4")
+
+    # O SCOPE tem de espelhar: sem log para este alvo.
+    log_scope = capturar_log { FrequentadoresVisiveis.para(gestor).to_a }
+    refute_match(/unidade_inelegivel/, log_scope,
+                 "o scope NAO pode logar unidade_inelegivel para alvo liberado pelo passo 4")
+  end
+
+  # O mesmo vale para o passo 1 (próprio): o alvo é o próprio gestor; com
+  # unidade inelegível na cadeia, o PORO libera no passo 1 e não chega ao 5.
+  test "D2 precedencia: alvo liberado pelo proprio (passo 1) NAO gera unidade_inelegivel no scope" do
+    gestor_pessoa = criar_pessoa(cpf: proximo_cpf_teste)
+    # Unidade INELEGÍVEL gerida pelo próprio gestor; ele é lotado nela.
+    inativa = criar_unidade(descricao: "Inativa proprio", active: false, gestor_id: gestor_pessoa.id)
+    inserir(Pessoas::Vinculo,
+            pessoa_id: gestor_pessoa.id,
+            vinculo_estado_id: criar_vinculo_estado(nome: "em_exercicio").id,
+            matricula: "M#{gestor_pessoa.id}", inicio: Date.new(2020, 1, 1))
+    v = Pessoas::Vinculo.find_by(pessoa_id: gestor_pessoa.id)
+    inserir(Pessoas::Lotacao, vinculo_id: v.id, unidade_id: inativa.id, principal: true, inicio: Date.new(2020, 1, 1))
+    gestor = criar_usuario(cpf: gestor_pessoa.cpf)
+
+    log_poro = capturar_log { AutorizacaoFrequencia.new(gestor).pode_ver?(gestor) }
+    refute_match(/unidade_inelegivel/, log_poro, "pre-condicao: passo 1 nao chega ao passo 5")
+
+    log_scope = capturar_log { FrequentadoresVisiveis.para(gestor).to_a }
+    refute_match(/unidade_inelegivel/, log_scope,
+                 "o scope NAO pode logar para alvo liberado pelo passo 1")
+  end
+
+  # CONTROLE NEGATIVO: o evento agregado só aparece quando HÁ negação por D6.
+  # Sem este par, um `warn` incondicional passaria como prova.
+  test "D2 CONTROLE: sem unidade inelegivel, o scope NAO loga unidade_inelegivel" do
+    gestor_pessoa = criar_pessoa(cpf: proximo_cpf_teste)
+    raiz = criar_unidade(descricao: "Raiz", active: true, gestor_id: gestor_pessoa.id)
+    alvo_lotado(raiz) # lotado na própria unidade do gestor (elegível)
+    gestor = criar_usuario(cpf: gestor_pessoa.cpf)
+
+    log = capturar_log { FrequentadoresVisiveis.para(gestor).to_a }
+
+    refute_match(/autorizacao_frequencia\.unidade_inelegivel/, log)
+  end
+
+  # CONTROLE de N+1: o log agregado NÃO pode adicionar uma query por alvo. Com
+  # 20 frequentadores extras o número de queries tem de ser o MESMO do cenário
+  # com poucos (o log é 1 query fixa).
+  test "D2: o log agregado nao introduz N+1" do
+    cena = montar_cena
+    gestor = cena[:usuarios][:gestor]
+
+    queries_poucos = contar_queries { FrequentadoresVisiveis.para(gestor).to_a }
+    20.times { alvo_lotado(cena[:unidades][:folha]) }
+    queries_muitos = contar_queries { FrequentadoresVisiveis.para(gestor).to_a }
+
+    assert_equal queries_poucos, queries_muitos,
+                 "o log agregado fez mais queries com mais frequentadores (N+1): " \
+                 "#{queries_poucos} → #{queries_muitos}"
+  end
 
   # ==========================================================================
   # Fixture — exercita cada passo + bordas da D6
@@ -430,6 +654,13 @@ class FrequentadoresVisiveisTest < ActiveSupport::TestCase
     Pessoas::Vinculo.ativos.where(pessoa_id: pessoa.id).joins(:pessoa).first
   end
 
+  # A PESSOA é visível ao scope quando QUALQUER dos seus vínculos ativos
+  # aparece na lista (o scope devolve vínculos; a 29.7 consome por pessoa).
+  def pessoa_visivel_no_scope?(usuario, pessoa)
+    escopo_ids = FrequentadoresVisiveis.para(usuario).pluck(:id).to_set
+    (escopo_ids & pessoa.vinculos_ativos.pluck(:id).to_set).any?
+  end
+
   def tipo_vinculo(nome)
     Pessoas::TipoVinculo.find_by(nome: nome) || inserir(Pessoas::TipoVinculo, nome: nome)
   end
@@ -477,6 +708,18 @@ class FrequentadoresVisiveisTest < ActiveSupport::TestCase
   end
 
   # --- infra de medição ------------------------------------------------------
+
+  # Captura o log de Rails durante o bloco (mesmo padrão da 29.4) — prova os
+  # eventos de auditoria/shadow do D2.
+  def capturar_log
+    io = StringIO.new
+    original = Rails.logger
+    Rails.logger = Logger.new(io)
+    yield
+    io.string
+  ensure
+    Rails.logger = original
+  end
 
   # Conta queries SQL de DADOS disparadas dentro do bloco (guarda de N+1).
   def contar_queries

@@ -486,3 +486,35 @@ já provou que a hierarquia sozinha libera) — a mutação morre. Com o control
 3. Aplique a pergunta da lição anterior a cada assert: **"esta prova exercita a MESMA condição do
    ambiente real, ou passa por acaso?"** Um teste que passa por outro motivo é indistinguível de um
    teste que passa — até você mutar.
+
+---
+
+### 2026-10-02 — `NOT (predicado)` em SQL com NULL não é o complemento de `predicado`: 3-valued logic
+
+**Contexto.** Débito D2 (pré-29.7), `FrequentadoresVisiveis#ids_unidades_inelegiveis_como_gestor`.
+Para "a cadeia tem gestor INELEGÍVEL E NÃO tem gestor ELEGÍVEL" (a negação que o PORO loga como
+`unidade_inelegivel`), escrevi `WHERE A AND NOT B`, com `B = (self_elegível) OR (path_valido AND
+EXISTS(ancestral elegível))`.
+
+**Problema.** A query devolvia **vazio** no cenário exato que devia casar. Debug: `A` = `true`, `B` =
+`nil` (NULL), e **`NOT NULL` = NULL** → a linha era **excluída** pelo `AND`. Causa medida: `B`
+continha `gestor_match` = `a.gestor_id IN (...) OR a.gestor_substituto_id IN (...) OR
+a.gestor_excepcional_id IN (...)`. Numa unidade em que o usuário **não** é gestor, os três `IN`
+retornam `false`, `NULL`, `NULL` (comparar coluna NULL com uma lista devolve NULL, não false) — e
+`false OR NULL OR NULL` = **NULL**. Logo `B` não era `false`: era `NULL`, e `NOT NULL` = `NULL`. O
+ponto geral: **um predicado SQL que pode ser NULL não tem complemento por `NOT`** — `NOT NULL` é
+`NULL`, nunca `true`, e uma linha com `WHERE ... NULL` é descartada.
+
+**Solução.** `AND NOT COALESCE(B, FALSE)` — fixa o "não-elegível" quando o predicado é NULL. Provado
+por mutação: sem o `COALESCE`, o teste do evento agregado falha; com ele, passa. E o fix não podia ser
+um `COALESCE` genérico que virasse `true`: `COALESCE(B, TRUE)` teria invertido o sentido e liberado a
+unidade errada.
+
+**Lição.**
+1. Em SQL, **`NOT (p)` só é o complemento de `p` se `p` for 2-valued**. Predicado que pode ser NULL
+   (`coluna IN (lista)` com coluna nulável, comparações com NULL, `OR` de predicados NULL) precisa de
+   `COALESCE` explícito — e a escolha do default (`FALSE` vs `TRUE`) é uma decisão de segurança, não
+   de estilo: `FALSE` no `NOT` = "na dúvida, o lado positivo é falso" (fail-closed do lado do bloqueio).
+2. O sintoma não aparece na leitura do código, só no resultado: um `WHERE ... AND NOT ...` que
+   **nunca casa** é indistinguível de "não há caso" até você rodar o SQL do cenário real. Ao portar um
+   `if` do Ruby (2-valued) para SQL, **teste o cenário que DEVE casar** — não só o que deve negar.

@@ -328,6 +328,66 @@ class ElegibilidadeDesconsideracaoTest < ActiveSupport::TestCase
   end
 
   # ==========================================================================
+  # D1 (débito pré-29.7) — o contrato é ESTRITO a `User`
+  # ==========================================================================
+  #
+  # O `@param` anterior anunciava `[User, Pessoas::Pessoa]`, mas `Dia#registros`
+  # chama `user.time_records` e `Pessoas::Pessoa` NÃO tem essa associação
+  # (`NoMethodError`). A prova abaixo exerce o caminho com um alvo NÃO-`User`
+  # REAL e fixa o comportamento ESCOLHIDO: fail-closed com log — não um erro
+  # cru, e não um `false` silencioso mascarado pelo guard.
+
+  test "D1: alvo nao-User (Pessoas::Pessoa) e fail-closed com log, sem NoMethodError" do
+    gestor_pessoa = criar_pessoa(cpf: proximo_cpf_teste)
+    raiz = criar_unidade(descricao: "Raiz", active: true, gestor_id: gestor_pessoa.id)
+    acionador = criar_usuario(cpf: gestor_pessoa.cpf)
+
+    # Alvo REAL não-`User`: uma `Pessoas::Pessoa` (tem `cpf`, NÃO tem
+    # `time_records`). É exatamente o objeto que o contrato falso convidava a
+    # passar — e que estouraria `NoMethodError` sem o guard.
+    alvo_pessoa = criar_pessoa(cpf: proximo_cpf_teste)
+    refute alvo_pessoa.respond_to?(:time_records),
+           "pre-condicao: Pessoas::Pessoa NAO tem time_records (por isso o contrato e' so User)"
+
+    log = capturar_log do
+      # Sem o guard, `Dia.para(pessoa, DATA).registros` levantaria NoMethodError.
+      refute elegivel(acionador).pode_desconsiderar?(alvo_pessoa, DATA),
+             "alvo nao-User deve ser recusado (fail-closed)"
+    end
+
+    assert_match(/elegibilidade_desconsideracao\.alvo_nao_user/, log,
+                 "o fail-closed de alvo nao-User precisa ser auditavel (log)")
+    assert_match(/Pessoas::Pessoa/, log, "o log deve registrar a classe do alvo recusado")
+  end
+
+  # CONTROLE POSITIVO: prova que o guard NÃO é um `return false` incondicional.
+  # O MESMO cenário (mesmo acionador gestor do órgão) com um alvo `User`
+  # legítimo — com o dia elegível montado — LIBERA. Sem este par, o teste acima
+  # passaria mesmo se o método sempre negasse.
+  test "D1 CONTROLE: o mesmo acionador LIBERA quando o alvo e' um User legitimo" do
+    gestor_pessoa = criar_pessoa(cpf: proximo_cpf_teste)
+    raiz = criar_unidade(descricao: "Raiz", active: true, gestor_id: gestor_pessoa.id)
+    acionador = criar_usuario(cpf: gestor_pessoa.cpf)
+    alvo_user = alvo_lotado_em(raiz)
+    registrar_dia_elegivel(alvo_user)
+
+    assert elegivel(acionador).pode_desconsiderar?(alvo_user, DATA),
+           "pre-condicao do controle: com alvo User o gate deve liberar"
+  end
+
+  # O contrato falso só se manifestava num caminho específico: com acionador
+  # NULO o guard de entrada devolvia `false` ANTES de tocar o alvo — mascarando
+  # o `NoMethodError`. Este teste fixa que, mesmo com acionador nulo e alvo
+  # nao-User, nada levanta (mas tampouco loga o guard de tipo, que vem depois).
+  test "D1: acionador nulo + alvo nao-User nega sem levantar (mascaramento documentado)" do
+    alvo_pessoa = criar_pessoa(cpf: proximo_cpf_teste)
+
+    assert_nothing_raised do
+      refute ElegibilidadeDesconsideracao.new(nil).pode_desconsiderar?(alvo_pessoa, DATA)
+    end
+  end
+
+  # ==========================================================================
   # Integração com o fluxo da Sprint 19 — o gate NAO altera o efeito
   # ==========================================================================
 
@@ -386,6 +446,18 @@ class ElegibilidadeDesconsideracaoTest < ActiveSupport::TestCase
 
   def elegivel(acionador)
     ElegibilidadeDesconsideracao.new(acionador)
+  end
+
+  # Captura o log de Rails durante o bloco (mesmo padrão do teste da 29.4) —
+  # usado para provar os eventos de auditoria do D1/D2.
+  def capturar_log
+    io = StringIO.new
+    original = Rails.logger
+    Rails.logger = Logger.new(io)
+    yield
+    io.string
+  ensure
+    Rails.logger = original
   end
 
   # --- fixtures (schema real do espelho, ADR-0006) --------------------------

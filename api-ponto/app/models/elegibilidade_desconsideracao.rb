@@ -50,15 +50,54 @@ class ElegibilidadeDesconsideracao
     @acionador = acionador
   end
 
-  # @param frequentador [User, Pessoas::Pessoa] alvo (dono do ponto)
+  # @param frequentador [User] alvo (dono do ponto) — SEMPRE um `User` local.
   # @param data [Date, Time, String] o dia avaliado
   # @return [Boolean] `true` sse o acionador pode desconsiderar o dia
+  #
+  # ── CONTRATO ESTRITO A `User` (fix do débito D1, 2026-10-02) ────────────────
+  # O alvo tem de ser um `User`. `Dia#registros` chama `user.time_records`
+  # (`app/models/dia.rb:44`) e SÓ `User` tem essa associação — `Pessoas::Pessoa`
+  # NÃO tem (`app/models/pessoas/pessoa.rb`), então `Dia.para(pessoa, data)
+  # .registros` levanta `NoMethodError`. A documentação anterior anunciava
+  # `[User, Pessoas::Pessoa]`: era um CONTRATO FALSO, contradito pelo próprio
+  # código do auto-bloqueio (que antecipa `alvo.is_a?(User)`).
+  #
+  # Por que estreitar (e não aceitar `Pessoa` e negar): o alvo REAL do fluxo da
+  # 29.7 NÃO é um `Pessoas::Pessoa`. A listagem da 29.6 resolve terceirizado
+  # por VÍNCULO e devolve `Pessoas::Vinculo` (readonly); o fluxo de
+  # desconsiderar parte do registro a desconsiderar, que por natureza é um
+  # `TimeRecord` de um `User` (a FK `time_records.user_id` aponta para `users`,
+  # não para `pessoas`). Nenhum chamador legítimo tem um `Pessoas::Pessoa` em
+  # mãos para passar aqui — mas um contrato amplo CONVIDARIA o próximo agente a
+  # tentar. O fail-closed abaixo torna a entrada errada explícita e auditável.
+  #
+  # Há UM caminho interno em que um objeto com `cpf` (inclusive
+  # `Pessoas::Pessoa`) é legítimo: a resolução de identidade
+  # (`mesmo_frequentador?` → `frequentador_de`), que só lê `cpf`. Mas ele só é
+  # alcançado DEPOIS do guard abaixo — no método público, um não-`User` nunca
+  # chega lá.
   def pode_desconsiderar?(frequentador, data)
     # Fail-closed de entrada: sem acionador, sem alvo, sem data não há
     # autorização possível.
     return false if acionador.blank?
     return false if frequentador.nil?
     return false if data.blank?
+
+    # D1: alvo que não é `User` é RECUSADO explicitamente. Sem este guard, a
+    # entrada errada estourava `NoMethodError` em `Dia#registros` — e, com
+    # acionador nulo, era MASCARADA pelo guard acima (devolvia `false` sem
+    # tocar o alvo), de modo que o contrato falso só se manifestava num caminho
+    # específico. O log torna a armadilha visível: um chamador que passar
+    # `Pessoas::Pessoa`/`Pessoas::Vinculo` não tem `time_records` (a FK aponta
+    # para `users`), então não existe dia a avaliar.
+    unless frequentador.is_a?(User)
+      Rails.logger.warn(
+        evento: "elegibilidade_desconsideracao.alvo_nao_user",
+        classe_alvo: frequentador.class.name,
+        acionador_id: acionador.id
+      )
+      return false
+    end
 
     dia = Dia.para(frequentador, data)
 
@@ -100,21 +139,25 @@ class ElegibilidadeDesconsideracao
   # no espaço de `Frequentador` do legado, NÃO um par `User`/CPF.
   #
   # No Frequencia o acionador é sempre um `User` local (tem login — ele age
-  # pela aplicação); o alvo pode ser um `User` (o caso comum: o próprio
-  # frequentador logado tem login) ou um `Pessoas::Pessoa` (alvo sem User
-  # local). A identidade de frequentador do acionador é resolvida pela ponte
-  # `FrequentadorCache`, que espelha o `Frequentador` do Intranet e se liga ao
-  # `User` pelo CPF (`User#frequentador_cache`, `has_one ... foreign_key: :cpf`).
+  # pela aplicação) e o alvo também é SEMPRE um `User` local (contrato D1 —
+  # ver `pode_desconsiderar?`). A identidade de frequentador do acionador é
+  # resolvida pela ponte `FrequentadorCache`, que espelha o `Frequentador` do
+  # Intranet e se liga ao `User` pelo CPF (`User#frequentador_cache`,
+  # `has_one ... foreign_key: :cpf`).
   #
   # Comparação em dois níveis, do mais forte ao mais fraco:
   #   (a) MESMO OBJETO/registro `User` (mesmo id): é o próprio ponto, sem
   #       ambiguidade — cobre o acionador que é um `User` sem CPF.
   #   (b) MESMO FREQUENTADOR do Intranet: o `FrequentadorCache` do acionador e
   #       o do alvo são o mesmo registro. Isto captura o caso em que acionador
-  #       e alvo são `User` DIFERENTES (ou o alvo é um `Pessoas::Pessoa`) mas
-  #       representam o MESMO frequentador do Intranet — exatamente o que
-  #       `gestorEhMesmoFrequentador` mede e que uma comparação só por
-  #       `User`/CPF deixaria passar.
+  #       e alvo são `User` DIFERENTES mas representam o MESMO frequentador do
+  #       Intranet — exatamente o que `gestorEhMesmoFrequentador` mede e que
+  #       uma comparação só por `User`/CPF deixaria passar.
+  #
+  # `frequentador_de` funciona para qualquer objeto com `cpf` (é o que o ramo
+  # (b) faz), mas no fluxo público da classe o alvo já passou pelo guard de
+  # `User` — a resolução por CPF serve para capturar identidades que um
+  # `User.id` sozinho não captura.
   #
   # Quando o acionador é um magistrado/servidor que NÃO é frequentador
   # (`frequentador_do_acionador` nulo — o `frequentadorDoGestor == null` do
