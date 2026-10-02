@@ -410,3 +410,42 @@ sequência), o método morto quebra todo arquivo seguinte — de forma **order-d
 2. **Um `ensure` que reinstala um WRAPPER (`{ |*a| original.call(*a) }`) não é restauração.** O método
    volta, mas fica um override permanente apontando para o arquivo de teste (`source_location` no teste).
    Restaure o **`UnboundMethod` original** — aí `source_location` volta a `app/...`. Prove pela origem.
+
+### 2026-10-02 — Um relato de agente propaga como fato: "está em produção" ≠ "está exposto"
+
+**O erro.** A coordenação afirmou que a tarefa 29.5 alteraria "o comportamento de
+autorização de um fluxo **já em produção**" e que critério errado "**ampliaria**
+autorização". Repassou isso ao CTO, que o transcreveu na §Decisão D5 do
+`iteration_29.md` — e a partir daí o erro passou a ter **aparência de registro
+documental medido**. Duas rodadas depois, um `grep` de 10 segundos derrubou a
+afirmação: **nenhum controller, rota ou view chama `desconsiderar!`**; os únicos
+callers estão em testes. Não havia ponto de entrada, logo não havia autorização a
+ampliar.
+
+**A forma do erro — não é "não verifiquei", é pior.** Eu *verifiquei* algo: que os
+arquivos `time_record.rb`/`intervencao_frequencia.rb`/`registro_manual_...rb`
+**existem**. Isso era verdade. Mas "o arquivo existe" não implica "o fluxo está
+exposto" — e eu não fiz a pergunta seguinte. **Um fato verdadeiro usado para
+sustentar uma conclusão que ele não sustenta** é mais perigoso que uma afirmação
+sem base, porque passa por qualquer checagem superficial e vira premissa aceita.
+
+**Por que propagou.** O relato veio de quem coordena (autoridade percebida), foi
+para quem tem autoridade de ruling (CTO), e foi escrito na fonte de verdade do
+projeto. Cada degrau **aumentou** a confiança sem **adicionar** verificação — o
+inverso do que deveria acontecer. Uma afirmação não fica mais verdadeira por ter
+sido repetida por alguém mais sênior.
+
+**Regra prática.** Antes de registrar um impacto na **fonte de verdade**:
+1. Separe **"o código existe"** de **"o código tem caminho de entrada"** — são
+   perguntas diferentes, com evidências diferentes (`grep` em `app/controllers/`,
+   `app/views/`, `config/routes.rb`).
+2. Quando o impacto é de **segurança/autorização**, prove o **caminho de
+   entrada** (rota + controller + guard), não a existência do método.
+3. Ao transcrever o impacto de outrem para um documento de ruling, **meça** — não
+   herde. O CTO registrou corretamente *o que lhe foi dito*; o defeito estava na
+   origem e no repasse sem checagem.
+
+**Custo concreto:** o gate humano levantado ("é risco de autorização em
+produção") estava mal justificado e poderia ter barrado a 29.5 por um motivo
+inexistente. A pergunta correta é de **priorização** (implementar sem caller
+agora, ou quando a 29.7 expuser o fluxo), não de segurança.
