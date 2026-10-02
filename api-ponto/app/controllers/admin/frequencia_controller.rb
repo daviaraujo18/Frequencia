@@ -13,6 +13,10 @@ module Admin
       # logada sem restringir; desligada, nada muda.
       @registros = TimeRecord.includes(:user, :estacao_ponto).order(punched_at: :desc)
       observar_cascata_frequencia(@registros)
+      # Task 29.8 (débito S4) — no modo `:on`, registra a negação EFETIVA dos
+      # alvos que sairão da listagem (antes do `where`). No shadow, quem loga é
+      # o `observar_*` acima; aqui é no-op.
+      registrar_negacoes_frequencia(@registros)
       @registros = restringir_frequencia(@registros)
 
       if params[:data].present? && data_filtro

@@ -30,6 +30,10 @@ module Admin
       # LIGADA, restringe aos CPFs visíveis do usuário logado; em shadow, loga
       # o que seria negado sem restringir; desligada, nada muda.
       observar_cascata_frequentadores
+      # Task 29.8 (débito S4) — no modo `:on`, registra a negação EFETIVA dos
+      # frequentadores que sairão da listagem. No shadow quem loga é o
+      # `observar_*` acima; aqui é no-op.
+      registrar_negacoes_frequentadores
 
       @vinculos = Pessoas::Vinculo.frequentadores_ativos(
         nome: params[:nome],

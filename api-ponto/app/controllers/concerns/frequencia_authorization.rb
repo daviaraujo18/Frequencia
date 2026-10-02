@@ -96,17 +96,96 @@ module FrequenciaAuthorization
     registrar_shadow(ocultos)
   end
 
+  # Tarefa 29.8 (débito S4 da 29.7) — registra a negação EFETIVA do modo `:on`,
+  # ANTES de a relação ser restringida. Usa o MESMO cálculo de ocultos do
+  # `observar_cascata_frequencia` (distintos da relação, menos os visíveis,
+  # limitados a `LIMITE_SHADOW`) — o shadow observa o que SERIA negado; este
+  # registra o que FOI. O motivo vem do MESMO PORO (`AutorizacaoFrequencia`),
+  # de modo que as duas trilhas são comparáveis linha a linha.
+  #
+  # É chamado nos controllers que aplicam `restringir_frequencia` sobre uma
+  # relação; a chamada é no-op nos modos `:off`/`:shadow` e para quem tem visão
+  # global (passo 2 — não nega ninguém).
+  def registrar_negacoes_frequencia(relation)
+    return unless frequencia_cascata_ligada?
+    return if frequencia_visao_global?
+    return if relation.nil?
+
+    ocultos = relation.where.not(user_id: frequentadores_visiveis_user_ids)
+                      .reorder(nil).distinct.limit(LIMITE_SHADOW).pluck(:user_id)
+    registrar_log(ocultos, :log_negacao)
+  end
+
+  # Variante para listagens de `Pessoas::Vinculo` (admin/frequentadores), onde
+  # o alvo é o `User` local: espelha `observar_cascata_frequentadores` para o
+  # modo `:on`.
+  def registrar_negacoes_frequentadores
+    return unless frequencia_cascata_ligada?
+    return if frequencia_visao_global?
+
+    ocultos = User.where.not(id: frequentadores_visiveis_user_ids).limit(LIMITE_SHADOW).pluck(:id)
+    registrar_log(ocultos, :log_negacao)
+  end
+
   def registrar_shadow(user_ids)
+    registrar_log(user_ids, :log_shadow)
+  end
+
+  # Passa por cada alvo oculto e emite o evento pedido (`log_shadow` ou
+  # `log_negacao`) com o motivo do PORO. A `decisao` é sempre `:negaria`: no
+  # shadow é o veredicto PROJETADO; no `:on` é o veredicto efetivo. Manter o
+  # mesmo valor é intencional — é o que permite comparar as duas contagens por
+  # motivo sem normalização.
+  def registrar_log(user_ids, metodo)
     return if user_ids.blank?
 
     poro = AutorizacaoFrequencia.new(current_user)
     User.where(id: user_ids).find_each do |alvo|
-      FrequenciaAutorizacaoCascata.log_shadow(
+      FrequenciaAutorizacaoCascata.public_send(
+        metodo,
         usuario: current_user,
         alvo: alvo,
         motivo: poro.motivo(alvo),
         decisao: :negaria
       )
     end
+  end
+
+  # --- telas agregadas por CPF (frequencia_por_orgao) -----------------------
+  #
+  # `frequencia_por_orgao` não lista registros: agrega presenças/ausências/
+  # trabalhado por ÓRGÃO, restringindo o conjunto por CPF (interseção com os
+  # visíveis). O denominador da negação ali são os `User` locais dos CPFs
+  # NEGADOS (fora de `frequentadores_visiveis_cpfs`). Estes dois helpers dão a
+  # simetria shadow × on naquela tela, reusando o MESMO emissor/evento
+  # (`registrar_log`).
+
+  # Ids de `User` cujos CPFs estão em `cpfs` mas NÃO entre os visíveis do
+  # usuário — os alvos que a cascata ocultaria/NEGA. Bounded por `LIMITE_SHADOW`
+  # (não varre o universo). A interseção usa o MESMO `frequentadores_visiveis_cpfs`
+  # (memoizado por request) que a restrição da listagem.
+  def user_ids_ocultos_por_cpf(cpfs)
+    negados = Array(cpfs) - frequentadores_visiveis_cpfs
+    return [] if negados.empty?
+
+    User.where(cpf: negados).limit(LIMITE_SHADOW).pluck(:id)
+  end
+
+  # Passo `:on` — registra a negação efetiva dos CPFs ocultados numa tela
+  # agregada por CPF.
+  def registrar_negacoes_por_cpf(cpfs)
+    return unless frequencia_cascata_ligada?
+    return if frequencia_visao_global?
+
+    registrar_log(user_ids_ocultos_por_cpf(cpfs), :log_negacao)
+  end
+
+  # Passo `:shadow` — registra a decisão PROJETADA para os mesmos CPFs, sem
+  # negar. Simétrico ao `registrar_negacoes_por_cpf`.
+  def observar_cascata_por_cpf(cpfs)
+    return unless frequencia_cascata_shadow?
+    return if frequencia_visao_global?
+
+    registrar_log(user_ids_ocultos_por_cpf(cpfs), :log_shadow)
   end
 end

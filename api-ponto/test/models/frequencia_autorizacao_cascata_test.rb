@@ -78,6 +78,65 @@ class FrequenciaAutorizacaoCascataTest < ActiveSupport::TestCase
     end
   end
 
+  # ------------------------------------------------------------- log negacao (:on)
+
+  test "log_negacao emite o evento de negacao apenas com a flag on" do
+    usuario = User.new(nome_completo: "Gestor On")
+    alvo = User.new(id: 42, nome_completo: "Alvo On", cpf: "111.222.333-44")
+
+    logger = RecordingLogger.new
+    com_flag("on") do
+      with_logger(logger) do
+        FrequenciaAutorizacaoCascata.log_negacao(
+          usuario: usuario, alvo: alvo, motivo: :negado, decisao: :negaria
+        )
+      end
+    end
+
+    entrada = logger.entradas.find { |e| e[:evento] == "frequencia_autorizacao_cascata.negacao" }
+    assert entrada, "deveria ter logado o evento de negacao no modo on"
+    assert_equal :negado, entrada[:motivo]
+    assert_equal :negaria, entrada[:decisao]
+    assert_equal 42, entrada[:alvo_id]
+    assert_equal "11122233344", entrada[:alvo_cpf], "CPF do alvo normalizado no log"
+    assert_equal "User", entrada[:alvo_tipo]
+  end
+
+  test "log_negacao NAO emite com a flag off nem shadow" do
+    usuario = User.new(nome_completo: "Gestor")
+    alvo = User.new(id: 7)
+
+    %w[__unset__ shadow].each do |valor|
+      logger = RecordingLogger.new
+      com_flag(valor == "__unset__" ? nil : valor) do
+        with_logger(logger) do
+          FrequenciaAutorizacaoCascata.log_negacao(usuario: usuario, alvo: alvo, motivo: :negado)
+        end
+      end
+      assert_empty logger.entradas, "nao deveria logar negacao com a flag #{valor.inspect}"
+    end
+  end
+
+  test "shadow e on usam eventos DISTINTOS (comparaveis linha a linha)" do
+    usuario = User.new(nome_completo: "Gestor")
+    alvo = User.new(id: 7)
+
+    logger = RecordingLogger.new
+    with_logger(logger) do
+      com_flag("shadow") do
+        FrequenciaAutorizacaoCascata.log_shadow(usuario: usuario, alvo: alvo, motivo: :negado, decisao: :negaria)
+      end
+      com_flag("on") do
+        FrequenciaAutorizacaoCascata.log_negacao(usuario: usuario, alvo: alvo, motivo: :negado)
+      end
+    end
+
+    eventos = logger.entradas.map { |e| e[:evento] }
+    assert_includes eventos, "frequencia_autorizacao_cascata.shadow"
+    assert_includes eventos, "frequencia_autorizacao_cascata.negacao"
+    refute_equal FrequenciaAutorizacaoCascata::EVENTO_SHADOW, FrequenciaAutorizacaoCascata::EVENTO_NEGACAO
+  end
+
   private
 
   # Executa o bloco com `FREQUENCIA_AUTORIZACAO_CASCATA` = `valor` e restaura o

@@ -13,6 +13,12 @@ module Admin
       # deve passar por `restringir_frequencia`. Não se chama
       # `observar_cascata_frequencia` sobre um conjunto vazio de produção: o
       # shadow logaria negações de uma tela que não exibe nada (ruído).
+      #
+      # Task 29.8 (débito S4) — a tela fica FORA da auditoria de negação por
+      # construção: sem fonte de dado (`@registros = []`) não há NEGAÇÃO para
+      # registrar (nem shadow, nem `:on`). Ligar um logger `:on` aqui emitiria
+      # evento de uma barreira inexistente — log de fachada. Quando a fonte
+      # real chegar, aplicar `restringir_frequencia` + `registrar_negacoes_frequencia`.
       @registros = []
     end
   end

@@ -43,6 +43,15 @@ module Admin
     def linha_do_orgao(orgao)
       cpfs = Pessoas::Vinculo.cpfs_por_orgao(orgao)
 
+      # Task 29.8 (débito S4) — auditoria da cascata nesta tela, ANTES de
+      # restringir. Os dois helpers são no-op fora do seu modo (o `:on` só loga
+      # no modo `:on`; o shadow só no modo shadow) e para visão global, e
+      # computam os mesmos alvos negados (CPFs do órgão fora dos visíveis).
+      # Simetria: `observar_cascata_por_cpf` = o que SERIA negado;
+      # `registrar_negacoes_por_cpf` = o que FOI.
+      observar_cascata_por_cpf(cpfs)
+      registrar_negacoes_por_cpf(cpfs)
+
       # Task 29.7 — com a flag LIGADA, restringe a interseção dos CPFs do
       # órgão com os frequentadores visíveis do usuário. Com a flag desligada
       # (default) mantém o conjunto integral do órgão — comportamento atual.

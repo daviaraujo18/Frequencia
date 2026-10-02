@@ -543,3 +543,28 @@ com_metodo_de_classe_stubado(Pessoas::Vinculo, :cpfs_frequentadores_visiveis, ->
 **Lição.** Ao stubar com um `Proc`, trate o corpo como um **método da classe**: `self` é a classe-alvo,
 não o teste. Não use `@instance_vars` do teste dentro dele — capture em locais. Se um stub de classe
 "não enxerga" um dado do teste (`nil` inesperado), a causa provável é o rebind de `self`, não o dado.
+
+---
+
+### 2026-10-02 — Um teste de integração exercita a CAMADA de produção, não a camada que você mutou
+
+**Contexto.** Task 29.8 (Sprint 29), matriz de aceite. A matriz é um teste de controller que exercita a
+cascata ponta a ponta. Ao mutar o PORO `AutorizacaoFrequencia` (passo 4 — gestor individual — ignorar
+`.ativos`, de modo que um vínculo INATIVO passasse a liberar), **a matriz continuou verde**. Pela lição
+de 2026-10-02, um sobrevivente à mutação significa "teste degenerado" — mas aqui era o contrário: o teste
+estava certo, o **alvo da mutação** estava errado.
+
+**Causa (medida).** A CASCATA existe em DUAS implementações equivalentes: o PORO `AutorizacaoFrequencia`
+(`pode_ver?` por alvo, 29.4) e o scope SQL `FrequentadoresVisiveis` (a LISTA, 29.6). A **listagem** dos
+controllers (`restringir_frequencia`) filtra pelo **scope SQL** — o PORO, ali, só fornece o `motivo` do
+log de auditoria. Logo mutar o PORO não muda o que a listagem mostra e a matriz (que assere a listagem)
+não pode matá-la. Mutar o **scope** (`FrequentadoresVisiveis#geridos_user_ids` ignorando `.ativos`) matou
+a matriz imediatamente (1 failure).
+
+**Lição.**
+1. Antes de declarar uma mutação "sobrevivente ⇒ teste fraco", confirme **por qual implementação passa o
+   caminho do teste**. Quando a mesma regra tem gêmeos (Ruby × SQL), cada teste cobre UM gêmeo.
+2. Rastreie o fluxo (`controller → método chamado → query`) **antes** de escolher o alvo da mutação. Mutar
+   a camada errada produz um falso "teste degenerado" e desperdiça a rodada.
+3. Corolário do projeto: a matriz de aceite (integração/listagem) prova o **scope SQL**; a suíte da 29.4
+   prova o **PORO**. Um verde na matriz **não** é evidência sobre o PORO — e vice-versa.

@@ -27,6 +27,11 @@ module Admin
       # `current_user` é sempre visível para si (passo 1 da cascata), o
       # "usuário básico vê os próprios registros" atual é preservado sob a flag.
       observar_cascata_frequencia(registros)
+      # Task 29.8 (débito S4) — simetria shadow × on NESTA tela: o
+      # `observar_cascata_frequencia` acima só loga no modo shadow; no `:on`
+      # (o modo que efetivamente nega), a negação precisa deixar rastro. Sem
+      # isto, `time_records` logava em shadow e ficava MUDO em `:on`.
+      registrar_negacoes_frequencia(registros)
       registros = restringir_frequencia(registros)
 
       # Usuários não-admin (basic) veem apenas os próprios registros,

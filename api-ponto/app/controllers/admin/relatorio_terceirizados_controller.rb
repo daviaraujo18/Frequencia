@@ -11,6 +11,12 @@ module Admin
       # real (`@registros = []`) — não há o que restringir nem o que observar
       # hoje. O concern fica incluído e a listagem, quando a fonte existir,
       # deve passar por `restringir_frequencia`.
+      #
+      # Task 29.8 (débito S4) — a tela fica FORA da auditoria de negação por
+      # construção: sem fonte de dado não há NEGAÇÃO para registrar (nem
+      # shadow, nem `:on`). Ligar um logger `:on` aqui emitiria evento de uma
+      # barreira inexistente — log de fachada. Quando a fonte real chegar,
+      # aplicar `restringir_frequencia` + `registrar_negacoes_frequencia`.
       @registros = []
     end
   end
