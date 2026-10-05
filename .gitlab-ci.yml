@@ -27,16 +27,15 @@
 # cobre o `cd api-ponto`; os passos foram portados do `ci.yml` já provado.
 
 # ── Imagem ───────────────────────────────────────────────────────────────────
-# ⚠️ DÍVIDA REGISTRADA (não resolvida nesta chore): este repo tem TRÊS versões
-# de Ruby conflitantes e NENHUMA casa com o ambiente real medido:
-#   - `AGENTS.md`          → Rails 8.0.4 / Ruby 4.0.0
-#   - `.ruby-version`/`.tool-versions` → `ruby-4.0.0` (ruby 4.0.0 NÃO EXISTE)
-#   - `governance/_context.md` → Ruby 3.4.2
-#   - MEDIDO: `ruby -v` = **3.3.8**; `Gemfile.lock` rails = **8.0.5**
-# A versão real é fixada AQUI (na tag da imagem), não no `.ruby-version`/
+# DÍVIDA DE VERSÃO RESOLVIDA (chore `chore/bump-rails-8.1`, 2026-10-05; ADR-0009):
+# as três fontes passaram a concordar com o ambiente medido.
+#   - `.ruby-version`/`.tool-versions` → **3.3.8** (corrigido de `ruby-4.0.0`, que não existe)
+#   - `AGENTS.md` (raiz) → Rails 8.1.4 / Ruby 3.3.8
+#   - MEDIDO: `ruby -v` = **3.3.8**; `Gemfile.lock` rails = **8.1.4**
+# A versão real continua fixada AQUI (na tag da imagem), não no `.ruby-version`/
 # `.tool-versions` — mudar esses arquivos altera o toolchain local (mise/asdf)
-# de todo mundo (blast radius grande, decisão de outro dono). Trocar a imagem é
-# mudança de 1 linha, reversível e local ao CI.
+# de todo mundo (blast radius grande). Trocar a imagem é mudança de 1 linha,
+# reversível e local ao CI. As fontes agora CONSISTEM com `ruby:3.3.8-slim`.
 #
 # A imagem do registry institucional para Ruby 3.3.8 ainda não existe (o
 # registry `.tjpi.jus.br` não resolve fora da rede da instituição). Enquanto

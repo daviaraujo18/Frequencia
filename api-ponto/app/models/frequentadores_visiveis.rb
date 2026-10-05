@@ -320,6 +320,22 @@ class FrequentadoresVisiveis
   # Devolve os `un.id` (unidade de lotação do alvo), como o PORO — e não os ids
   # das unidades inativas ancestrais: no caso `sub_inativa` (lotado numa unidade
   # ATIVA cujo ancestral é INATIVO), o PORO loga `sub_inativa`, não `inativa`.
+  # ── Segurança (chore bump-rails-8.1, 2026-10-05) ───────────────────────────
+  # O Brakeman apontava `SQL Injection` Medium aqui (Weak→Medium pela
+  # interpolação `#{}` de string, embora o valor fosse uma constante). O ÚNICO
+  # valor externo da query é o estado `ESTADO_ATIVO`; ele vira um BIND `?`
+  # aplicado por `sanitize_sql_array` — a forma que QUOTEIA de fato e que o
+  # scanner reconhece como segura. Os demais trechos interpolados (`un`/`au`,
+  # `liberado_por_passos_1_a_4`, `cadeia_tem_gestor`) são FRAGMENTOS INTERNOS,
+  # sem input de usuário:
+  #   - `un`/`au` são aliases fixos;
+  #   - `liberado_por_passos_1_a_4` monta `p.cpf IN (...)` com CPFs via
+  #     `lista_quoted` (que usa `connection.quote`) e um EXISTS com nome de tipo
+  #     constante (`subquery_tipos_terceirizado`);
+  #   - `cadeia_tem_gestor` monta EXISTS sobre aliases internos com ids já
+  #     `connection.quote`-ados.
+  # Nenhum fragmento carrega `params`/input cru: a interpolação é ESTRUTURAL
+  # (não parametrizável) e o bind cobre a única parte que era valor.
   def ids_unidades_inelegiveis_como_gestor(ids)
     sql = <<~SQL.squish
       SELECT DISTINCT un.id
@@ -330,7 +346,7 @@ class FrequentadoresVisiveis
       JOIN pessoas p ON p.id = vinc.pessoa_id
       WHERE lot.principal IS TRUE
         AND (lot.fim IS NULL OR lot.fim >= CURRENT_DATE)
-        AND ve.nome = '#{ESTADO_ATIVO}'
+        AND ve.nome = ?
         AND (vinc.fim IS NULL OR vinc.fim >= CURRENT_DATE)
         AND lot.inicio = (
           SELECT MAX(lot2.inicio)
@@ -340,7 +356,7 @@ class FrequentadoresVisiveis
           WHERE lot2.principal IS TRUE
             AND (lot2.fim IS NULL OR lot2.fim >= CURRENT_DATE)
             AND v2.pessoa_id = vinc.pessoa_id
-            AND ve2.nome = '#{ESTADO_ATIVO}'
+            AND ve2.nome = ?
             AND (v2.fim IS NULL OR v2.fim >= CURRENT_DATE)
         )
         AND NOT COALESCE((#{liberado_por_passos_1_a_4}), FALSE)
@@ -348,7 +364,8 @@ class FrequentadoresVisiveis
         AND NOT COALESCE((#{cadeia_tem_gestor('un', 'au', ids, elegivel: true)}), FALSE)
     SQL
 
-    Pessoas::Unidade.connection.select_values(sql).map(&:to_i)
+    query = Pessoas::Unidade.sanitize_sql_array([ sql, ESTADO_ATIVO, ESTADO_ATIVO ])
+    Pessoas::Unidade.connection.select_values(query).map(&:to_i)
   rescue ActiveRecord::ActiveRecordError, PG::Error => e
     # Diagnóstico NUNCA derruba a listagem (fail-open do log; a listagem em si
     # segue fail-closed pelas suas próprias condições).
