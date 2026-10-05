@@ -43,6 +43,19 @@ class FrequenciaAutorizacaoCascata
   # NOME do evento, nunca no formato.
   EVENTO_NEGACAO = "frequencia_autorizacao_cascata.negacao".freeze
 
+  # ── Tarefa 30.2 (Sprint 30) — eventos do gate D5 (desconsiderar) ───────────
+  # Evento PRÓPRIO do modo `:shadow` para o gate de DESCONSIDERAR (Q7 do plano
+  # da 30.1, decidida pelo dev em 2026-10-05). NÃO reusa `EVENTO_SHADOW`: aquele
+  # registra decisões de VISUALIZAÇÃO (`pode_ver?`); reusá-lo misturaria duas
+  # decisões distintas e poluiria a contagem por motivo do rollout. Mesmo
+  # formato de payload. O gate D5 é `:on`-only em produção — o log de shadow
+  # aqui é observação do que o gate TOMARIA, para o insumo da 30.8.
+  EVENTO_DESCONSIDERAR_SHADOW = "frequencia_autorizacao_cascata.desconsiderar_shadow".freeze
+  # Análogo do `EVENTO_NEGACAO`, próprio do gate D5: registra a negação EFETIVA
+  # do modo `:on` para a ação DESCONSIDERAR (o usuário chegou ao controller e o
+  # gate o barrou). Evento distinto do de visualização pelo mesmo motivo acima.
+  EVENTO_DESCONSIDERAR_NEGACAO = "frequencia_autorizacao_cascata.desconsiderar_negacao".freeze
+
   class << self
     # `:off` | `:shadow` | `:on` — ver bloco de decisão no topo.
     def modo
@@ -92,6 +105,26 @@ class FrequenciaAutorizacaoCascata
       return unless ligada?
 
       emitir(EVENTO_NEGACAO, usuario:, alvo:, motivo:, decisao:)
+    end
+
+    # ── Tarefa 30.2 — emissão do gate D5 (desconsiderar) ─────────────────────
+    # Modo `:shadow`: registra a decisão PROJETADA do gate de desconsiderar
+    # (Q7): o `motivo` é a razão da negação (`:negado` / o motivo da cascata
+    # que barrou) e a `decisao` é o veredicto projetado (`:negaria`/`:permitiria`).
+    # No-op fora do shadow (e no `:on`, que emite o evento de negação efetiva).
+    def log_desconsiderar_shadow(usuario:, alvo:, motivo:, decisao:)
+      return unless shadow?
+
+      emitir(EVENTO_DESCONSIDERAR_SHADOW, usuario:, alvo:, motivo:, decisao:)
+    end
+
+    # Modo `:on`: registra a negação EFETIVA do gate de desconsiderar (o usuário
+    # chegou ao ponto de entrada e foi barrado). Mesmo payload do shadow — só o
+    # evento muda, mantendo as duas trilhas comparáveis linha a linha.
+    def log_desconsiderar_negacao(usuario:, alvo:, motivo:, decisao: :negaria)
+      return unless ligada?
+
+      emitir(EVENTO_DESCONSIDERAR_NEGACAO, usuario:, alvo:, motivo:, decisao:)
     end
 
     private

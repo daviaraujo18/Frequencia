@@ -93,14 +93,24 @@ class Ability
 
     if admin?(user)
       can :manage, :all
+      # Task 30.2 — a ação `:desconsiderar` (gate D5) é decidida SÓ pelo PORO,
+      # inclusive para admin (o legado `podeDesconsiderarFrequencia` só chama
+      # `isGestorOrgao` — não há curto-circuito de admin). Definida DEPOIS de
+      # `can :manage, :all` para ter precedência sobre o `manage` (que inclui
+      # qualquer ação custom).
+      grant_desconsideracao_frequencia(user)
       return
     end
 
     grant_leitura_frequencia(user) if FrequenciaAutorizacaoCascata.ligada?
 
-    return unless user.has_role?(:gestor)
+    unless user.has_role?(:gestor)
+      grant_desconsideracao_frequencia(user)
+      return
+    end
 
     grant_gestao_frequencia(user)
+    grant_desconsideracao_frequencia(user)
   end
 
   private
@@ -151,6 +161,46 @@ class Ability
     can :read, IntervencaoFrequencia do |intervencao|
       dono = intervencao.respond_to?(:user_id) ? intervencao.user_id : intervencao.user&.id
       visivel_user_id?(user, dono)
+    end
+  end
+
+  # Task 30.2 (Sprint 30) — gate D5: a ação custom `:desconsiderar` sobre
+  # `TimeRecord`, concedida por INSTÂNCIA pela MESMA regra do PORO
+  # `ElegibilidadeDesconsideracao#pode_desconsiderar?` (passo 5 — hierarquia;
+  # NUNCA `pode_ver?` — D5). Single source of truth: a regra reusa o PORO, não
+  # copia a cláusula "passo 5" (ver plano da 30.1 §3.1).
+  #
+  # Há DOIS guardas:
+  #   (a) `FrequenciaAutorizacaoCascata.ligada?` — sob `:off`/`:shadow` a ação
+  #       NÃO existe (fail-closed; em `:off` a rota nem chega aqui);
+  #   (b) o PORO — só quem é gestor de órgão do alvo, com o dia elegível.
+  #
+  # O auto-ponto também é coberto por (b): o PORO nega o próprio ponto
+  # (cláusula 7), então desconsiderar o registro de si mesmo é reprovado.
+  #
+  # ⚠️ Regra por BLOCO serve `can?(:desconsiderar, instância)`/`authorize!`;
+  # NÃO alimenta `accessible_by` (limite medido do CanCanCan 3.6.1 — idem às
+  # regras da 29.7). É por isso que o controller usa `authorize!` por instância.
+  #
+  # ⚠️ CANCAN — ordem dos dois verbos (medido por probe, 2026-10-05): a avaliação
+  # é do ÚLTIMO definido para o PRIMEIRO, e o primeiro que casa decide. O
+  # `cannot` de CLASSE vem PRIMEIRO e o `can` com bloco vem DEPOIS, de modo que:
+  # bloco `true` → permite; bloco `false` → NÃO casa e cai no `cannot` → nega.
+  # Sem o `cannot`, o bloco-false cairia no `can :manage, :all` do admin (que
+  # cobre qualquer ação custom) e o admin NÃO-gestor desconsideraria — furado.
+  # Com o `cannot`, a D5 vale inclusive para admin: só o passo 5 (o legado
+  # `podeDesconsiderarFrequencia` só chama `isGestorOrgao`; não há curto-circuito
+  # de admin). Este `cannot`, por vir DEPOIS de `can :manage, :all`, tem
+  # precedência sobre ele.
+  def grant_desconsideracao_frequencia(user)
+    return unless FrequenciaAutorizacaoCascata.ligada?
+
+    cannot :desconsiderar, TimeRecord
+    can :desconsiderar, TimeRecord do |registro|
+      alvo = registro.respond_to?(:user) ? registro.user : nil
+      alvo.present? &&
+        ElegibilidadeDesconsideracao.new(user)
+                                    .pode_desconsiderar?(alvo, registro.punched_at&.to_date)
     end
   end
 

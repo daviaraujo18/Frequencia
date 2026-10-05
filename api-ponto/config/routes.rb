@@ -49,7 +49,20 @@ Rails.application.routes.draw do
     # próprio controller bloqueia edição de quem tem cpf.
     get "users/:id/edit", to: "users#edit", as: :edit_user
     resources :users, only: [:index, :update]
-    resources :time_records, only: [:index]
+    # Task 30.2 (Sprint 30) — ponto de entrada HTTP do gate D5 (desconsiderar),
+    # atrás da flag `FREQUENCIA_AUTORIZACAO_CASCATA`. A rota SÓ existe quando a
+    # cascata NÃO está em `:off`: a constraint é avaliada por request e
+    # `FrequenciaAutorizacaoCascata.modo` lê o ENV a cada chamada (não memoizado
+    # — ADR-0010 regra 4), então a troca de flag em runtime é refletida. Em
+    # `:off` nenhuma rota casa → `ActionController::RoutingError` → 404
+    # (fail-closed; não revela autorização nem chega à Ability). Path real
+    # `/time_records/:id/desconsiderar` (o controller vive em `scope module:
+    # "admin"`, não `namespace` — ver plano da 30.1 §1.3).
+    resources :time_records, only: [:index] do
+      member do
+        post :desconsiderar, constraints: ->(_req) { FrequenciaAutorizacaoCascata.modo != :off }
+      end
+    end
     resources :frequentadores, only: [:index] do
       member do
         post :reimportar_dados_pessoa

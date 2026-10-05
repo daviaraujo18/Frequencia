@@ -5,6 +5,19 @@ module Admin
 
     PER_PAGE = 50
 
+    # Task 30.2 (Sprint 30) — ponto de entrada HTTP do gate D5 (desconsiderar).
+    # Só é alcançável quando a flag NÃO está em `:off`: a constraint da rota
+    # (`config/routes.rb`) torna o caminho inexistente em `:off` → 404
+    # (fail-closed). Logo, aqui só há dois modos possíveis: `:shadow` e `:on`.
+    before_action :set_time_record, only: [ :desconsiderar ]
+    # No modo `:shadow` a ação é observação pura (não chama `authorize!`), então
+    # o `check_authorization` do base precisa ser dispensado — mas SÓ no shadow.
+    # No `:on` o `authorize!` é obrigatório (é ele que aplica o gate D5); mantê-lo
+    # sob o check padrão evita que uma futura remoção do `authorize!` passe
+    # silenciosa. `skip_authorization_check` é a API pública do CanCanCan (a
+    # classe base inclui `CanCan::ControllerAdditions`).
+    skip_authorization_check only: [ :desconsiderar ], if: -> { FrequenciaAutorizacaoCascata.shadow? }
+
     def index
       # Task 23.7 — CanCanCan: autorização explícita para leitura de registros.
       # Admin/gestor/operador podem visualizar (todos têm :read em :all).
@@ -121,7 +134,83 @@ module Admin
       end
     end
 
+    # Task 30.2 (Sprint 30) — desconsidera um dia de frequência de um
+    # frequentador, atrás da flag `FREQUENCIA_AUTORIZACAO_CASCATA`. Comportamento
+    # por modo (a rota já garantiu que NÃO é `:off`):
+    #
+    #   - `:shadow`: roda mas é NO-OP. Não chama `desconsiderar!` nem qualquer
+    #     escrita; consulta o PORO só para LOGAR a decisão projetada (evento
+    #     próprio do gate D5, Q7) e responde redirect com notice. `:shadow` não
+    #     chama `authorize!` (branch de observação), por isso
+    #     `skip_authorization_check` — sem isto o `check_authorization` do base
+    #     reclamaria.
+    #   - `:on`: aplica o gate D5. `authorize! :desconsiderar, @time_record`
+    #     decide pela MESMA regra do PORO (`Ability#grant_desconsideracao_...`);
+    #     negado → `CanCan::AccessDenied` (redirect do base, alert) SEM efeito;
+    #     autorizado → `desconsiderar!` (efeito da Sprint 19 preservado).
+    #
+    # `justificativa` em branco → redirect com alert e NENHUM efeito (não se
+    # chega a chamar `desconsiderar!`, evitando o `RecordInvalid` do `create!` da
+    # intervenção — o resultado é o mesmo, mas a resposta é explícita).
+    def desconsiderar
+      if FrequenciaAutorizacaoCascata.shadow?
+        registrar_shadow_desconsiderar
+        redirect_to time_records_path,
+                    notice: "Desconsideração indisponível em observação. Nenhum efeito foi aplicado."
+        return
+      end
+
+      # `:on` — gate D5 (passo 5). Negado → AccessDenied tratado pelo base e,
+      # antes do redirect, deixa rastro de auditoria (evento próprio do gate D5).
+      registrar_negacao_desconsiderar unless can?(:desconsiderar, @time_record)
+      authorize! :desconsiderar, @time_record
+
+      if params[:justificativa].blank?
+        redirect_to time_records_path,
+                    alert: "A justificativa é obrigatória para desconsiderar o ponto."
+        return
+      end
+
+      @time_record.desconsiderar!(justificativa: params[:justificativa], responsavel: current_user)
+      redirect_to time_records_path, notice: "Ponto desconsiderado com sucesso."
+    end
+
     private
+
+    # Carrega o registro do fluxo de desconsiderar. Na constraint de `:off` a
+    # rota já não casa; nos modos alcançáveis, um id inexistente vira 404
+    # (`find`), consistente com o restante da tela.
+    def set_time_record
+      @time_record = TimeRecord.find(params[:id])
+    end
+
+    # Modo `:shadow` — registra a decisão PROJETADA do gate D5 sem aplicar nada.
+    # O `motivo` sai do PORO de visualização (`AutorizacaoFrequencia`), que
+    # expressa, no vocabulário da cascata, por que o alvo não seria liberado.
+    # A decisão é `:negaria` (mesmo vocabulário dos eventos de shadow/negação da
+    # 29.7/29.8); o evento é PRÓPRIO do gate de desconsiderar (Q7).
+    def registrar_shadow_desconsiderar
+      alvo = @time_record.user
+      FrequenciaAutorizacaoCascata.log_desconsiderar_shadow(
+        usuario: current_user,
+        alvo: alvo,
+        motivo: AutorizacaoFrequencia.new(current_user).motivo(alvo),
+        decisao: :negaria
+      )
+    end
+
+    # Modo `:on` — a negação EFETIVA do gate D5 deixa rastro (evento próprio,
+    # simétrico ao de shadow). Sem isto, o `:on` logaria a negação de
+    # VISUALIZAÇÃO mas ficaria mudo na ação de desconsiderar.
+    def registrar_negacao_desconsiderar
+      alvo = @time_record.user
+      FrequenciaAutorizacaoCascata.log_desconsiderar_negacao(
+        usuario: current_user,
+        alvo: alvo,
+        motivo: AutorizacaoFrequencia.new(current_user).motivo(alvo),
+        decisao: :negaria
+      )
+    end
 
     # Junta os pares entrada-saída no formato "HH:MM-HH:MM, HH:MM-HH:MM"
     # já usado na coluna "Marcações"/"Registro". Marcação ímpar sem par

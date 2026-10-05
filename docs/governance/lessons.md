@@ -597,3 +597,36 @@ segundo zera o check** no Brakeman. Antes de escolher a "forma que o scanner ace
 `find_dangerous_value`/`safe_value?` da versão instalada — as allowlists (`IGNORE_METHODS_IN_SQL`
 vs `AREL_METHODS`) decidem o resultado. Prova por execução do gate (`bin/brakeman` = 0), não por
 intenção.
+
+---
+
+### 2026-10-05 — CanCanCan: `can` com bloco que devolve `false` CAI no `manage :all` (fall-through) — mute o default com `cannot`
+
+**Contexto.** Sprint 30, task 30.2 (gate D5 — expor `desconsiderar` atrás da flag). A ação custom
+`:desconsiderar` foi concedida por regra de INSTÂNCIA —
+`can :desconsiderar, TimeRecord do |r| ... pode_desconsiderar?(...) end` — para servir
+`can?`/`authorize!`. O `Ability` já dá `can :manage, :all` a admin.
+
+**Problema (medido por probe, 2026-10-05).** No CanCanCan 3.6.1, uma regra por bloco que devolve
+`false` **não nega** — ela simplesmente "não casa", e a avaliação prossegue para as regras
+anteriores. Como `manage` (classe/`:all`) cobre qualquer ação custom (`:desconsiderar` incluída) e
+foi definido ANTES, um admin NÃO-gestor passava no `manage :all` e **podia desconsiderar** (o probe
+imprimiu `true`), furando a D5 ("só o passo 5"; o legado só chama `isGestorOrgao`). O `authorize!`
+teria dado 200 em vez de negar.
+
+**Solução.** Antes do bloco, **mute o default**: `cannot :desconsiderar, TimeRecord` seguido do
+`can :desconsiderar, TimeRecord do |r| ... end`. A semântica de precedência do CanCanCan
+(última definição avaliada primeiro) resolve: bloco `true` → permite; bloco `false` → não casa e cai
+no `cannot` → **nega** (probe: `false`), enquanto `manage :all` do admin segue intacto. Definir esse
+par DEPOIS do `can :manage, :all` garante a precedência sobre ele.
+
+**Lição.**
+1. Regra de autorização por BLOCO **não é uma negação** — é uma concessão condicional. Se existir
+   qualquer regra de classe/`:all` mais ampla (admin/`manage`), um bloco `false` vaza por
+   fall-through. Para um gate estrito, **emparelhe `cannot` (default deny) + `can` (bloco)**.
+2. A precedência do CanCanCan avalia da ÚLTIMA regra para a PRIMEIRA; a primeira que casa decide.
+   Isso torna a ORDEM das definições load-bearing (aqui: o par `cannot`+`can` precisa vir depois do
+   `manage :all`).
+3. **Prove por probe**, não por leitura: asserte `ability.can?(:acao, instância)` para um ator que
+   TEM a regra ampla (admin) e NÃO satisfaz a condição. Foi o probe que revelou o vazamento — o
+   teste "feliz" com o gestor-do-órgão passava nos dois desenhos.
