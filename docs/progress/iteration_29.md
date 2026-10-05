@@ -974,3 +974,29 @@ A triagem Fase 2 (§1) decidiu **"não entra no `.brakeman.ignore`; manter o war
 - **Sugestões (a) e (b) da auditoria de stubs decididas** → ver §"Decisões do CTO — sugestões (a) e (b)" em `iteration_chore_auditoria_stubs_destrutivos.md`. Resumo: (a) padronização do helper = **agendar**, dono Code Specialist, gatilho = tocar um dos 8 arquivos; (b) cop RuboCop anti-`remove_method` = **agendar como PREVENÇÃO** (a mais valiosa), dono CTO (desenho), gatilho = antes/junto da 29.6; **FP de métodos ORM exige cop com allowlist ou meta-teste**. **Pendente de aprovação do dev:** cop vs. meta-teste; `quality` reprova ou só alerta.
 - **Contexto de memória STALE — REQUER SUMMARIZER (não é tarefa do CTO):** `docs/progress/_context.md` não cita a 29.4/`43b7d84` e traz baseline antigo de 896 (atual: 986/3398/2F+11E/1skip na Fase 2). Pelo `AGENTS.md §5`, a (re)geração de `_context.md` é do agente **summarizer** — **devolvido ao coordenador**, não reescrito nesta sessão. `docs/governance/_context.md` também está defasado (cita "ADRs 0000–0007" no corpo; já há 0008). **Ação do coordenador:** acionar o summarizer para `progress/` (e `governance/`) após esta sessão.
 - **Não medido nesta sessão (declarado):** não rodei a suíte — todas as métricas citadas aqui são as já registradas nos documentos (medições prévias). Este ruling é **doc-only**; não alterei `app/`.
+
+## 🧭 Quadro de status — PRD §9 itens 1–8 (CTO, 2026-10-05)
+
+> **Fonte:** `PRD-REGRAS-NEGOCIO-PRESENCA.md` §9 ("Resumo de gaps priorizados para o backlog do
+> Frequencia", itens 1–8) cruzado com o que a **Sprint 29** efetivamente entregou
+> (`docs/progress/iteration_29_closure.md` §1) e com a auditoria de conformidade CTO (2026-10-05).
+> Rastreável: cada linha aponta **onde está** no código/teste e, quando gap, o **destino/gatilho**.
+> Legenda: ✅ entregue · ⚠️ parcial/ressalva · ❌ aberto.
+
+| # | Item do PRD §9 | Status | Onde está (arquivo / classe / teste) | Dono · destino / gatilho |
+|---|----------------|--------|--------------------------------------|--------------------------|
+| 1 | **Cascata de autorização** de visualização/gestão de frequência (§3) — "a regra mais importante ainda sem equivalente" | ✅ | `AutorizacaoFrequencia` (PORO) + `FrequentadoresVisiveis` (SQL) + `Ability`/concern atrás da flag; `test/models/{autorizacao_frequencia,frequentadores_visiveis,ability_cascata,frequencia_autorizacao_cascata}_test.rb`, `test/controllers/admin/frequencia_cascata_controller_test.rb`. Detalhe em **ADR-0010** | Entregue (29.4/29.6/29.7/29.8). **Ressalva:** flag default **OFF** — implementada/provada, **não vigente em produção**; ligar `:on` é decisão do PO |
+| 2 | **11 roles granulares** (§2.3) vs. as 3 genéricas (`admin`/`gestor`/`operador`) | ❌ | Hoje só `admin`/`gestor`/`operador` + as 2 de leitura da 29.4 (`visualiza_frequentadores`/`visualiza_terceirizados`, D1) | **PO** (decisão de produto: manter simplificado × expandir) → **Sprint 30** (mapeamento das 11 roles legadas; D1 já reserva esse destino). Gatilho: ruling de produto |
+| 3 | **Fila de recálculo assíncrono por evento** (§5.2) — correção em cascata quando feriado/direito/vínculo muda | ❌ | Sem equivalente; jobs atuais são de propósito distinto (§5.1) | **PO/CTO** (decisão de prioridade). Gatilho: feature que passe a tratar mudança de feriado/direito/vínculo em cascata |
+| 4 | **Cap de banco de horas + as 4 flags administrativas por dia** (§4.3, §6) — decisão já adiada múltiplas vezes | ❌ | Sem equivalente; PRD §4.3 traz a fórmula exata (janela GCET 2018-2022) caso priorizado | **PO** (prioridade). Gatilho: telemetria de uso do banco de horas justificar a feature |
+| 5 | **Compensação obrigatória do Ponto Facultativo por categoria** (`isFrequentadorObrigadoACompensarHoras`, §2) | ❌ | Sem equivalente | **PO**. Gatilho: **só relevante se** o Frequencia passar a tratar feriados/pontos facultativos (senão, fora de escopo permanente) |
+| 6 | **`isPermitidoModalidadeOcorrencias`** (§2.4) — 8 condições por título/lotação | ❌ | Sem equivalente; hoje seria *hardcode* | **PO/CTO**. Gatilho: replicar a modalidade `OCORRENCIAS` — se replicado, **precisa virar configuração, não hardcode** (requisito do PRD) |
+| 7 | **`GestorIndividual` como fonte de autorização** (não só cadastro visível) | ✅ | **Passo 4** da cascata: `AutorizacaoFrequencia#gestor_individual?` e `FrequentadoresVisiveis#geridos_user_ids` (ambos via `GestorIndividualGerenciado.ativos`, Bug 16/ADR-0008); teste `test/models/autorizacao_frequencia_test.rb`. **Ver ≠ desconsiderar (D5):** passo 4 vê, **não** desconsidera | Entregue (29.4/29.6, ruling D5 de 2026-10-01). **Furo de conformidade:** débito 🟡S2 (twin SQL cego ao PORO) — ver **ADR-0010** regra 7 |
+| 8 | **Divergência real em modalidade `OCORRENCIAS`** (§4.7) — 2+ marcações no dia | ❌ | Motor de cálculo; sem o tratamento fiel hoje | **CTO/Code Specialist** (motor de cálculo). Gatilho: paridade do cálculo de `OCORRENCIAS` com 2+ marcações. **Bug potencial de paridade** (§4.7), não de autorização |
+
+**Leitura do quadro:** dos 8 gaps priorizados pelo PRD, a **Sprint 29 fechou 2** (itens **1** e **7** —
+o item 1 era "a regra mais importante"). Os itens **2–6 e 8** permanecem **abertos e sem dono
+executivo atribuído** — este quadro registra o **destino/gatilho** de cada um para o backlog do PO.
+O item **2** (roles granulares) é o de maior acoplamento: é a **dependência de valor real** da cascata
+(hoje a flag fica inoperante em produção sem a atribuição das roles) e já tem destino declarado na
+Sprint 30.
