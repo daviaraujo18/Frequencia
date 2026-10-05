@@ -568,3 +568,32 @@ a matriz imediatamente (1 failure).
    a camada errada produz um falso "teste degenerado" e desperdiça a rodada.
 3. Corolário do projeto: a matriz de aceite (integração/listagem) prova o **scope SQL**; a suíte da 29.4
    prova o **PORO**. Um verde na matriz **não** é evidência sobre o PORO — e vice-versa.
+
+---
+
+### 2026-10-05 — Brakeman SQL: `Arel.sql` NÃO silencia; `sanitize_sql_array` SIM (Weak→Medium pela interpolação)
+
+**Contexto.** Chore `chore/bump-rails-8.1` (Sprint 29). O bump do Rails para 8.1.4 removeu o
+`EOLRails` Medium, mas restava um `SQL Injection` Medium em `frequentadores_visiveis.rb`
+(interpolação `#{ESTADO_ATIVO}` numa query de `select_values`). O plano do CTO sugeria
+`sanitize_sql_array` **ou** `Arel.sql` consciente.
+
+**Problema (medido no fonte do Brakeman 8.0.5).** São caminhos DIFERENTES no `check_sql.rb`:
+- `Arel.sql(...)` é avaliado por `safe_value?` → `ignore_call?` → `arel?`, que exige um método na
+  allowlist `AREL_METHODS` (`:where`,`:all`,`:eq`,`:in`…) e/ou um target que já seja Arel
+  (`arel_table`) — `Arel.sql` **puro não está** na lista nem tem target Arel, então **não** é
+  considerado seguro. Usar `Arel.sql` consciente **manteria o warning** (e o exit 3).
+- `sanitize_sql_array([sql, valor])` está em `IGNORE_METHODS_IN_SQL`: o `find_dangerous_value` no
+  nó da chamada retorna cedo, a string montada nunca é percorrida e o warning **some na raiz**
+  (sem `-x`, sem ledger).
+
+**Solução.** `ve.nome = '#{ESTADO_ATIVO}'` (2 pontos) → bind `?`, aplicado por
+`Pessoas::Unidade.sanitize_sql_array([ sql, ESTADO_ATIVO, ESTADO_ATIVO ])`. Os `#{}` restantes
+(aliases/ids/fragmentos) são SQL estrutural interno, não parametrizável — documentados no código.
+Resultado: `bin/brakeman` = EXIT 0, `security_warnings=0`, ledger intocado.
+
+**Lição.** A expressão "troque por `AreL.sql`/`sanitize_sql_array`" não é intercambiável: **só o
+segundo zera o check** no Brakeman. Antes de escolher a "forma que o scanner aceita", leia
+`find_dangerous_value`/`safe_value?` da versão instalada — as allowlists (`IGNORE_METHODS_IN_SQL`
+vs `AREL_METHODS`) decidem o resultado. Prova por execução do gate (`bin/brakeman` = 0), não por
+intenção.
