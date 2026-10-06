@@ -97,6 +97,45 @@ class FrequentadoresVisiveisTest < ActiveSupport::TestCase
   end
 
   # ==========================================================================
+  # Débito 🟡S2 / ADR-0010 regra 7 — prova nos DOIS corpos, no MESMO cenário
+  # ==========================================================================
+  #
+  # O twin SQL era CEGO ao PORO no passo 4: o cenário de `GestorIndividual`
+  # INATIVO só era checado pelo PORO (`gerido_inativo`, acima), e o scope não
+  # tinha nenhuma asserção PRÓPRIA — uma regressão só no SQL (ou o MESMO bug
+  # nos dois corpos) escapava da asserção de listagem (só o paralelismo
+  # scope × PORO a pegava, indiretamente). Aqui o cenário é compartilhado e
+  # NÃO é degenerado: o alvo TEM pessoa no Pessoas, vínculo ATIVO e CPF (é um
+  # frequentador de verdade), de modo que, se `.ativos` sumir de QUALQUER lado,
+  # a asserção daquele lado falha pela razão CERTA; o controle positivo (o
+  # gerido com vínculo ATIVO é liberado e aparece) garante que as negações não
+  # passam por acaso (o cenário veria "nada" mesmo).
+  test "S2 passo 4: GestorIndividual INATIVO nega no PORO e some do scope (mesmo cenario, com controle ativo)" do
+    cena = montar_cena
+    gestor = cena[:usuarios][:gestor]
+
+    # --- negativo: GI INATIVO ---
+    vinculo_inativo = cena[:frequentadores][:gerido_inativo]
+    alvo_inativo = cena[:alvo_para][vinculo_inativo.pessoa.cpf]
+
+    # PORO (fonte da verdade): o passo 4 não casa enquanto o vínculo estiver inativo.
+    assert_equal :negado, AutorizacaoFrequencia.new(gestor).motivo(alvo_inativo),
+                 "PORO: vínculo de GestorIndividual inativo não pode liberar (passo 4)"
+    # Twin SQL (listagem): o MESMO alvo não aparece.
+    assert_not_includes FrequentadoresVisiveis.para(gestor).pluck(:id), vinculo_inativo.id,
+                        "twin SQL: o alvo com GI inativo não pode aparecer na listagem"
+
+    # --- controle positivo no MESMO cenário: GI ATIVO ---
+    vinculo_ativo = cena[:frequentadores][:gerido]
+    alvo_ativo = cena[:alvo_para][vinculo_ativo.pessoa.cpf]
+
+    assert_equal :gestor_individual, AutorizacaoFrequencia.new(gestor).motivo(alvo_ativo),
+                 "controle: o vínculo ATIVO é liberado pelo passo 4"
+    assert_includes FrequentadoresVisiveis.para(gestor).pluck(:id), vinculo_ativo.id,
+                    "controle: o alvo com GI ativo DEVE aparecer (a fixture exercita o passo 4)"
+  end
+
+  # ==========================================================================
   # D4 multi-vínculo (débito D3) — o contrato por PESSOA
   # ==========================================================================
   #
