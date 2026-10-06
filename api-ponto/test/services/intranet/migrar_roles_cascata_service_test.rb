@@ -250,4 +250,59 @@ class Intranet::MigrarRolesCascataServiceTest < ActiveSupport::TestCase
       end
     end
   end
+
+  # ------------------------------------------------------------- Q11 (limiar)
+  #
+  # Q11 (dev, 2026-10-06): a rake aborta se a PROPORÇÃO de não-resolvidos na
+  # execução real PASSAR de 10%. A decisão vive no `Resultado` (testável sem
+  # exercer a rake): `abortar_por_nao_resolvidos?`. Erros seguem abortando
+  # à parte; DRY_RUN nunca aborta por pendência (a decisão do exit é da rake).
+
+  # `resolvidos` usuários locais (cujo login casa) + `nao_resolvidos` logins
+  # fantasmas (sem `User`), todos com a mesma role legada. Prefixo distinto por
+  # teste evita colisão de `username`.
+  def rows_q11(prefix:, resolvidos:, nao_resolvidos:)
+    resolvidos.times { |i| criar_user(username: "#{prefix}.ok.#{i}") }
+    rows = resolvidos.times.map do |i|
+      linha(login: "#{prefix}.ok.#{i}", role_legado: "presencaVisualizaFrequentadores")
+    end
+    nao_resolvidos.times do |i|
+      rows << linha(login: "#{prefix}.ghost.#{i}", role_legado: "presencaVisualizaFrequentadores")
+    end
+    rows
+  end
+
+  test "Q11: proporcao ACIMA de 10% manda abortar" do
+    r = migrar(atribuicoes: rows_q11(prefix: "q11acima", resolvidos: 8, nao_resolvidos: 2))
+
+    assert_in_delta 0.2, r.proporcao_nao_resolvidos, 1e-9
+    assert r.abortar_por_nao_resolvidos?
+  end
+
+  test "Q11: EXATAMENTE 10% NAO aborta (o ruling exige PASSAR de 10%)" do
+    r = migrar(atribuicoes: rows_q11(prefix: "q11exato", resolvidos: 9, nao_resolvidos: 1))
+
+    assert_in_delta 0.1, r.proporcao_nao_resolvidos, 1e-9
+    refute r.abortar_por_nao_resolvidos?
+  end
+
+  test "Q11: proporcao ABAIXO de 10% NAO aborta" do
+    r = migrar(atribuicoes: rows_q11(prefix: "q11abaixo", resolvidos: 19, nao_resolvidos: 1))
+
+    assert_in_delta 0.05, r.proporcao_nao_resolvidos, 1e-9
+    refute r.abortar_por_nao_resolvidos?
+  end
+
+  test "Q11: legado vazio nao divide por zero (proporcao 0.0)" do
+    r = migrar(atribuicoes: [])
+
+    assert_equal 0.0, r.proporcao_nao_resolvidos
+    refute r.abortar_por_nao_resolvidos?
+  end
+
+  test "Q11: o resumo exibe a proporcao e o limiar" do
+    r = migrar(atribuicoes: rows_q11(prefix: "q11resumo", resolvidos: 8, nao_resolvidos: 2))
+
+    assert_match(/proporção não resolvidas: 20\.0% \(limiar de aborto: 10%\)/, r.resumo)
+  end
 end

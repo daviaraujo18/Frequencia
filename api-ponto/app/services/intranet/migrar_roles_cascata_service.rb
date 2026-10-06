@@ -78,9 +78,28 @@ class Intranet::MigrarRolesCascataService
   # ignorado). O `login` é mantido no item para uso programático/operacional,
   # mas NÃO é impresso no `resumo` (PII — ver `resumo`).
   Resultado = Struct.new(:processados, :atribuidos, :sem_alteracao, :nao_resolvidos, :erros, :dry_run, :falha_leitura, keyword_init: true) do
+    # Q11 (dev, 2026-10-06): limiar de aborto sobre a proporção de NÃO
+    # resolvidos na execução real. Acima de 10% é sinal de que o eixo de
+    # casamento `login → username` está errado — a rake aborta e NÃO aplica.
+    # Estritamente MAIOR que 10% (o ruling diz "passar de 10%"): exatamente 10%
+    # não aborta.
+    LIMIAR_NAO_RESOLVIDOS = 0.10
+
     # Contabilidade fechada: toda atribuição lida vira um dos quatro destinos.
     def total_contabilizado
       atribuidos + sem_alteracao + nao_resolvidos.size + erros
+    end
+
+    # Fração de não-resolvidos sobre as atribuições LIDAS. Denominador zero
+    # (legado vazio, sem falha de leitura) ⇒ 0.0, nunca divisão por zero.
+    def proporcao_nao_resolvidos
+      return 0.0 if processados.to_i.zero?
+
+      nao_resolvidos.size.to_f / processados
+    end
+
+    def abortar_por_nao_resolvidos?
+      proporcao_nao_resolvidos > LIMIAR_NAO_RESOLVIDOS
     end
 
     # String para o log da task/inspeção manual. Agrupa os não resolvidos por
@@ -100,7 +119,9 @@ class Intranet::MigrarRolesCascataService
         "  atribuídas:        #{atribuidos}",
         "  sem alteração:     #{sem_alteracao}",
         "  não resolvidas:    #{nao_resolvidos.size}",
-        "  erros:             #{erros}"
+        "  erros:             #{erros}",
+        format("  proporção não resolvidas: %.1f%% (limiar de aborto: %.0f%%)",
+               proporcao_nao_resolvidos * 100, LIMIAR_NAO_RESOLVIDOS * 100)
       ]
       nao_resolvidos.group_by(&:motivo).each do |motivo, itens|
         linhas << "    - #{itens.size}x #{motivo}"

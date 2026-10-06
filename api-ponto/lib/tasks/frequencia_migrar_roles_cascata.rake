@@ -30,9 +30,14 @@ namespace :frequencia do
     end
 
     # Sinal honesto para scripts/encadeamento: uma execução REAL com pendências
-    # (não resolvidos/erros) não deve sair com status de sucesso. Em DRY_RUN o
-    # exit code permanece 0: "achar pendências" é o resultado esperado dele.
-    if (resultado.nao_resolvidos.any? || resultado.erros.positive?) && !resultado.dry_run
+    # não deve sair com status de sucesso. Em DRY_RUN o exit code permanece 0:
+    # "achar pendências" é o resultado esperado dele.
+    #
+    # Q11 (dev, 2026-10-06): o gatilho de não-resolvidos é um LIMIAR (>10%),
+    # não "qualquer um". Um punhado de logins legítimos sem `User` local (ex.:
+    # desligados) não deve bloquear a migração; >10% é sinal de eixo de
+    # casamento errado e aborta. Erros (exceções) seguem abortando sempre.
+    if (resultado.abortar_por_nao_resolvidos? || resultado.erros.positive?) && !resultado.dry_run
       abort "Migração concluída com pendências — ver relatório acima."
     end
   end
