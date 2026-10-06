@@ -202,16 +202,17 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
 ### Frente 4 — Rollout shadow (observação/análise)
 
 #### Tarefa 30.8 — Rodar o modo `:shadow` por 1 ciclo e produzir o insumo de decisão do PO
-- User Story: Como PO, quero um relatório das negações que a cascata faria num ciclo de shadow, para decidir (com risco medido) se a flag vira `:on` — hoje a cascata está implementada mas não vigente em produção.
-- Rastreabilidade: ADR-0010 regra 4 (flag 3 estados); ruling **D3**; Quadro §9 item 1 (ressalva "flag default OFF")
-- Estimativa: 3 pontos | Atribuição: CTO/Dev A (execução) + PO (decisão) | Dependências: **30.2** (gate D5, mesma flag) e **30.9** (as 2 roles da cascata **semeadas e atribuídas** — dependência de valor; substitui 30.4/30.5 sob o ruling A)
+- User Story: Como time da sprint, quero um relatório das negações que a cascata faria num ciclo de shadow de 7 dias em produção, para **decidir** (com risco medido) se a flag vira `:on` — hoje a cascata está implementada mas não vigente em produção.
+- Rastreabilidade: ADR-0010 regra 4 (flag 3 estados); ruling **D3**; Quadro §9 item 1 (ressalva "flag default OFF"); **Q5/Q6 ✅** (dev, 2026-10-06)
+- Estimativa: 3 pontos | Atribuição: CTO/Dev A (execução + decisão); PO **consultado** (não é gate — Q6) | Dependências: **30.2** (gate D5, mesma flag), **30.9a ✅ + 30.9b** (as 2 roles semeadas e migradas) e o **Passo 1** (DRY_RUN real + aplicação das roles, Q11)
 - Critérios de aceite:
-  - [ ] Rodar `FREQUENCIA_AUTORIZACAO_CASCATA=shadow` por **1 ciclo** no ambiente acordado (ver **Q5**).
+  - [ ] Rodar `FREQUENCIA_AUTORIZACAO_CASCATA=shadow` por **1 ciclo** = **7 dias em PRODUÇÃO** (**Q5 ✅** resolvida em 2026-10-06 pelo dev).
   - [ ] Consolidar as contagens de `EVENTO_SHADOW` (`frequencia_autorizacao_cascata.shadow`) **por motivo** (`proprio`/`role_geral`/`terceirizado`/`gestor_individual`/`hierarquia`/`negado`), destacando as que **seriam negadas**.
   - [ ] Relatório do insumo de decisão produzido em `docs/quality/` (ou `docs/progress/`), com as **limitações declaradas** — em especial: o gate D5 é `:on`-only e **não** produz sinal em shadow.
-  - [ ] **NÃO** alterar a flag para `:on` — a decisão de ligar é do PO (fora desta tarefa).
+  - [ ] **DECIDIR** se a flag vira `:on` — **Q6 ✅ (dev, 2026-10-06): a decisão é DA SPRINT**, não um gate separado do PO. A 30.8 passa a **incluir a decisão** (com o PO como stakeholder consultado). Se a decisão for ligar, o registro da virada + o plano de reversão entram no relatório final.
   - [ ] Sem alteração de código de produção (execução/observação).
-- Status: ⬜ Pendente
+- **Pré-condição operacional (Passo 1 do plano do Orchestrator):** rodar o `DRY_RUN=1 bin/rails frequencia:migrar_roles_cascata` **real** contra o legado, avaliar os não-resolvidos contra o limiar de **10%** (**Q11 ✅**) e **aplicar as 2 roles** no ambiente do shadow — sem isso os passos 2/3 da cascata não disparam e o ciclo de shadow fica cego justamente para os caminhos de role.
+- Status: ⬜ Pendente (desbloqueada: Q5/Q6/Q11 respondidas em 2026-10-06; falta o Passo 1 operacional)
 
 ## Resumo
 
@@ -228,7 +229,7 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
 | 30.9b — Migração 1:1 das 2 roles do legado (D-6 = (i)) ✅ | 3 | B | 30.9a ✅, 30.3 ✅ |
 
 > **30.9a ✅ Implementado, ✅ Aprovado** (seed idempotente das 2 roles — `docs/quality/review_report_30_9a.md`). **30.9b ✅ PRONTA PARA IMPLEMENTAÇÃO** (D-6 = (i) resolvido em 2026-10-06; migração 1:1 read-only via a conexão `intranet_development`).
-| 30.8 — Rollout shadow + insumo do PO | 3 | CTO/A | 30.2, **30.9a ✅ + 30.9b** |
+| 30.8 — Rollout shadow (7 dias em produção) + **decisão da sprint** sobre `:on` | 3 | CTO/A | 30.2, **30.9a ✅ + 30.9b ✅**, Passo 1 |
 | **Total** | **22** | | |
 
 > **Base do total:** 30.4 (3) + 30.5 (3) saem (=N/A); entra a **30.9** = 30.9a (2) + **30.9b (3)** → 23 − 6 + 5 = **22**. O "+3" antes **condicional** da 30.9b **se realizou** (D-6 = (i)).
@@ -287,11 +288,11 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
 - **Q8 (frente 1) — resposta HTTP em `:shadow` e `justificativa` em branco (NOVA, aberta).** Redirect com alerta/notice × 4xx. Recomendação registrada no plano.
 - **Q3 (frente 2) — abrangência da integração das roles. ✅ RESPONDIDA (dev, 2026-10-06).** Ruling **30.3 = A**: manter simplificado; abrangência = **só frequência**. Expandir para "todas as seções" (estações/excepcionais/GI) fica **fora** desta sprint (épico próprio, se o PO quiser).
 - **Q4 (frente 3/S3) — contas sem CPF.** Decisão de **produto** do PO: um não-admin sem CPF vê zero registros sob `:on` (fail-closed), perdendo os próprios. Manter assim ou criar exceção? A 30.7 apenas cobre o comportamento; **não** resolve a decisão.
-- **Q5 (frente 4) — ambiente/ciclo do shadow.** Onde e como rodar 1 ciclo de `shadow` (qual ambiente, duração de "1 ciclo", como ler o log)? Sem isso a 30.8 não tem insumo confiável.
-- **Q6 (frente 4) — dono da decisão de ligar.** Confirmar que **ligar `:on`** é decisão do **PO** (não da sprint) e que a 30.8 **só** produz o insumo.
+- **Q5 (frente 4) — ambiente/ciclo do shadow. ✅ RESOLVIDA (dev, 2026-10-06): PRODUÇÃO, ciclo de 7 dias.** Rodar `FREQUENCIA_AUTORIZACAO_CASCATA=shadow` no ambiente real por **1 semana** e consolidar as contagens de `EVENTO_SHADOW` por motivo. Insumo da 30.8.
+- **Q6 (frente 4) — dono da decisão de ligar. ✅ RESOLVIDA (dev, 2026-10-06): NÃO — a decisão de ligar `:on` é DECIDIDA NA SPRINT** (não é gate separado do PO). **⚠️ Muda o escopo da 30.8:** ela deixa de ser "só produz o insumo" e passa a **incluir a decisão** de ligar (ou não) a flag, com base no ciclo de shadow de 7 dias + na matriz de aceite da 29.8. O PO permanece como stakeholder consultado, mas não é gate de aprovação.
 - **Q9 (frente 2 / 30.9b) — mecanismo de atribuição das 2 roles (D-6). ✅ RESOLVIDA (dev, 2026-10-06) — D-6 = (i) migração 1:1 do legado.** O dev decidiu a **migração 1:1 a partir do Intranet legado** (opção (i)); a **(ii) atribuição administrativa foi descartada**. **Correção factual:** o registro anterior ("**dado-fonte inexistente / não implementável nesta árvore**") era **INCORRETO**. É verdade que a gem `SticapiClient::Intranet` (4.0.4) **não expõe** endpoint de roles/perfis — mas o Frequencia tem a **conexão direta `intranet_development`** (`config/database.yml`), usada hoje pelo `Intranet::SyncDigitaisService` (**read-only**), e a **fonte existe** por ela. Medido na conexão: `admin_role` = **13** roles `presenca*` (incl. `presencaVisualizaFrequentadores`/`presencaVisualizaFrequentadoresTerceirizados`), `admin_user` = **9.381** usuários; o legado modela **por PERFIL** (`admin_user.profileId → admin_profile →(admin_profile_role)→ admin_role`, tabelas `admin_user`/`admin_profile`/`admin_profile_role`/`admin_role`, coluna `roleId`). Implementação → **30.9b** (3 pts; **não quebra em 30.10**). Ver §"Ruling D-6".
 - **Q10 (frente 2) — D-4 contagem 11×13. ✅ PREJUDICADA sob o ruling A.** Sem expansão, a divergência "11 roles (§2.3) × 13 nomes enumerados" é **moot**. Só volta a importar num **épico de expansão** futuro (o insumo já está no brief §2.1).
-- **Q11 (frente 2 / 30.9b) — limiar de aborto de não-resolvidos (NOVA, aberta; decisão do dev).** Qual a **proporção/contagem de não-resolvidos** (usuário legado sem `User` local correspondente, `profileId`/`roleId` fora do esperado) que deve **abortar** a execução real da migração (após o `DRY_RUN`) × apenas **alertar** e seguir? **Não** decidido pelo CTO — parâmetro operacional do dev.
+- **Q11 (frente 2 / 30.9b) — limiar de aborto de não-resolvidos. ✅ RESOLVIDA (dev, 2026-10-06): ABORTAR ACIMA DE 10%.** Se a proporção de não-resolvidos (login legado sem `User` local correspondente) passar de **10%** na execução real, a rake **aborta** (exit ≠ 0) — sinal de que o eixo de casamento `login → username` está errado e precisa ser revisto antes de aplicar. **GAP DE CÓDIGO:** a 30.9b entregue só aborta em `falha_leitura` (S2); o limiar de 10% sobre `nao_resolvidos` **ainda não está implementado** → follow-up pequeno na 30.9b (rake + teste).
 
 **Linha do Tempo:**
 
