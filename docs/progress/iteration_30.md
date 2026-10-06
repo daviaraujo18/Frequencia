@@ -1,6 +1,6 @@
 # Iteration 30 — Gate D5 exposto, roles granulares, débitos S2/S3 e rollout shadow
 
-> Status: 🔄 Em andamento (ruling **30.3 = A** registrado, 2026-10-06) | Período: a definir (após Sprint 29) | Goal: Dar ponto de entrada HTTP ao gate de desconsideração (D5) atrás da flag, **rulingar** as roles granulares do legado (PRD §9 item 2 — dependência de valor real da cascata) e **materializar o mínimo que dá valor à cascata** (semear/atribuir as 2 roles que ela consome), fechar os débitos 🟡S2/🟡S3 e produzir o insumo de decisão de rollout do modo `:shadow`. | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` §2.3, §2.5, §3, §9 itens 2 e 7; `docs/adr/0010-arquitetura-cascata-autorizacao-frequencia.md` (regras 4, 6, 7); ruling **D5** (CTO, 2026-10-01); ruling **30.3 = A** (dev, 2026-10-06) + brief `iteration_30_3_brief_roles_granulares.md`
+> Status: 🔄 Em andamento (rulings **30.3 = A** e **D-6 = (i)** registrados, 2026-10-06) | Período: a definir (após Sprint 29) | Goal: Dar ponto de entrada HTTP ao gate de desconsideração (D5) atrás da flag, **rulingar** as roles granulares do legado (PRD §9 item 2 — dependência de valor real da cascata) e **materializar o mínimo que dá valor à cascata** (semear/atribuir as 2 roles que ela consome), fechar os débitos 🟡S2/🟡S3 e produzir o insumo de decisão de rollout do modo `:shadow`. | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` §2.3, §2.5, §3, §9 itens 2 e 7; `docs/adr/0010-arquitetura-cascata-autorizacao-frequencia.md` (regras 4, 6, 7); ruling **D5** (CTO, 2026-10-01); rulings **30.3 = A** e **D-6 = (i)** (dev, 2026-10-06) + brief `iteration_30_3_brief_roles_granulares.md`
 
 ## Contexto e escopo (definido pelo dev)
 
@@ -33,7 +33,7 @@ pelo dev** em quatro frentes; **nenhuma tarefa fora delas** foi criada aqui.
 | Dev | Perfil | Foco |
 |-----|--------|------|
 | Dev A (Code Specialist) | Backend Rails (controllers/Ability/tests) | 30.2, 30.6, 30.7, apoio à 30.8 |
-| Dev B / CTO (rulings) + Code Specialist (impl.) | Autorização/roles/dados | 30.1 (co), 30.3, **30.9** (30.4/30.5 = N/A, ruling A) |
+| Dev B / CTO (rulings) + Code Specialist (impl.) | Autorização/roles/dados | 30.1 (co), 30.3, **30.9** (30.9a ✅ seed; **30.9b** = migração 1:1 do legado — D-6 = (i); 30.4/30.5 = N/A, ruling A) |
 | PO | Produto | 30.3 (decisão), 30.8 (insumo de decisão) |
 
 ## Backlog
@@ -84,7 +84,7 @@ pelo dev** em quatro frentes; **nenhuma tarefa fora delas** foi criada aqui.
   - [x] Ruling registrado decidindo **manter simplificado × expandir** (com justificativa de produto) → **A — manter simplificado** (ver §"Ruling registrado" abaixo).
   - [x] **N/A sob A** (não se expande para as 11+7 → não há tabela de mapeamento a produzir). A tabela legado→Frequencia já existe como **insumo** no brief §2 (fonte, se a expansão voltar como épico próprio).
   - [x] Definido o **escopo da integração**: **só frequência** (Q3 respondida — as 11 roles restantes gateiam seções fora do domínio e várias inexistentes → peso morto/decorativo).
-  - [x] Definido o **modo de atribuição**: **residual da 30.9** — seed idempotente das 2 roles (30.9a) + mecanismo de atribuição a decidir (30.9b, **Q9**; D-6 do brief).
+  - [x] Definido o **modo de atribuição**: **residual da 30.9** — seed idempotente das 2 roles (30.9a ✅) + mecanismo de atribuição **decidido** (30.9b, **Q9 ✅ RESOLVIDA**; **D-6 = (i) migração 1:1 do legado**).
   - [x] **Aprovação do PO/dev** registrada neste arquivo (dev Davi Araujo, 2026-10-06) antes da implementação (30.9).
 - Status: ✅ **Concluída (ruling registrado pelo dev, 2026-10-06)** — **desbloqueia a 30.9** (residual). **30.4/30.5 = N/A** sob o ruling A; **30.8** passa a depender da 30.9 (e não de 30.4/30.5).
 
@@ -99,7 +99,7 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 | **D-3** (abrangência) | **só frequência** | A expansão para estações/excepcionais/GI fica **fora** desta sprint (épico próprio, se o PO quiser). |
 | **D-5** (perfis) | **adiar os 7 perfis** | Rolify não modela bundles; sem consumidor. Fora do escopo. |
 | **D-4** (contagem 11×13) | **residual / prejudicada** | Sem expansão, a contagem é **moot**; só volta a importar num épico de expansão (ver **Q10**). |
-| **D-6** (atribuição) | **residual (a definir)** | Modo de atribuição (migração 1:1 do Intranet × atribuição administrativa) → **30.9b / Q9**. |
+| **D-6** (atribuição) | **(i) migração 1:1 do legado** | Resolvido pelo dev em **2026-10-06** (ver §"Ruling D-6" abaixo): migração 1:1 via a conexão `intranet_development` já existente (padrão `SyncDigitaisService`), read-only + `DRY_RUN` + relatório de não-resolvidos. **Não** atribuição administrativa provisória. Implementação → **30.9b** (Q9 ✅ RESOLVIDA). |
 
 **Justificativa de produto:** a cascata consome **exatamente 2** roles; criar as outras 11+7 produziria roles **decorativas** (sem consumidor) ou exigiria **reabrir a `Ability`/controllers** por seção (alteração de autorização, fora do orçamento 3+3). Manter A dá **valor real à flag `:on`** (as 2 roles passam a existir e a ser atribuíveis) com risco **baixo e reversível** (aditivo).
 
@@ -107,6 +107,23 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 - `db/seeds.rb:61` semeia **apenas** `%w[admin gestor operador]` — as 2 roles da cascata (`visualiza_frequentadores`/`visualiza_terceirizados`) **não são semeadas**.
 - A cascata lê **exatamente** essas 2: `autorizacao_frequencia.rb:131` (passo 2) e `:139` (passo 3); espelho SQL em `frequentadores_visiveis.rb:100,109`.
 - **Consequência medida:** mesmo com a flag `:on`, os passos 2/3 **não disparam para ninguém** sem atribuição manual — a flag está implementada mas **sem efeito** para os 2 caminhos de role. **É esse o gap que a 30.9 fecha.**
+
+##### Ruling D-6 (dev, 2026-10-06) — mecanismo de atribuição das 2 roles
+
+O dev decidiu a **D-6** do brief (`iteration_30_3_brief_roles_granulares.md` §8):
+
+| Decisão | Resolução | Efeito |
+|---|---|---|
+| **D-6** (atribuição) | **(i) migração 1:1 do legado** | As 2 roles da cascata (`visualiza_frequentadores`/`visualiza_terceirizados`) são migradas **1:1 a partir do Intranet legado**, **via a conexão direta `intranet_development` já configurada** (`config/database.yml`), no **padrão do `Intranet::SyncDigitaisService`**: **read-only**, `DRY_RUN`, **relatório de não-resolvidos**, idempotente. **Não** atribuição administrativa provisória (a opção (ii) foi **descartada**). |
+
+**Correção factual que destrava a (i) (medida pelo CTO, 2026-10-06):**
+O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migração não era implementável por **"dado-fonte inexistente"**. Isso é **incorreto**. O que é verdade:
+- 🟢 **Correto (mantido):** a gem `SticapiClient::Intranet` (4.0.4) **não expõe** endpoint de roles/perfis (`tipo_usuario`/`grau_usuario`/`gestores_individuais`/etc., nenhum `roles`) — o **client HTTP não serve** para isto.
+- 🟢 **Mas o Frequencia tem a conexão direta** ao MySQL legado: `config/database.yml` → **`intranet_development`** (host `10.254.3.6`, user `intranet`, db `intranet`), hoje usada pelo `Intranet::SyncDigitaisService` para ler digitais. A api-ponto **NUNCA escreve nesse banco** ("the api-ponto NEVER writes to this database") → a **fonte existe** pela conexão direta, em modo **read-only**.
+- 🟢 **Medido na conexão (read-only):** `admin_role` tem **13** roles `presenca*`, incluindo `presencaVisualizaFrequentadores` e `presencaVisualizaFrequentadoresTerceirizados`; `admin_user` tem **9.381** usuários.
+- 🟢 **Modelo do legado é por PERFIL (não role direta por usuário):** `admin_user.profileId → admin_profile →(admin_profile_role)→ admin_role`. Tabelas: `admin_user`, `admin_profile`, `admin_profile_role`, `admin_role`; a role tem coluna `roleId` (ex.: `presencaVisualizaFrequentadores`).
+
+**Conclusão:** a 30.9b é **implementável nesta árvore** com a conexão já configurada; **Q9 RESOLVIDA (D-6 = (i))**. O registro errado ("dado-fonte inexistente") fica **retirado** (ver Q9 e Riscos).
 
 #### Tarefa 30.4 — Implementar as roles granulares (definição + seeds)
 - User Story: Como administrador, quero as roles granulares do legado definidas no Frequencia, para atribuir acesso por função em vez de pelas 3 roles genéricas.
@@ -131,9 +148,9 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 - Status: ⚠️ **Não se aplica (ruling 30.3 = A)** — não há migração 1:1 das 11 roles. O subconjunto de atribuição que sobrevive (as 2 roles da cascata) é tratado na **30.9b** (**Q9**). Texto preservado para rastreabilidade.
 
 #### Tarefa 30.9 — Semear as 2 roles da cascata e atribuí-las (residual do ruling A; substitui 30.4/30.5)
-- User Story: Como administrador, quero as 2 roles que a cascata realmente consome (`visualiza_frequentadores`/`visualiza_terceirizados`) **semeadas e atribuídas**, para que os passos 2/3 da cascata passem a disparar **de fato** sob `:on` — hoje a flag não tem efeito para ninguém porque **nenhuma das 2 está nos seeds**.
+- User Story: Como administrador, quero as 2 roles que a cascata realmente consome (`visualiza_frequentadores`/`visualiza_terceirizados`) **semeadas e atribuídas**, para que os passos 2/3 da cascata passem a disparar **de fato** sob `:on` — a **30.9a** fez as 2 existirem no seed; a **30.9b** as **atribui** (sem atribuição, a flag segue sem efeito real para os 2 caminhos de role).
 - Rastreabilidade: ruling **30.3 = A** (dev, 2026-10-06); brief §1 (achado: `db/seeds.rb:61` semeia só 3; cascata lê 2); `autorizacao_frequencia.rb:131,139`; `frequentadores_visiveis.rb:100,109`; PRD §2.3 (#8/#9); D1 (29.4)
-- Estimativa: **2 pontos** (30.9a, factível nesta árvore) — ver reestimativa condicional em 30.9b | Atribuição: Dev B | Dependências: **30.3** (ruling ✅ satisfeito)
+- Estimativa: **5 pontos** (30.9a = **2** ✅ implementado + **30.9b = 3** — ver reestimativa em 30.9b; a antiga "reestimativa condicional" se **realizou** com **D-6 = (i)**) | Atribuição: Dev B | Dependências: **30.3** (ruling ✅) e **30.9a** (✅ aprovado — as 2 roles existem no seed antes de serem atribuídas)
 
 ##### 30.9a — Seed idempotente das 2 roles (factível aqui; sem dado externo)
 - Critérios de aceite:
@@ -143,16 +160,22 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
   - [x] Sem alteração de schema além do que o Rolify já provê.
 - Status: ✅ **Implementado, ✅ Aprovado** (Code Reviewer, 2026-10-06) — 0 blockers. Relatório: `docs/quality/review_report_30_9a.md`. Branch `feature/demanda-30-9a-seed-roles-cascata` @ `98c43ce`. Suíte direcionada 10/37/0F/0E; completa 1098/3876/1F+12E (13 pré-existentes).
 
-##### 30.9b — Atribuição das 2 roles (D-6) — ⚠️ DEPENDE DE DECISÃO/INSUMO EXTERNO
-- O ruling A exige que a atribuição real exista (senão o seed fica **decorativo**). O mecanismo é a decisão **D-6** do brief: **(i) migração 1:1 do Intranet** para essas 2 roles × **(ii) atribuição administrativa** (UI/console, out-of-band).
-- **⚠️ Achado que trava (i) (medido):** o client do Intranet **não expõe endpoint de roles/perfis** — `SticapiClient::Intranet` (gem 4.0.4) só tem `tipo_usuario`/`grau_usuario`/`gestores_individuais`/etc., **nenhum** `roles`/`perfis`. Sem fonte de "quem tinha `presencaVisualizaFrequentadores`" no legado, a migração 1:1 dessas 2 roles **não é implementável nesta árvore** → vira dependência de um **novo endpoint do Intranet** (ou de um dump). **Não inventado — pergunta aberta Q9.**
-- Critérios de aceite (quando D-6 resolvido):
-  - [ ] Atribuição **rastreável** (relatório/receito do que foi atribuído; nada silencioso).
-  - [ ] **Idempotente**: 2ª execução = **0 duplicações** (upsert por chave estável).
-  - [ ] Se migração (i): **`DRY_RUN` sem escrita** + **relatório de não-resolvidos**, no padrão de `ImportarGestoresIndividuaisService` (rake + `DRY_RUN=1`; `nao_resolvidos` com abort em execução real).
-  - [ ] **Sem regressão sob `:off`** (atribuir não altera comportamento fora de `:on`).
-- **Reestimativa condicional:** se **D-6 = (i) migração 1:1** (exige endpoint/dump do Intranet), a 30.9 cresce para **~3 pontos** (migração idempotente + relatório + dry-run no padrão 29.3) e pode **quebrar em 30.10** (migração separada do seed). Se **D-6 = (ii) atribuição administrativa**, mantém **2 pontos**.
-- Status: ⬜ **Pendente — travada em Q9** (mecanismo de atribuição não decidido; dado-fonte do Intranet inexistente aqui).
+##### 30.9b — Migração 1:1 das 2 roles do legado (D-6 = (i)) — ✅ PRONTA PARA IMPLEMENTAÇÃO
+- **User Story:** Como administrador, quero migrar 1:1 do Intranet legado a atribuição das 2 roles que a cascata consome (`visualiza_frequentadores`/`visualiza_terceirizados`), para que os passos 2/3 da cascata passem a disparar **de fato** sob `:on` após o desligamento do legado — sem depender de atribuição administrativa manual.
+- **Rastreabilidade:** ruling **D-6 = (i)** (dev, 2026-10-06); ruling **30.3 = A**; brief §1/§8 (D-6); `config/database.yml` (`intranet_development`); `Intranet::SyncDigitaisService` (padrão de leitura read-only do legado); `ImportarGestoresIndividuaisService` (padrão de `DRY_RUN` + `nao_resolvidos` + idempotência por chave estável); `autorizacao_frequencia.rb:131,139` (passos 2/3 — as 2 roles lidas; o `:100,109` citado antes era troca com `frequentadores_visiveis.rb`); `db/seeds.rb` (30.9a).
+- **Atribuição:** Dev B | **Dependências:** **30.9a** ✅ (as 2 roles existem no seed antes de serem atribuídas) e **30.3** (ruling ✅).
+- **Estimativa:** **3 pontos.** Reestimada de 2 → 3: a entrega saiu de "seed + atribuição a definir" para **migração real** — resolver `admin_user→profile→roles` para **9.381** usuários, casar com o `User` local, aplicar idempotentemente só as **2** roles, com `DRY_RUN` e relatório de não-resolvidos. Ancora entre o seed da 30.9a (2) e a importação completa da 29.3 (5 pts, `ImportarGestoresIndividuaisService`). **Não quebra em 30.10** (ver "Avaliação de quebra" abaixo).
+- **Critérios de aceite:**
+  - [ ] **Read-only via a conexão `intranet_development`** (`config/database.yml`), no padrão de `Intranet::SyncDigitaisService` (abre `Mysql2::Client` a partir de `config.database_configuration["intranet_#{Rails.env}"]`; **nenhum** INSERT/UPDATE/DELETE no banco legado — "a api-ponto NUNCA escreve nesse banco").
+  - [ ] **Resolve `admin_user → profile → roles`**: lê a cadeia `admin_user.profileId → admin_profile →(admin_profile_role)→ admin_role` e identifica quem possui `admin_role.roleId = presencaVisualizaFrequentadores` / `presencaVisualizaFrequentadoresTerceirizados` (o modelo do legado é **por PERFIL**, não role direta por usuário).
+  - [ ] **Mapeia só as 2 roles da cascata** → `visualiza_frequentadores`/`visualiza_terceirizados` (Rolify). Nenhuma das outras 11 `presenca*` é criada/atribuída (ruling A, "só frequência").
+  - [ ] **Idempotente por chave estável**: casar o usuário legado com o `User` local por chave estável (ex.: CPF/matrícula — o mesmo eixo de `ImportarGestoresIndividuaisService`/`SyncDigitaisService`); `add_role` é idempotente → **2ª execução = 0 duplicações/0 alterações líquidas**.
+  - [ ] **`DRY_RUN` sem escrita** + **relatório de não-resolvidos** no padrão `ImportarGestoresIndividuaisService`/`SyncDigitaisService` (resumo com `importados`/`atualizados`/`nao_resolvidos`; nada silenciosamente ignorado; em execução real, o relatório sai no log/task).
+  - [ ] **Sem regressão sob `:off`**: atribuir as 2 roles não altera comportamento fora de `:on` (`FrequenciaAuthorization#restringir_frequencia` curto-circuita em `:off`/`:shadow`).
+  - [ ] **Testes no padrão da 29.3**: injetar o conjunto de registros (sem tocar a rede/legado), com **save/restore do método original — NUNCA `remove_method` destrutivo** (lição herdada do 13º erro / chore de stubs destrutivos). Cobrir: dry-run não escreve; 2ª execução = 0 criações; não-resolvidos vão ao relatório; só as 2 roles são tocadas.
+- **Avaliação de quebra (CTO, 2026-10-06):** **não quebrar em 30.10.** Leitura do legado (SQL perfil→roles), casamento com o `User` local, aplicação idempotente, `DRY_RUN` e relatório são **um serviço coeso** — o mesmo desenho de `ImportarGestoresIndividuaisService` (que coube em uma tarefa). Fatiar duplicaria a leitura do legado (9.381 usuários) e criaria dependência artificial. A divisão só se justificaria se a descoberta exigisse uma **entrega intermediária** (ex.: artefato de mapeamento revisado por humano antes de aplicar) — cenário não indicado pelo ruling. Mantida como **tarefa única de 3 pts**.
+- **Parâmetro a confirmar com o dev (NÃO decidido pelo CTO):** qual o **limiar de aborto** (ou de alerta) se a contagem de **não-resolvidos** for alta. Registrado como **pergunta aberta Q11** — é decisão operacional do dev, não do CTO.
+- Status: ⬜ **Pendente — ✅ PRONTA PARA IMPLEMENTAÇÃO (desbloqueada: Q9/D-6 resolvidos em 2026-10-06)**.
 
 #### Tarefa 30.6 — Fechar 🟡S2: testes PORO **e** twin SQL no passo compartilhado (ADR-0010 regra 7)
 - User Story: Como time, quero um teste que exercite o PORO **e** o twin SQL com `GestorIndividual` inativo, para que mutar o passo 4 em um dos corpos derrube teste (hoje a matriz é cega ao PORO).
@@ -201,17 +224,19 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 | ~~30.5 — Atribuição/migração das roles~~ — **N/A (ruling 30.3 = A)** | — | — | — |
 | 30.6 — Fechar 🟡S2 (PORO + twin SQL) ✅ | 2 | A | — |
 | 30.7 — Fechar 🟡S3 (`frequencia_por_orgao`) ✅ | 2 | A | — |
-| **30.9 — Semear + atribuir as 2 roles da cascata (residual do ruling A)** | **2** | B | 30.3 ✅ |
+| 30.9a — Seed idempotente das 2 roles da cascata ✅ | 2 | B | 30.3 ✅ |
+| **30.9b — Migração 1:1 das 2 roles do legado (D-6 = (i)) — ✅ pronta** | **3** | B | **30.9a ✅**, 30.3 ✅ |
 
-> **30.9a ✅ Implementado, ✅ Aprovado** (seed idempotente das 2 roles — `docs/quality/review_report_30_9a.md`). **30.9b ⬜ pendente** (atribuição, travada em Q9/D-6).
-| 30.8 — Rollout shadow + insumo do PO | 3 | CTO/A | 30.2, **30.9** |
-| **Total** | **19** (+3 se D-6 = migração 1:1) | | |
+> **30.9a ✅ Implementado, ✅ Aprovado** (seed idempotente das 2 roles — `docs/quality/review_report_30_9a.md`). **30.9b ✅ PRONTA PARA IMPLEMENTAÇÃO** (D-6 = (i) resolvido em 2026-10-06; migração 1:1 read-only via a conexão `intranet_development`).
+| 30.8 — Rollout shadow + insumo do PO | 3 | CTO/A | 30.2, **30.9a ✅ + 30.9b** |
+| **Total** | **22** | | |
 
-> **Base do total:** 30.4 (3) + 30.5 (3) saem (=N/A); entra a **30.9 (2)** → 23 − 6 + 2 = **19**. O "**+3**" reflete a reestimativa condicional da 30.9b (migração 1:1 do Intranet, ver Q9).
+> **Base do total:** 30.4 (3) + 30.5 (3) saem (=N/A); entra a **30.9** = 30.9a (2) + **30.9b (3)** → 23 − 6 + 5 = **22**. O "+3" antes **condicional** da 30.9b **se realizou** (D-6 = (i)).
 
 ## Caminho Crítico
 
-**30.3 (✅) → 30.9 → 30.8** (8 pontos: 3+2+3; **+3** se **D-6 = migração 1:1** → 11). **30.4/30.5 = N/A**
+**30.3 (✅) → 30.9a (✅) → 30.9b (3) → 30.8 (3)** — **6 pontos residuais** (a 30.3 já fechada e a 30.9a já entregue).
+**D-6 = (i) confirmado** → o "+3" antes **condicional** agora **se realizou** (a 30.9b = 3 pts entra no caminho). **30.4/30.5 = N/A**
 (ruling 30.3 = A). Em paralelo, o ramo do gate D5 (**30.1 → 30.2**, 7 pontos, já implementado/aprovado) precisa
 **fechar antes da 30.8** porque a 30.8 observa o estado `:on` completo na mesma flag. Os débitos
 **30.6 (✅)** e **30.7 (✅)** são independentes e já rodaram em paralelo (teste-hardening, sem tocar produção).
@@ -220,13 +245,13 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 > as roles (frente 2 → agora **30.9**) **precedem** o rollout — são a **dependência de valor real** da cascata.
 > O gate **30.1** (aprovação do dev) **travava** a 30.2 (✅ satisfeito); o gate **30.3** (ruling do PO) **travava**
 > a implementação da frente 2 — **✅ satisfeito em 2026-10-06 (ruling A)** → desbloqueia a **30.9** (e **não** a
-> 30.4, que é N/A). A **30.8** depende agora de **30.9** (as 2 roles semeadas **e atribuídas**), não de 30.4/30.5.
+> 30.4, que é N/A). **D-6 = (i) ✅ (2026-10-06)** desbloqueia a **30.9b**. A **30.8** depende agora de **30.9a ✅ + 30.9b** (as 2 roles semeadas **e atribuídas**), não de 30.4/30.5.
 
 ## Riscos
 
 - **Alteração de autorização/rotas (30.2).** Ampliar acesso indevidamente é o risco central; mitigado por: gate **só passo 5** (`gestor_de_orgao_do?`), nunca `pode_ver?`; fail-closed em `:off`/`:shadow`; teste explícito "`GestorIndividual` vê mas não desconsidera"; aprovação do dev (30.1) antes da implementação.
-- **Escopo das roles (30.3).** ✅ **Rulingado (A, 2026-10-06)** — "manter simplificado × expandir" = **A**; abrangência = **só frequência**; perfis adiados. 30.4/30.5 = N/A; a estimativa precisa agora é da **30.9** (Q9).
-- **Atribuição das 2 roles (30.9b, Q9).** O seed (30.9a) é factível, mas **sem atribuição ele fica decorativo** — a cascata só dispara sob `:on` **com** as roles atribuídas. Se D-6 = migração 1:1, **falta a fonte de dados** (o client do Intranet **não expõe** roles/perfis) → risco de **dependência externa** (novo endpoint/dump) fora deste repositório.
+- **Escopo das roles (30.3).** ✅ **Rulingado (A, 2026-10-06)** — "manter simplificado × expandir" = **A**; abrangência = **só frequência**; perfis adiados. 30.4/30.5 = N/A; a estimativa precisa agora é da **30.9b** (D-6 = (i), 3 pts; Q9 ✅).
+- **Atribuição das 2 roles (30.9b, Q9 ✅ RESOLVIDA).** O seed (30.9a ✅) é factível, mas **sem atribuição ele fica decorativo** — a cascata só dispara sob `:on` **com** as roles atribuídas. **Decidido D-6 = (i)**: migração 1:1 via a conexão **`intranet_development` já configurada** (read-only; a **fonte existe** pela conexão direta — retirado o registro anterior de "dado inexistente aqui"). Riscos remanescentes: (a) **não-resolvidos** (usuário legado sem `User` local correspondente, `profileId`/`roleId` inesperado) — mitigado pelo **relatório** no padrão `ImportarGestoresIndividuaisService`; o **limiar de aborto é parâmetro a confirmar com o dev (Q11)**, não decidido pelo CTO; (b) **read-only por contrato** — o serviço **não pode** escrever no banco legado ("a api-ponto NUNCA escreve nesse banco"); (c) **volume (9.381 usuários)** exige leitura eficiente (join único) e `DRY_RUN` antes da execução real.
 - **S3 sem decisão de produto (Q4).** Contas locais sem CPF sob `:on` perdem os próprios registros (fail-closed). A matriz cobre o comportamento, mas a **decisão de produto** é do PO e não é resolvida aqui.
 - **Rollout shadow depende de ambiente/ciclo (Q5).** Sem definição de onde/como rodar 1 ciclo, a 30.8 não tem insumo confiável; declarar a limitação D5 (sem sinal em shadow).
 - **Baseline da suíte.** 1083/3789/1F+11E/0 skip (12 pré-existentes + o 13º order-dependent `Pessoas::Vinculo.ativos`). Toda medição deve isolar as pré-existentes antes de atribuir regressão.
@@ -241,13 +266,13 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 - [x] 🟡 **S2 — twin SQL cego ao PORO** (passo 4/GI inativo) — **FECHADO** (30.6, ✅ aprovado 2026-10-06; regra de conformidade na ADR-0010 regra 7)
 - [x] 🟡 **S3 — `frequencia_por_orgao` fora do grão da matriz** — **FECHADO** (30.7, ✅ aprovado 2026-10-06; decisão de produto sobre sem-CPF permanece em **Q4**)
 - [ ] **Gate D5 sem caminho HTTP** (`pode_desconsiderar?`/`desconsiderar!` sem caller de produção) — Severidade: 🟠 — Tarefa: **30.1/30.2**
-- [ ] **As 2 roles da cascata (`visualiza_frequentadores`/`visualiza_terceirizados`) não semeadas** — os passos 2/3 **não disparam** nem sob `:on` sem atribuição manual (a flag fica sem efeito para os 2 caminhos de role) — Severidade: 🟠 — Tarefa: **30.9** (seed + atribuição; **Q9**)
+- [ ] **As 2 roles da cascata (`visualiza_frequentadores`/`visualiza_terceirizados`) semeadas mas não atribuídas** — **seed resolvido na 30.9a ✅**; a **atribuição** (que faz os passos 2/3 dispararem sob `:on`) é **endereçada pela 30.9b** (D-6 = (i) migração 1:1 do legado; **Q9 ✅**). — Severidade: 🟠 — Tarefa: **30.9b**
 - [ ] **Flag `FREQUENCIA_AUTORIZACAO_CASCATA` default `:off`** — cascata implementada/provada, **não vigente em produção** — Severidade: 🟠 — Tarefa: **30.8** (insumo; decisão do PO)
 
 ## Definição de Pronto
 
 - [ ] 30.1–30.3 e 30.6–30.9 com status e Linha do Tempo preenchidos (**30.4/30.5 = N/A**); gates (30.1, 30.3) com aprovação registrada.
-- [ ] Testes: suíte direcionada verde + suíte completa sem regressão (as 12 pré-existentes inalteradas); mutation testing das tarefas 30.2/30.6/30.7; **30.9 com teste de idempotência do seed (2ª execução = 0 criações)**.
+- [ ] Testes: suíte direcionada verde + suíte completa sem regressão (as 12 pré-existentes inalteradas); mutation testing das tarefas 30.2/30.6/30.7; **30.9 com teste de idempotência do seed (2ª execução = 0 criações)**; **30.9b com teste de migração injetada (registros em memória, sem tocar o legado), `DRY_RUN` sem escrita, 2ª execução = 0 criações e relatório de não-resolvidos — save/restore, nunca `remove_method`**.
 - [ ] Sem commit/push (`COMMIT_MODE=manual`); stage seletivo quando autorizado.
 - [ ] Perguntas abertas ao dev/PO (Q1–Q10) respondidas ou explicitamente adiadas.
 
@@ -263,8 +288,9 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 - **Q4 (frente 3/S3) — contas sem CPF.** Decisão de **produto** do PO: um não-admin sem CPF vê zero registros sob `:on` (fail-closed), perdendo os próprios. Manter assim ou criar exceção? A 30.7 apenas cobre o comportamento; **não** resolve a decisão.
 - **Q5 (frente 4) — ambiente/ciclo do shadow.** Onde e como rodar 1 ciclo de `shadow` (qual ambiente, duração de "1 ciclo", como ler o log)? Sem isso a 30.8 não tem insumo confiável.
 - **Q6 (frente 4) — dono da decisão de ligar.** Confirmar que **ligar `:on`** é decisão do **PO** (não da sprint) e que a 30.8 **só** produz o insumo.
-- **Q9 (frente 2 / 30.9b) — mecanismo de atribuição das 2 roles (D-6). ⚠️ ABERTA — decisão do dev/PO.** (i) **migração 1:1 do Intranet** para `visualiza_frequentadores`/`visualiza_terceirizados` × (ii) **atribuição administrativa** (UI/console, out-of-band). **Trava medida para (i):** `SticapiClient::Intranet` (gem 4.0.4) **não expõe** endpoint de roles/perfis (`tipo_usuario`/`grau_usuario`/`gestores_individuais`/etc., nenhum `roles`) → **sem fonte de dado**, a migração 1:1 dessas 2 roles **não é implementável nesta árvore** (exigiria novo endpoint do Intranet ou dump). Se (i), a 30.9 cresce para **~3 pts** e pode **quebrar em 30.10**; se (ii), mantém **2 pts**. **Não decidido pelo CTO — pergunta ao dev.**
+- **Q9 (frente 2 / 30.9b) — mecanismo de atribuição das 2 roles (D-6). ✅ RESOLVIDA (dev, 2026-10-06) — D-6 = (i) migração 1:1 do legado.** O dev decidiu a **migração 1:1 a partir do Intranet legado** (opção (i)); a **(ii) atribuição administrativa foi descartada**. **Correção factual:** o registro anterior ("**dado-fonte inexistente / não implementável nesta árvore**") era **INCORRETO**. É verdade que a gem `SticapiClient::Intranet` (4.0.4) **não expõe** endpoint de roles/perfis — mas o Frequencia tem a **conexão direta `intranet_development`** (`config/database.yml`), usada hoje pelo `Intranet::SyncDigitaisService` (**read-only**), e a **fonte existe** por ela. Medido na conexão: `admin_role` = **13** roles `presenca*` (incl. `presencaVisualizaFrequentadores`/`presencaVisualizaFrequentadoresTerceirizados`), `admin_user` = **9.381** usuários; o legado modela **por PERFIL** (`admin_user.profileId → admin_profile →(admin_profile_role)→ admin_role`, tabelas `admin_user`/`admin_profile`/`admin_profile_role`/`admin_role`, coluna `roleId`). Implementação → **30.9b** (3 pts; **não quebra em 30.10**). Ver §"Ruling D-6".
 - **Q10 (frente 2) — D-4 contagem 11×13. ✅ PREJUDICADA sob o ruling A.** Sem expansão, a divergência "11 roles (§2.3) × 13 nomes enumerados" é **moot**. Só volta a importar num **épico de expansão** futuro (o insumo já está no brief §2.1).
+- **Q11 (frente 2 / 30.9b) — limiar de aborto de não-resolvidos (NOVA, aberta; decisão do dev).** Qual a **proporção/contagem de não-resolvidos** (usuário legado sem `User` local correspondente, `profileId`/`roleId` fora do esperado) que deve **abortar** a execução real da migração (após o `DRY_RUN`) × apenas **alertar** e seguir? **Não** decidido pelo CTO — parâmetro operacional do dev.
 
 **Linha do Tempo:**
 
@@ -277,4 +303,5 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 | 2026-10-06 | Code Specialist implementou a 30.6 (teste S2: PORO + twin SQL no MESMO cenário GI inativo, com controle ativo) — worktree `wt-30.6`/branch `feature/demanda-30-6-s2-twin-sql` | 30.6 ✅ implementada — aguarda Code Reviewer; 2/2 mutações mortas pelo teste do lado mutado; suíte-alvo 63/183/0F/0E; só teste (sem código de produção) |
 | 2026-10-06 | **CTO formalizou o ruling da 30.3 (A)** — dev aprovou: manter simplificado + **semear/atribuir as 2 roles da cascata**; só frequência; adiar perfis. Re-escopo: **30.4/30.5 = N/A**; residual **30.9** (seed+atribuição, 2 pts; +3 se D-6 = migração 1:1); **30.8** passa a depender da 30.9 | 30.3 ✅ **concluída** — desbloqueia a 30.9; **Q3 fechada**, **Q9 aberta** (atribuição/D-6), **Q10 prejudicada**; débito "2 roles não semeadas" registrado |
 | 2026-10-06 | Code Reviewer revisou a **30.9a** (worktree `wt-30.9`/branch `feature/demanda-30-9a-seed-roles-cascata`): escopo do ruling A exato (5 roles, sem as 11, sem atribuição), idempotência provada (2ª execução = 0 criações + id das 3 genéricas preservado), nomes string a string contra `autorizacao_frequencia.rb:131,139`/`frequentadores_visiveis.rb:100,109`, inerte em `:off`/`:shadow`, sem schema. Suíte-alvo 10/37/0F/0E; completa 1098/3876/1F+12E (13 pré-existentes) | 30.9a ✅ **Aprovada** (0 blockers) — relatório `docs/quality/review_report_30_9a.md`; **30.9b permanece pendente** (Q9/D-6) |
+| 2026-10-06 | **CTO registrou o ruling D-6 do dev = (i) migração 1:1 do legado** e **corrigiu o registro factual da Q9**: a fonte **existe** pela conexão `intranet_development` já configurada (read-only, padrão `SyncDigitaisService`) — a gem continua sem endpoint de roles, mas a **conexão direta serve**; medido: 13 roles `presenca*` em `admin_role`, 9.381 usuários em `admin_user`, modelo **por perfil** (`admin_user→admin_profile→admin_profile_role→admin_role`) | **Q9 ✅ RESOLVIDA (D-6 = i)**; **30.9b reescrita como ✅ pronta para implementação** (3 pts, Dev B, depende de 30.9a ✅); riscos/caminho crítico/DoP/total atualizados (19 → **22**); débito das 2 roles → **30.9b**; **Q11 aberta** (limiar de não-resolvidos — decisão do dev) |
 
