@@ -55,10 +55,21 @@
 
 default_password = "123456"
 
-# Roles padrão do sistema (task 23.4). Criadas antes dos usuários para que
-# possam ser atribuídas logo abaixo. `find_or_create_by!` mantém a
-# idempotência (roles já existentes são reaproveitadas).
-%w[admin gestor operador].each { |name| Role.find_or_create_by!(name: name) }
+# Roles padrão do sistema (task 23.4) + as 2 roles que a cascata de
+# autorização de frequência realmente consome (task 30.9a). Criadas antes dos
+# usuários para que possam ser atribuídas logo abaixo. `find_or_create_by!`
+# mantém a idempotência (roles já existentes são reaproveitadas).
+#
+# PORQUÊ das 2 roles da cascata: `visualiza_frequentadores` (passo 2 —
+# role_geral) e `visualiza_terceirizados` (passo 3 — terceirizado) são lidas
+# por `AutorizacaoFrequencia`/`FrequentadoresVisiveis`/`FrequenciaAuthorization`
+# SOMENTE quando a cascata está ligada (`:on`). Sem elas nos seeds, os passos
+# 2/3 não disparavam para ninguém mesmo com a flag `:on` — o gap que a 30.9
+# fecha no seed (30.9a) e na atribuição (30.9b). Semeá-las é inerte fora de
+# `:on`: a cascata curto-circuita em `:off`/`:shadow` e nunca lê essas roles.
+%w[
+  admin gestor operador visualiza_frequentadores visualiza_terceirizados
+].each { |name| Role.find_or_create_by!(name: name) }
 
 puts "Roles disponíveis: #{Role.order(:name).pluck(:name).join(', ')}"
 

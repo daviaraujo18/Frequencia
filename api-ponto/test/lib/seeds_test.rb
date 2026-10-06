@@ -18,6 +18,29 @@ class SeedsTest < ActiveSupport::TestCase
     end
   end
 
+  # Sprint 30, task 30.9a — as 2 roles que a cascata de frequencia realmente
+  # consome (`visualiza_frequentadores`/`visualiza_terceirizados`) passam a ser
+  # semeadas junto das 3 genericas. Sem elas, os passos 2/3 da cascata nao
+  # disparavam nem sob `:on`.
+  test "semeia as 5 roles efetivas mantendo as 3 genericas pre-existentes intactas" do
+    genericas = Role.where(name: %w[admin gestor operador]).pluck(:name, :id).to_h
+    assert_equal 3, genericas.size, "pre-condicao: fixtures trazem as 3 roles genericas"
+
+    load_seeds
+
+    assert_equal %w[admin gestor operador visualiza_frequentadores visualiza_terceirizados],
+                 Role.pluck(:name).sort
+    # As 3 genericas pre-existentes sao reaproveitadas (mesmo id), nao recriadas.
+    assert_equal genericas, Role.where(name: %w[admin gestor operador]).pluck(:name, :id).to_h
+  end
+
+  test "seed de roles e idempotente: segunda execucao nao cria nenhuma role" do
+    load_seeds
+
+    assert_no_difference("Role.count") { load_seeds }
+    assert_equal 5, Role.count
+  end
+
   test "cria a conta admin canonica com role Rolify e coluna boolean admin" do
     load_seeds
 
