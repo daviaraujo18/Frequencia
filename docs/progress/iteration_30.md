@@ -137,11 +137,11 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 
 ##### 30.9a — Seed idempotente das 2 roles (factível aqui; sem dado externo)
 - Critérios de aceite:
-  - [ ] Estender o seed para criar `visualiza_frequentadores` e `visualiza_terceirizados` com o **mesmo padrão idempotente** de `db/seeds.rb:61` (`Role.find_or_create_by!`) — de `%w[admin gestor operador]` para as 5 roles efetivas.
-  - [ ] Teste: **2ª execução = 0 criações** (idempotência) e as 3 genéricas **intactas**.
-  - [ ] **Sem regressão sob `:off`** (as roles só são lidas com a cascata ligada — `FrequenciaAuthorization#restringir_frequencia` retorna cedo em `:off`/`:shadow`; logo **semear é inerte fora de `:on`**).
-  - [ ] Sem alteração de schema além do que o Rolify já provê.
-- Status: ⬜ Pendente
+  - [x] Estender o seed para criar `visualiza_frequentadores` e `visualiza_terceirizados` com o **mesmo padrão idempotente** de `db/seeds.rb:61` (`Role.find_or_create_by!`) — de `%w[admin gestor operador]` para as 5 roles efetivas.
+  - [x] Teste: **2ª execução = 0 criações** (idempotência) e as 3 genéricas **intactas**.
+  - [x] **Sem regressão sob `:off`** (as roles só são lidas com a cascata ligada — `FrequenciaAuthorization#restringir_frequencia` retorna cedo em `:off`/`:shadow`; logo **semear é inerte fora de `:on`**).
+  - [x] Sem alteração de schema além do que o Rolify já provê.
+- Status: ✅ **Implementado, ✅ Aprovado** (Code Reviewer, 2026-10-06) — 0 blockers. Relatório: `docs/quality/review_report_30_9a.md`. Branch `feature/demanda-30-9a-seed-roles-cascata` @ `98c43ce`. Suíte direcionada 10/37/0F/0E; completa 1098/3876/1F+12E (13 pré-existentes).
 
 ##### 30.9b — Atribuição das 2 roles (D-6) — ⚠️ DEPENDE DE DECISÃO/INSUMO EXTERNO
 - O ruling A exige que a atribuição real exista (senão o seed fica **decorativo**). O mecanismo é a decisão **D-6** do brief: **(i) migração 1:1 do Intranet** para essas 2 roles × **(ii) atribuição administrativa** (UI/console, out-of-band).
@@ -202,6 +202,8 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 | 30.6 — Fechar 🟡S2 (PORO + twin SQL) ✅ | 2 | A | — |
 | 30.7 — Fechar 🟡S3 (`frequencia_por_orgao`) ✅ | 2 | A | — |
 | **30.9 — Semear + atribuir as 2 roles da cascata (residual do ruling A)** | **2** | B | 30.3 ✅ |
+
+> **30.9a ✅ Implementado, ✅ Aprovado** (seed idempotente das 2 roles — `docs/quality/review_report_30_9a.md`). **30.9b ⬜ pendente** (atribuição, travada em Q9/D-6).
 | 30.8 — Rollout shadow + insumo do PO | 3 | CTO/A | 30.2, **30.9** |
 | **Total** | **19** (+3 se D-6 = migração 1:1) | | |
 
@@ -274,4 +276,5 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 | 2026-10-05 | Code Reviewer revisou a 30.2 (worktree `wt-30.2`): D5 conforme (só passo 5), fall-through do admin corrigido (probe CanCan confirma ordem load-bearing), 3 estados da flag OK, 5/5 mutações do reviewer mortas, suíte 1092/3847/1F+12E idêntica | 30.2 ✅ **Aprovada** (0 blockers; 🟡Q1/🟠D1 não-bloqueantes) — relatório `docs/quality/review_report_30_2.md`; entregue ao Orchestrator |
 | 2026-10-06 | Code Specialist implementou a 30.6 (teste S2: PORO + twin SQL no MESMO cenário GI inativo, com controle ativo) — worktree `wt-30.6`/branch `feature/demanda-30-6-s2-twin-sql` | 30.6 ✅ implementada — aguarda Code Reviewer; 2/2 mutações mortas pelo teste do lado mutado; suíte-alvo 63/183/0F/0E; só teste (sem código de produção) |
 | 2026-10-06 | **CTO formalizou o ruling da 30.3 (A)** — dev aprovou: manter simplificado + **semear/atribuir as 2 roles da cascata**; só frequência; adiar perfis. Re-escopo: **30.4/30.5 = N/A**; residual **30.9** (seed+atribuição, 2 pts; +3 se D-6 = migração 1:1); **30.8** passa a depender da 30.9 | 30.3 ✅ **concluída** — desbloqueia a 30.9; **Q3 fechada**, **Q9 aberta** (atribuição/D-6), **Q10 prejudicada**; débito "2 roles não semeadas" registrado |
+| 2026-10-06 | Code Reviewer revisou a **30.9a** (worktree `wt-30.9`/branch `feature/demanda-30-9a-seed-roles-cascata`): escopo do ruling A exato (5 roles, sem as 11, sem atribuição), idempotência provada (2ª execução = 0 criações + id das 3 genéricas preservado), nomes string a string contra `autorizacao_frequencia.rb:131,139`/`frequentadores_visiveis.rb:100,109`, inerte em `:off`/`:shadow`, sem schema. Suíte-alvo 10/37/0F/0E; completa 1098/3876/1F+12E (13 pré-existentes) | 30.9a ✅ **Aprovada** (0 blockers) — relatório `docs/quality/review_report_30_9a.md`; **30.9b permanece pendente** (Q9/D-6) |
 
