@@ -630,3 +630,40 @@ par DEPOIS do `can :manage, :all` garante a precedência sobre ele.
 3. **Prove por probe**, não por leitura: asserte `ability.can?(:acao, instância)` para um ator que
    TEM a regra ampla (admin) e NÃO satisfaz a condição. Foi o probe que revelou o vazamento — o
    teste "feliz" com o gestor-do-órgão passava nos dois desenhos.
+
+---
+
+### 2026-10-06 — O `vendor/bundle` foi compilado com o ruby do SISTEMA, não com o do mise; `BUNDLE_PATH` sozinho não basta
+
+**Contexto.** Sprint 30, task 30.7 (hardening da matriz de aceite no worktree `wt-30.7`). A lição
+recorrente orienta rodar teste em worktree com `BUNDLE_PATH` apontando ao `vendor/bundle` do
+checkout principal (worktree não traz bundle: é gitignored).
+
+**Problema (medido, 2026-10-06).** Nesta máquina, `BUNDLE_PATH=<principal>/vendor/bundle bin/rails test`
+falhou com `Bundler::GemNotFound: Could not find mysql2-0.5.7, puma-8.0.2, bcrypt-3.1.22, ... in
+locally installed gems` — mesmo apontando para o bundle CERTEIRO, com os gems e as extensões
+presentes. Causa: `ruby -v`/PATH resolvem para o ruby do **mise** (3.3.8, `Gem::Platform.local =
+x86_64-linux`), mas o `vendor/bundle` foi compilado com o ruby do **sistema** (`/usr/bin/ruby` 3.3.8,
+platform `x86_64-linux-gnu`). O diretório de extensões nativas esperado pelo mise é
+`extensions/x86_64-linux/3.3.0/...`, enquanto o que existe é `extensions/x86_64-linux-gnu/3.3.0/...`
+→ as specs viraram `StubSpecification` "missing extensions" e o bundler as ignora. `bundle check`
+"falhava" inclusive no checkout principal — o sintoma não é do worktree.
+
+**Solução.** Invocar pelo ruby do sistema, com `/usr/bin` antes do mise no PATH e `BUNDLE_PATH`
+apontando ao bundle do principal:
+`PATH="/usr/bin:$PATH" BUNDLE_PATH="<principal>/vendor/bundle" bin/rails test ...`.
+O `PATH` importa duas vezes: (a) o shebang `#!/usr/bin/env ruby` do binstub resolve o ruby certo;
+(b) testes que fazem **shell-out** a `bin/rails` (ex.: `PessoasSchemaLoaderTest`) herdam o PATH — sem
+`/usr/bin` primeiro, o subprocesso cai no mise e o output vem poluído pelas warnings do bundler,
+transformando um teste verde em failure de "mensagem não casa".
+
+**Lição.**
+1. `BUNDLE_PATH` resolve ONDE estão os gems; **não** resolve QUAL ruby os abriu. Se as extensões
+   nativas foram compiladas por outro ruby, a resolução falha com "missing extensions" mesmo com o
+   bundle correto. Confirme o par: `Gem::Platform.local` do ruby ativo × o sufixo do dir em
+   `vendor/bundle/ruby/*/extensions/`.
+2. Ao atribuir falha de suíte em worktree, classifique por **assinatura** antes de culpar o diff:
+   `Could not find <gems nativos>` + `missing extensions` = ambiente (ruby errado), não regressão.
+   Um baseline medido com outro ruby não é comparável.
+3. Para medição determinística, `PARALLEL_WORKERS=1` elimina o ruído order-dependent (aqui, o 12º
+   erro `PessoasSchemaLoaderTest` só aparece sob paralelização).
