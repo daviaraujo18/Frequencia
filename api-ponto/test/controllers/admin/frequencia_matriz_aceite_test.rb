@@ -15,6 +15,12 @@ require "test_helper"
 #   9. hierarquia EXCEPCIONAL / 10. hierarquia em unidade INELEGÍVEL (D6) /
 #   11. sem vínculo / 12. sem CPF (débito S3 da 29.7).
 #
+# Tarefa 30.7 (Sprint 30) — o débito 🟡S3: `frequencia_por_orgao` estava FORA
+# do grão desta matriz (que cobria só o grão por pessoa/alvo). Os cenários
+# 30.7a/b/c abaixo a trazem ao MESMO grão das demais — por CPF — exercitando a
+# interseção `cpfs do órgão ∩ CPFs visíveis` (o filtro do controller), o
+# fail-closed de conta sem CPF e a trilha de auditoria `:on` por CPF.
+#
 # ⚠️ Contrato de "→ 403" (interpretação explícita, 29.8): neste app o `index`
 # de frequência é liberado pelo baseline `can :read, :all` (Sprint 23) — a
 # NEGAÇÃO da cascata é a FILTRAGEM da listagem, não um HTTP 403. Logo os
@@ -252,6 +258,108 @@ module Admin
       end
     end
 
+    # ----------------------------------------- 30.7a/b/c. por órgão (grão CPF)
+
+    # Tarefa 30.7 (Sprint 30) — débito 🟡S3. `frequencia_por_orgao` agrega por
+    # ÓRGÃO, mas o denominador da negação da cascata é o CPF: com a flag `:on`
+    # o controller restringe o conjunto a `cpfs do órgão ∩ frequentadores
+    # visíveis`. Aqui a visibilidade NÃO é stubada — vem da cascata REAL
+    # (vínculos/lotações/gestor individual no schema do espelho), como no resto
+    # da matriz.
+    test "matriz 30.7a: frequencia_por_orgao sob :on conta so os CPFs visiveis (grão por CPF)" do
+      unidade = unidade_simples
+      outra_unidade = criar_unidade(descricao: "Outra Unidade Matrix", active: true)
+      visivel = usuario_lotado(nome: "Orgao Visivel Matrix", unidade: unidade)
+      negado  = usuario_lotado(nome: "Orgao Negado Matrix", unidade: unidade)
+      # Visível ao gestor, mas lotado em OUTRO órgão: NÃO pode vazar para a
+      # linha do `unidade`. É o que prova o lado "∩ cpfs do órgão" — sem ele,
+      # `cpfs = frequentadores_visiveis_cpfs` passaria batido.
+      fora = usuario_lotado(nome: "Fora Do Orgao Matrix", unidade: outra_unidade)
+      # Contagens distintas por CPF: `visivel` 2 dias, `negado`/`fora` 1 dia.
+      # (10 e 11 de julho garantem datas diferentes no mesmo CPF.)
+      criar_batida(visivel, dia: Date.new(2026, 7, 10))
+      criar_batida(visivel, dia: Date.new(2026, 7, 11))
+      criar_batida(negado,  dia: Date.new(2026, 7, 10))
+      criar_batida(fora,    dia: Date.new(2026, 7, 10))
+
+      gestor = criar_usuario(nome: "Gestor Orgao Matrix")
+      gi = GestorIndividual.create!(nome: "GI Orgao Matrix", gestor_user: gestor)
+      GestorIndividualGerenciado.create!(gestor_individual: gi, user: visivel)
+      GestorIndividualGerenciado.create!(gestor_individual: gi, user: fora)
+      login_como(gestor)
+
+      # CONTROLE: sem a flag, o denominador é o órgão inteiro → os 2 CPFs do
+      # órgão contam (visivel 2 dias + negado 1) = 3. Prova o setup válido.
+      com_flag(nil) do
+        get frequencia_por_orgao_path
+        assert_response :success
+        assert_equal "3", presencas_do_orgao(unidade.descricao)
+      end
+
+      # SOB TESTE: interseção por CPF → só `visivel` entra na linha do `unidade`
+      # (`fora` é visível mas de outro órgão; `negado` é do órgão mas invisível)
+      # → 2 presenças. Distingue as duas direções erradas: sem interseção = 3;
+      # usando só os visíveis (ignorando o órgão) = 3.
+      com_flag("on") do
+        get frequencia_por_orgao_path
+        assert_response :success
+        assert_equal "2", presencas_do_orgao(unidade.descricao)
+      end
+    end
+
+    test "matriz 30.7b: frequencia_por_orgao sob :on, usuario SEM CPF ve zero (fail-closed)" do
+      unidade = unidade_simples
+      alvo = usuario_lotado(nome: "Orgao Sem Cpf Matrix", unidade: unidade)
+      criar_batida(alvo, dia: Date.new(2026, 7, 10))
+
+      sem_cpf = criar_usuario(nome: "Sem Cpf Orgao Matrix") # conta local sem CPF
+      login_como(sem_cpf)
+
+      # CONTROLE: sem a flag, o órgão tem 1 presença (o setup é válido).
+      com_flag(nil) do
+        get frequencia_por_orgao_path
+        assert_response :success
+        assert_equal "1", presencas_do_orgao(unidade.descricao)
+      end
+
+      # SOB TESTE: sem CPF, `frequentadores_visiveis_cpfs` é vazio → a
+      # interseção zera o conjunto → 0 (fail-closed; não vaza o órgão).
+      com_flag("on") do
+        get frequencia_por_orgao_path
+        assert_response :success
+        assert_equal "0", presencas_do_orgao(unidade.descricao)
+      end
+    end
+
+    test "matriz 30.7c: frequencia_por_orgao sob :on loga a negacao por CPF" do
+      unidade = unidade_simples
+      visivel = usuario_lotado(nome: "Orgao Log Vis Matrix", unidade: unidade)
+      negado  = usuario_lotado(nome: "Orgao Log Neg Matrix", unidade: unidade)
+      criar_batida(visivel, dia: Date.new(2026, 7, 10))
+      criar_batida(negado,  dia: Date.new(2026, 7, 10))
+
+      gestor = criar_usuario(nome: "Gestor Orgao Log Matrix")
+      gestor_individual(gerido: visivel, gestor_user: gestor, ativo: true)
+      login_como(gestor)
+
+      logger = RecordingLogger.new
+      com_flag("on") do
+        with_logger(logger) { get frequencia_por_orgao_path }
+      end
+      assert_response :success
+
+      # A trilha do `:on` é por CPF: o User local do CPF oculto é o alvo negado.
+      negacao = logger.entradas.find do |e|
+        e[:evento] == FrequenciaAutorizacaoCascata::EVENTO_NEGACAO && e[:alvo_id] == negado.id
+      end
+      assert negacao, "frequencia_por_orgao sob :on deve logar a negação EFETIVA do CPF oculto"
+      assert_equal negado.cpf, negacao[:alvo_cpf]
+      assert_equal :negaria, negacao[:decisao]
+      # CONTROLE NEGATIVO: o CPF visível NÃO entra na trilha de negação.
+      refute logger.entradas.any? { |e| e[:alvo_id] == visivel.id },
+             "o CPF visível não deve ser logado como negado"
+    end
+
     # --------------------------------------------------------------------------
     # Infra da matriz
     # --------------------------------------------------------------------------
@@ -270,6 +378,26 @@ module Admin
 
     def nome_de(user)
       user.nome_completo
+    end
+
+    # Valor da coluna "Presenças" (3º `<td>`) da linha do órgão informado na
+    # tela `frequencia_por_orgao`. Olha a LINHA — não um `td` solto — para que
+    # o assert não passe por outro número qualquer da página.
+    def presencas_do_orgao(orgao)
+      linha = Nokogiri::HTML(response.body).css("tbody tr").find do |tr|
+        tr.css("td").first&.text&.strip == orgao
+      end
+      assert linha, "linha do órgão #{orgao.inspect} não encontrada no HTML"
+      linha.css("td")[2].text.strip
+    end
+
+    # Batida de ponto numa data fixa (evita depender de "hoje").
+    def criar_batida(user, dia:)
+      TimeRecord.create!(
+        user: user, raw_data: "m",
+        punched_at: Time.zone.local(dia.year, dia.month, dia.day, 8, 0),
+        authentication_mode: "biometric"
+      )
     end
 
     # --- login ----------------------------------------------------------------
@@ -417,6 +545,34 @@ module Admin
       else
         ENV[FrequenciaAutorizacaoCascata::VARIAVEL] = anterior
       end
+    end
+
+    # Captura a trilha de auditoria emitida por `Rails.logger.info(evento: ...)`
+    # (mesmo padrão dos testes da cascata/30.2). Restaura o logger sempre.
+    def with_logger(logger)
+      anterior = Rails.logger
+      Rails.logger = logger
+      yield
+    ensure
+      Rails.logger = anterior
+    end
+
+    class RecordingLogger
+      def initialize
+        @entradas = []
+      end
+
+      def info(payload = nil)
+        @entradas << payload if payload.is_a?(Hash)
+      end
+
+      def warn(*); end
+      def debug(*); end
+      def error(*); end
+      def fatal(*); end
+      def level(*); end
+
+      attr_reader :entradas
     end
   end
 end
