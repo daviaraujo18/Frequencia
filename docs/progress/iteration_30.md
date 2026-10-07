@@ -1,13 +1,15 @@
 # Iteration 30 — Gate D5 exposto, roles granulares, débitos S2/S3 e rollout shadow
 
-> Status: 🔄 Em andamento (rulings **30.3 = A** e **D-6 = (i)** registrados, 2026-10-06) | Período: a definir (após Sprint 29) | Goal: Dar ponto de entrada HTTP ao gate de desconsideração (D5) atrás da flag, **rulingar** as roles granulares do legado (PRD §9 item 2 — dependência de valor real da cascata) e **materializar o mínimo que dá valor à cascata** (semear/atribuir as 2 roles que ela consome), fechar os débitos 🟡S2/🟡S3 e produzir o insumo de decisão de rollout do modo `:shadow`. | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` §2.3, §2.5, §3, §9 itens 2 e 7; `docs/adr/0010-arquitetura-cascata-autorizacao-frequencia.md` (regras 4, 6, 7); ruling **D5** (CTO, 2026-10-01); rulings **30.3 = A** e **D-6 = (i)** (dev, 2026-10-06) + brief `iteration_30_3_brief_roles_granulares.md`
+> Status: 🔄 Em andamento (rulings **30.3 = A** e **D-6 = (i)** registrados, 2026-10-06; **diretiva do dev de 2026-10-07** abre a **frente 5 / tarefa 30.10** — cobertura do `User` local dos gestores de unidade) | Período: a definir (após Sprint 29) | Goal: Dar ponto de entrada HTTP ao gate de desconsideração (D5) atrás da flag, **rulingar** as roles granulares do legado (PRD §9 item 2 — dependência de valor real da cascata), **materializar o mínimo que dá valor à cascata** (semear/atribuir as 2 roles que ela consome e **garantir o `User` local dos gestores de unidade** — furo dos 24 sem lotação vigente), fechar os débitos 🟡S2/🟡S3 e produzir o insumo de decisão de rollout do modo `:shadow`. | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` §2.3, §2.5, §3, §9 itens 2 e 7; `docs/adr/0010-arquitetura-cascata-autorizacao-frequencia.md` (regras 4, 6, 7); ruling **D5** (CTO, 2026-10-01); rulings **30.3 = A** e **D-6 = (i)** (dev, 2026-10-06) + brief `iteration_30_3_brief_roles_granulares.md`
 
 ## Contexto e escopo (definido pelo dev)
 
 A Sprint 30 não consta do `docs/12-plano-implementacao/implementation_plan.md` — esse plano descreve as
 sprints 24–28 (stack basic8) e **não cobre a Sprint 29 nem a 30** (gap de rastreabilidade conhecido,
 registrado em §"Débito de rastreabilidade" abaixo). O escopo desta sprint foi **definido explicitamente
-pelo dev** em quatro frentes; **nenhuma tarefa fora delas** foi criada aqui.
+pelo dev** em quatro frentes; **nenhuma tarefa fora delas** foi criada aqui — **exceto** a **frente 5**
+(cobertura do `User` local dos gestores de unidade, tarefa **30.10**), aberta por **diretiva direta do
+dev em 2026-10-07** (ver §"Diretiva do dev (2026-10-07)" abaixo).
 
 | Frente | Descrição | Origem |
 |--------|-----------|--------|
@@ -15,6 +17,38 @@ pelo dev** em quatro frentes; **nenhuma tarefa fora delas** foi criada aqui.
 | **2** | Roles granulares (PRD §9 item 2) | Quadro §9 (CTO, 2026-10-05) — "a dependência de valor real da cascata" |
 | **3** | Débitos 🟡S2 (twin SQL × PORO) e 🟡S3 (`frequencia_por_orgao` fora do grão da matriz) | `iteration_29_closure.md`; **ADR-0010 regra 7** |
 | **4** | Rollout do modo `:shadow` por 1 ciclo (observação/análise — **não** "ligar a flag") | Ruling D3; flag default `:off` |
+| **5** | Cobertura do `User` local dos **gestores de unidade** (furo dos **24 sem lotação vigente**) | **Diretiva do dev (2026-10-07)** — ver §"Diretiva do dev (2026-10-07)" e a **30.10** |
+
+### Diretiva do dev (2026-10-07) — cobertura do `User` local dos gestores de unidade (frente 5 / 30.10)
+
+**Diretiva verbatim (dev, 2026-10-07, via /orchestrator):** "vamos verificar os usuários que possuem
+role de gestor e gestor geral no intranet e copiar os cadastros deles ... e vamos implementar a cascata
+de permissões em cima disso".
+
+**⚠️ Correção factual — a diretiva partia de uma premissa falsa.** **NÃO existe** role "gestor" nem
+"gestor geral" no Intranet: verificado em `intranet/.../PresencaRolesEnum.java` — **13 roles,
+nenhuma gestor**. "Gestor"/"gestor geral", no contexto deste projeto, significam **gestor de
+unidade/órgão** (o `Orgao.gestorAtual/Substituto/Excepcional` do legado; no Pessoas =
+`Pessoas::Unidade.gestor/gestor_substituto/gestor_excepcional`). Logo, a diretiva textual (role
+inexistente + "copiar cadastros do Intranet") **não se aplica como escrita**; o que se executa é o seu
+**intento**, com a fonte e o alvo corretos.
+
+**RULING do dev (já resolvido em 2026-10-06/07 — NÃO reabrir):** "gestor"/"gestor geral" = **gestor de
+unidade/órgão**; **fonte = Pessoas (viva)**, **NÃO o Intranet** (o Intranet será descomissionado; a
+regra de negócio de gestão vive no Pessoas).
+
+**Achados verificados (read-only, 2026-10-07; insumo — não re-medir sem necessidade):**
+- O passo 5 da cascata **já lê** gestor do Pessoas (`autorizacao_frequencia.rb:189-192` →
+  `Pessoas::Unidade#gestor?/#cadeia_ascendente/#elegivel?`). A parte de "implementar a cascata" sobre
+  isso **já existe** (29.4) — **não há autorização nova a implementar**.
+- Pessoas: **1330** unidades; **518** gestores distintos (gestor/substituto/excepcional); **494** com
+  lotação vigente; **24 SEM lotação vigente** (= o **furo de desenho real**).
+- O `User` local nasce por unidade de **LOTAÇÃO** (`ImportarServidoresUnidadeJob#perform(unidade_id)` →
+  `unidade.servidores` → `importar_servidor(cpf)` → `criar_user_se_necessario` +
+  `AtualizarFrequentadorCacheService.call`). Um gestor **sem lotação vigente nunca é importado** → não
+  tem `User` local → **não consegue logar** → não exerce o passo 5 (a cascata avalia o `usuario`
+  **logado**). **É esse o gap que a 30.10 fecha.**
+- **Ressalva:** a cobertura real em **PROD** **não** foi medida (prod = localhost; inalcançável daqui).
 
 ## Decisão de numeração e rastreabilidade
 
@@ -33,7 +67,7 @@ pelo dev** em quatro frentes; **nenhuma tarefa fora delas** foi criada aqui.
 | Dev | Perfil | Foco |
 |-----|--------|------|
 | Dev A (Code Specialist) | Backend Rails (controllers/Ability/tests) | 30.2, 30.6, 30.7, apoio à 30.8 |
-| Dev B / CTO (rulings) + Code Specialist (impl.) | Autorização/roles/dados | 30.1 (co), 30.3, **30.9** (30.9a ✅ seed; **30.9b** = migração 1:1 do legado — D-6 = (i); 30.4/30.5 = N/A, ruling A) |
+| Dev B / CTO (rulings) + Code Specialist (impl.) | Autorização/roles/dados | 30.1 (co), 30.3, **30.9** (30.9a ✅ seed; **30.9b** = migração 1:1 do legado — D-6 = (i); 30.4/30.5 = N/A, ruling A), **30.10** (cobertura do `User` local dos gestores de unidade) |
 | PO | Produto | 30.3 (decisão), 30.8 (insumo de decisão) |
 
 ## Backlog
@@ -173,7 +207,7 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
   - [ ] **`DRY_RUN` sem escrita** + **relatório de não-resolvidos** no padrão `ImportarGestoresIndividuaisService`/`SyncDigitaisService` (resumo com `importados`/`atualizados`/`nao_resolvidos`; nada silenciosamente ignorado; em execução real, o relatório sai no log/task).
   - [ ] **Sem regressão sob `:off`**: atribuir as 2 roles não altera comportamento fora de `:on` (`FrequenciaAuthorization#restringir_frequencia` curto-circuita em `:off`/`:shadow`).
   - [ ] **Testes no padrão da 29.3**: injetar o conjunto de registros (sem tocar a rede/legado), com **save/restore do método original — NUNCA `remove_method` destrutivo** (lição herdada do 13º erro / chore de stubs destrutivos). Cobrir: dry-run não escreve; 2ª execução = 0 criações; não-resolvidos vão ao relatório; só as 2 roles são tocadas.
-- **Avaliação de quebra (CTO, 2026-10-06):** **não quebrar em 30.10.** Leitura do legado (SQL perfil→roles), casamento com o `User` local, aplicação idempotente, `DRY_RUN` e relatório são **um serviço coeso** — o mesmo desenho de `ImportarGestoresIndividuaisService` (que coube em uma tarefa). Fatiar duplicaria a leitura do legado (9.381 usuários) e criaria dependência artificial. A divisão só se justificaria se a descoberta exigisse uma **entrega intermediária** (ex.: artefato de mapeamento revisado por humano antes de aplicar) — cenário não indicado pelo ruling. Mantida como **tarefa única de 3 pts**.
+- **Avaliação de quebra (CTO, 2026-10-06):** **não quebrar em 30.10.** *(Nota de 2026-10-07: aqui "30.10" era só o número **hipotético** da subdivisão da 30.9b — **não** confundir com a **tarefa 30.10 real** criada em 2026-10-07, que é outra frente.)* Leitura do legado (SQL perfil→roles), casamento com o `User` local, aplicação idempotente, `DRY_RUN` e relatório são **um serviço coeso** — o mesmo desenho de `ImportarGestoresIndividuaisService` (que coube em uma tarefa). Fatiar duplicaria a leitura do legado (9.381 usuários) e criaria dependência artificial. A divisão só se justificaria se a descoberta exigisse uma **entrega intermediária** (ex.: artefato de mapeamento revisado por humano antes de aplicar) — cenário não indicado pelo ruling. Mantida como **tarefa única de 3 pts**.
 - **Parâmetro a confirmar com o dev (NÃO decidido pelo CTO):** qual o **limiar de aborto** (ou de alerta) se a contagem de **não-resolvidos** for alta. Registrado como **pergunta aberta Q11** — é decisão operacional do dev, não do CTO.
 - Status: ✅ **Implementado, ✅ Aprovado** (Code Specialist + Code Reviewer, 2026-10-06; 0 blockers; 3 🟡) — S1/S2 corrigidos, S3 documentado. Branch `feature/demanda-30-9b-migracao-roles-legado` @ `e79d89d`. **Entrega:** serviço `Intranet::MigrarRolesCascataService` (`app/services/intranet/migrar_roles_cascata_service.rb`) — leitura read-only da cadeia por perfil (`admin_user.profile_profileId → admin_profile → admin_profile_role → admin_role`, só SELECT), filtro fechado nas 2 roles (`MAPEAMENTO`), casamento login→`User` por `lower(username)` (fallback CPF), idempotente sequencial (`has_role?`+`add_role`; concorrência = débito S3 documentado), `DRY_RUN`, relatório `processados/atribuidos/sem_alteracao/nao_resolvidos/erros` sem PII e com **`falha_leitura` explícito** (não confunde "leitura falhou" com "nada a migrar"); rake `frequencia:migrar_roles_cascata` (`DRY_RUN=1`; `abort`/exit≠0 em falha de leitura, inclusive em DRY_RUN); teste (12 testes). **Evidência medida:** arquivo 12/44/0F/0E; direcionada 68/237/0F/0E; **suíte completa 1110/3920/1F+12E** (baseline 1098/3876/1F+12E → +12 runs/+44 asserts; mesmos 13 pré-existentes). RuboCop 0 offenses; zeitwerk OK. **Mutation testing 6/6 mortas** (mapeamento, idempotência, dry-run, case-sensitivity, guard do concern:47 via teste de inércia corrigido, ramo de `falha_leitura`). Relatório: `docs/quality/review_report_30_9b.md`. **Schema legado medido read-only:** `admin_user` PK = `login` (não há `id`), coluna de perfil = **`profile_profileId`** (o brief dizia `profileId`); cadeia perfil→role por STRING; volumes: **44** usuários em `presencaVisualizaFrequentadores` e **22** em `...Terceirizados` (~66 atribuições — bem abaixo dos 9.381 do total de `admin_user`). **Execução real pendente de `DRY_RUN=1 bin/rails frequencia:migrar_roles_cascata`** contra o legado (confirma a taxa de não-resolvidos; ver risco 1).
 
@@ -214,6 +248,38 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
 - **Pré-condição operacional (Passo 1 do plano do Orchestrator):** rodar o `DRY_RUN=1 bin/rails frequencia:migrar_roles_cascata` **real** contra o legado, avaliar os não-resolvidos contra o limiar de **10%** (**Q11 ✅**) e **aplicar as 2 roles** no ambiente do shadow — sem isso os passos 2/3 da cascata não disparam e o ciclo de shadow fica cego justamente para os caminhos de role.
 - Status: ⬜ Pendente (desbloqueada: Q5/Q6/Q11 respondidas em 2026-10-06; falta o Passo 1 operacional)
 
+### Frente 5 — Cobertura do `User` local dos gestores de unidade (diretiva do dev, 2026-10-07)
+
+#### Tarefa 30.10 — Garantir o `User` local dos gestores de unidade a partir do Pessoas
+- User Story: Como **gestor de unidade** (atual/substituto/excepcional), quero ter uma **conta local** no Frequencia **mesmo sem lotação principal vigente**, para conseguir entrar no sistema e exercer o passo 5 (hierarquia) da cascata — hoje **24 gestores** nunca são importados porque a importação nasce da lotação (`unidade.servidores`) e eles não têm lotação vigente.
+- Rastreabilidade: **Diretiva do dev (2026-10-07)**; ruling de mapeamento **gestor = gestor de unidade/órgão** (não é role — ver §"Diretiva do dev"); `Pessoas::Unidade#gestor/#gestor_substituto/#gestor_excepcional`; `ImportarServidoresUnidadeJob#criar_user_se_necessario` (padrão de criação); `Intranet::MigrarRolesCascataService`/`ImportarGestoresIndividuaisService` (padrão read-only + `DRY_RUN` + relatório de não-resolvidos); ADR-0010 regra 4 (rollout) e §30.8.
+- Estimativa: **3 pontos** | Atribuição: **Dev B** | Dependências: **nenhuma hard** — mas **precede a 30.8** (eleva a cobertura observada no ciclo de shadow; ver decisão de sprint abaixo).
+- **Escopo (o que ENTRA):** serviço read-only no Pessoas que enumera os gestores distintos (união de `unidade.gestor`+`gestor_substituto`+`gestor_excepcional` das 1330 unidades, **deduplicados por CPF**) e **garante o `User` local** (criar se ausente, **por CPF**), reutilizando o padrão `criar_user_se_necessario` (nome_completo, `username = pessoa.username`, password placeholder) + `AtualizarFrequentadorCacheService.call`; **foco no furo dos 24 sem lotação vigente**; rake/task de execução; `DRY_RUN` + relatório de não-resolvidos. **Complementar** ao `ImportarServidoresUnidadeJob` (que segue importando por lotação). *(Exceção sancionada no review de 2026-10-07: a regra de criação do `User` foi extraída do job para o colaborador compartilhado `GarantirUserLocalService` — delegação behavior-preserving; ver Status abaixo.)*
+- **Escopo (o que NÃO ENTRA):**
+  - **Não** altera a **cascata** nem a `Ability` — o passo 5 já lê gestor do Pessoas (nada de autorização a implementar).
+  - **Não** cria role "gestor"/"gestor geral" (inexistente — ver correção factual) nem atribui roles (isso é a **30.9b**).
+  - **Não** cria `GestorIndividual` (isso é a **29.3**).
+  - **Não** altera o **critério de lotação** do `ImportarServidoresUnidadeJob`. *(Exceção sancionada no review de 2026-10-07: a regra de criação do `User` foi extraída para `GarantirUserLocalService` — delegação behavior-preserving, teste do job verde.)*
+  - **Não** liga a flag `:on` (decisão da **30.8**).
+  - **Não** implementa autenticação/login real (password placeholder, como no job atual).
+- Critérios de aceite:
+  - [x] Enumera os gestores distintos do Pessoas a partir de `unidade.gestor`/`gestor_substituto`/`gestor_excepcional` (**read-only**), **deduplicados por CPF**; cobertura-alvo = os **518** gestores distintos (dos quais **24** sem lotação vigente).
+  - [x] Cria o `User` local ausente **por CPF** (`find_or_initialize_by(cpf:)`) com `nome_completo`/`username` (= `pessoa.username`)/password placeholder e chama `AtualizarFrequentadorCacheService.call`; **NÃO sobrescreve** `User` existente.
+  - [x] **Idempotência:** 2ª execução = **0 criações**.
+  - [x] **`DRY_RUN` sem escrita:** relatório completo com **0** `User`/`FrequentadorCache` criados.
+  - [x] **Relatório de não-resolvidos sem PII** (gestor sem CPF, pessoa ausente/indisponível no Pessoas) — só contagem **por motivo**; nada silenciosamente ignorado.
+  - [x] **Read-only no Pessoas:** nenhuma escrita no banco espelho (contrato `PessoasRecord`).
+  - [x] **Testes** com o conjunto de unidades/gestores **injetado em memória** (sem tocar o Pessoas): dry-run não escreve; 2ª execução = 0 criações; não-resolvidos vão ao relatório; só gestores são tocados. **Save/restore do método original — NUNCA `remove_method`** (usar `test/support/class_method_stub_helper.rb`; lição da chore de stubs destrutivos).
+  - [x] **Sem regressão sob `:off`** (criar `User` não altera comportamento fora de `:on`); sem alteração de código de produção da cascata/`Ability`.
+- **Decisão de sprint — entra na Sprint 30 como 30.10 (NÃO vai para a Sprint 31).** Justificativa pela **dependência com a 30.8** (rollout shadow): o ciclo de shadow de 7 dias só observa quem **consegue logar**; um gestor sem `User` local **não loga** e **não é observado** — os **24** sem lotação vigente seriam um **ponto cego exatamente no caminho da hierarquia (passo 5)**. Rodar a 30.10 **antes** do ciclo da 30.8 eleva a **cobertura observada** e o valor do insumo de decisão — **o mesmo raciocínio** que põe a **30.9** (cobertura de roles) antes da 30.8. É **aditiva, reversível e de baixo risco** (criação idempotente de conta; sem autorização nova). A **30.8** passa a **depender também da 30.10**.
+- **Riscos:**
+  - Gestores de unidades **inelegíveis/extintas** — decidir se criam `User` (**recomendado: sim** — a conta é neutra; a elegibilidade é avaliada em tempo de request pelo passo 5). Confirmar com o dev (**Q12**).
+  - **Colisão de `username`/CPF** já usado por outro `User` — **não** resolver silenciosamente; entra no relatório.
+  - **Volume/ruído:** criar `User`s altera contagens de FrequentadorCache/relatórios; executar em `DRY_RUN` antes da real.
+  - **Cobertura de prod não medida** (localhost) — a 30.10 mede contra o Pessoas disponível; o limiar fica com o dev.
+- Status: ✅ **Implementado, ✅ Aprovado (Code Reviewer, 2026-10-07; 0 blockers 🔴; 2 🟡 + 2 🟠 não-bloqueantes)** — Relatório: `docs/quality/review_report_30_10.md`. Branch `feature/demanda-30-10-user-local-gestores-unidade` (base `71e91f1`; **NÃO commitado**). **Evidência reproduzida pelo revisor:** service test **14/56/0F/0E**; job+service **24/75/0F/0E**; RuboCop **0 offenses** nos 5 arquivos. **Verificado:** comportamento externo do `ImportarServidoresUnidadeJob` **preservado** (paridade campo a campo; cache sempre chamado em `importar_servidor:70`; retorno `nil/save!`→`true/false` inócuo); **read-only** no Pessoas (`PessoasRecord`); **sem autorização nova**; **PII contida** (resumo por motivo, logs sem CPF/login/nome); **idempotência** (`find_or_initialize_by(cpf:)` + retorno antecipado ⇒ 2ª execução = 0 criações/0 escritas); `normalizar_cpf` com `.presence` **confirmado sem risco de duplicata** (mesmo `pessoa.cpf` cru do job × validação `/\A\d{11}\z/`); dedup id→CPF, FK órfã e colisão de `username` tratadas; testes não-degenerados com **save/restore, nunca `remove_method`**. **🟡/🟠 não-bloqueantes:** S1 (S2 do relatório) colisão de `username` deixa o gestor sem conta — decidir fallback/documentar; D1 (PII em log do job, pré-existente); D2 (cache write-once p/ gestores).
+- **⚠️ Desvio de escopo — RESOLVIDO pelo review: opção (a) ACEITA.** O `ImportarServidoresUnidadeJob` **FOI alterado**, apesar das linhas de escopo dizerem "não o altera": o body de `criar_user_se_necessario` passou a delegar a `GarantirUserLocalService.call` (−26/+6) — extração da regra de criação do `User` para um colaborador **compartilhado** (evita duplicar a regra). O revisor **confirmou paridade de comportamento** (campos, fluxo e `AtualizarFrequentadorCacheService.call` SEMPRE — inclusive quando o `User` já existe) e os testes do job seguem verdes (24/75/0F/0E). **Mantida a extração**; recomendação: ajustar o texto de escopo acima ("não o altera") para refletir a exceção sancionada.
+
 ## Resumo
 
 | Tarefa | Pontos | Dev | Depende de |
@@ -229,18 +295,22 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
 | 30.9b — Migração 1:1 das 2 roles do legado (D-6 = (i)) ✅ | 3 | B | 30.9a ✅, 30.3 ✅ |
 
 > **30.9a ✅ Implementado, ✅ Aprovado** (seed idempotente das 2 roles — `docs/quality/review_report_30_9a.md`). **30.9b ✅ PRONTA PARA IMPLEMENTAÇÃO** (D-6 = (i) resolvido em 2026-10-06; migração 1:1 read-only via a conexão `intranet_development`).
-| 30.8 — Rollout shadow (7 dias em produção) + **decisão da sprint** sobre `:on` | 3 | CTO/A | 30.2, **30.9a ✅ + 30.9b ✅**, Passo 1 |
-| **Total** | **22** | | |
+| 30.8 — Rollout shadow (7 dias em produção) + **decisão da sprint** sobre `:on` | 3 | CTO/A | 30.2, **30.9a ✅ + 30.9b ✅**, **30.10**, Passo 1 |
+| 30.10 — Garantir o `User` local dos gestores de unidade (Pessoas) ✅ | 3 | B | — (precede 30.8) |
+| **Total** | **25** | | |
 
-> **Base do total:** 30.4 (3) + 30.5 (3) saem (=N/A); entra a **30.9** = 30.9a (2) + **30.9b (3)** → 23 − 6 + 5 = **22**. O "+3" antes **condicional** da 30.9b **se realizou** (D-6 = (i)).
+> **Base do total:** 30.4 (3) + 30.5 (3) saem (=N/A); entra a **30.9** = 30.9a (2) + **30.9b (3)** → 23 − 6 + 5 = **22**. O "+3" antes **condicional** da 30.9b **se realizou** (D-6 = (i)). **+3** pela frente 5 (**30.10**, diretiva do dev de 2026-10-07) → **25**.
 
 ## Caminho Crítico
 
-**30.3 (✅) → 30.9a (✅) → 30.9b (3) → 30.8 (3)** — **6 pontos residuais** (a 30.3 já fechada e a 30.9a já entregue).
+**30.3 (✅) → 30.9a (✅) → 30.9b (3) → 30.10 (3) → 30.8 (3)** — **9 pontos residuais** (a 30.3 já fechada e a 30.9a já entregue).
 **D-6 = (i) confirmado** → o "+3" antes **condicional** agora **se realizou** (a 30.9b = 3 pts entra no caminho). **30.4/30.5 = N/A**
 (ruling 30.3 = A). Em paralelo, o ramo do gate D5 (**30.1 → 30.2**, 7 pontos, já implementado/aprovado) precisa
 **fechar antes da 30.8** porque a 30.8 observa o estado `:on` completo na mesma flag. Os débitos
 **30.6 (✅)** e **30.7 (✅)** são independentes e já rodaram em paralelo (teste-hardening, sem tocar produção).
+A **30.10 (cobertura do `User` local dos gestores, 3 pts)** é a **segunda dependência de valor real** do rollout —
+ao lado da **30.9** (cobertura de roles) — e por isso entra **antes** da 30.8: sem `User` local, os **24 gestores
+sem lotação vigente** não logam e o shadow fica **cego no passo 5**.
 
 > **Ordem de dependências (explicitada pelo dev):** frente 1 (30.2) e frente 4 (30.8) tocam a **mesma flag**;
 > as roles (frente 2 → agora **30.9**) **precedem** o rollout — são a **dependência de valor real** da cascata.
@@ -253,6 +323,7 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
 - **Alteração de autorização/rotas (30.2).** Ampliar acesso indevidamente é o risco central; mitigado por: gate **só passo 5** (`gestor_de_orgao_do?`), nunca `pode_ver?`; fail-closed em `:off`/`:shadow`; teste explícito "`GestorIndividual` vê mas não desconsidera"; aprovação do dev (30.1) antes da implementação.
 - **Escopo das roles (30.3).** ✅ **Rulingado (A, 2026-10-06)** — "manter simplificado × expandir" = **A**; abrangência = **só frequência**; perfis adiados. 30.4/30.5 = N/A; a estimativa precisa agora é da **30.9b** (D-6 = (i), 3 pts; Q9 ✅).
 - **Atribuição das 2 roles (30.9b, Q9 ✅ RESOLVIDA).** O seed (30.9a ✅) é factível, mas **sem atribuição ele fica decorativo** — a cascata só dispara sob `:on` **com** as roles atribuídas. **Decidido D-6 = (i)**: migração 1:1 via a conexão **`intranet_development` já configurada** (read-only; a **fonte existe** pela conexão direta — retirado o registro anterior de "dado inexistente aqui"). Riscos remanescentes: (a) **não-resolvidos** (usuário legado sem `User` local correspondente, `profileId`/`roleId` inesperado) — mitigado pelo **relatório** no padrão `ImportarGestoresIndividuaisService`; o **limiar de aborto é parâmetro a confirmar com o dev (Q11)**, não decidido pelo CTO; (b) **read-only por contrato** — o serviço **não pode** escrever no banco legado ("a api-ponto NUNCA escreve nesse banco"); (c) **volume (9.381 usuários)** exige leitura eficiente (join único) e `DRY_RUN` antes da execução real.
+- **Cobertura do `User` local dos gestores (30.10, diretiva do dev 2026-10-07).** O furo é de **cobertura de dados**, não de autorização (o passo 5 já lê gestor do Pessoas). Riscos: (a) gestor de unidade **inelegível/extinta** — decidir se cria `User` (**Q12**, decisão do dev; recomendado sim, é conta neutra); (b) **colisão** de `username`/CPF existente — vai a relatório, nunca resolve em silêncio; (c) criar `User`s altera **contagens** de FrequentadorCache/relatórios → `DRY_RUN` antes da real; (d) **cobertura de prod não medida** (localhost). Mitigação estrutural: idempotência por CPF + `DRY_RUN` + relatório sem PII (mesmo padrão da 29.3/30.9b).
 - **S3 sem decisão de produto (Q4).** Contas locais sem CPF sob `:on` perdem os próprios registros (fail-closed). A matriz cobre o comportamento, mas a **decisão de produto** é do PO e não é resolvida aqui.
 - **Rollout shadow depende de ambiente/ciclo (Q5).** Sem definição de onde/como rodar 1 ciclo, a 30.8 não tem insumo confiável; declarar a limitação D5 (sem sinal em shadow).
 - **Baseline da suíte.** 1083/3789/1F+11E/0 skip (12 pré-existentes + o 13º order-dependent `Pessoas::Vinculo.ativos`). Toda medição deve isolar as pré-existentes antes de atribuir regressão.
@@ -267,16 +338,18 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
 - [x] 🟡 **S2 — twin SQL cego ao PORO** (passo 4/GI inativo) — **FECHADO** (30.6, ✅ aprovado 2026-10-06; regra de conformidade na ADR-0010 regra 7)
 - [x] 🟡 **S3 — `frequencia_por_orgao` fora do grão da matriz** — **FECHADO** (30.7, ✅ aprovado 2026-10-06; decisão de produto sobre sem-CPF permanece em **Q4**)
 - [ ] **Gate D5 sem caminho HTTP** (`pode_desconsiderar?`/`desconsiderar!` sem caller de produção) — Severidade: 🟠 — Tarefa: **30.1/30.2**
+- [ ] **24 gestores de unidade sem `User` local** (sem lotação principal vigente → nunca importados por `ImportarServidoresUnidadeJob`; de **518** gestores distintos no Pessoas) — **não logam** → o passo 5 (hierarquia) fica **inobservável** no ciclo de shadow — Severidade: 🟠 — Tarefa: **30.10**
 - [x] **As 2 roles da cascata (`visualiza_frequentadores`/`visualiza_terceirizados`) semeadas mas não atribuídas** — **seed resolvido na 30.9a ✅**; **atribuição resolvida na 30.9b ✅** (D-6 = (i) migração 1:1 do legado — commit `e79d89d`). **Resta a execução real** do `DRY_RUN=1 bin/rails frequencia:migrar_roles_cascata` contra o legado (parâmetro operacional do dev; risco 1 / Q11).
 - [ ] **Flag `FREQUENCIA_AUTORIZACAO_CASCATA` default `:off`** — cascata implementada/provada, **não vigente em produção** — Severidade: 🟠 — Tarefa: **30.8** (insumo; decisão do PO)
 
 ## Definição de Pronto
 
-- [ ] 30.1–30.3 e 30.6–30.9 com status e Linha do Tempo preenchidos (**30.4/30.5 = N/A**); gates (30.1, 30.3) com aprovação registrada.
+- [ ] 30.1–30.3, 30.6–30.9 e **30.10** com status e Linha do Tempo preenchidos (**30.4/30.5 = N/A**); gates (30.1, 30.3) com aprovação registrada.
 - [ ] Testes: suíte direcionada verde + suíte completa sem regressão (as 12 pré-existentes inalteradas); mutation testing das tarefas 30.2/30.6/30.7; **30.9 com teste de idempotência do seed (2ª execução = 0 criações)**; **30.9b com teste de migração injetada (registros em memória, sem tocar o legado), `DRY_RUN` sem escrita, 2ª execução = 0 criações e relatório de não-resolvidos — save/restore, nunca `remove_method`**.
 - [ ] Sem commit/push (`COMMIT_MODE=manual`); stage seletivo quando autorizado.
 - [ ] Perguntas abertas ao dev/PO (Q1–Q11) respondidas ou explicitamente adiadas.
 - [ ] **30.9b:** `DRY_RUN=1 bin/rails frequencia:migrar_roles_cascata` executado contra o legado, com a taxa de não-resolvidos avaliada contra o limiar de aborto (**Q11** — decisão do dev) antes da execução real.
+- [ ] **30.10:** serviço read-only executado em **`DRY_RUN`** contra o Pessoas antes da execução real, com a cobertura dos **518** gestores (furo dos **24** sem lotação vigente) reportada; **2ª execução = 0 criações**; relatório de não-resolvidos sem PII; testes com **save/restore do método original, nunca `remove_method`**.
 
 ## Perguntas abertas ao dev / PO
 
@@ -293,6 +366,7 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
 - **Q9 (frente 2 / 30.9b) — mecanismo de atribuição das 2 roles (D-6). ✅ RESOLVIDA (dev, 2026-10-06) — D-6 = (i) migração 1:1 do legado.** O dev decidiu a **migração 1:1 a partir do Intranet legado** (opção (i)); a **(ii) atribuição administrativa foi descartada**. **Correção factual:** o registro anterior ("**dado-fonte inexistente / não implementável nesta árvore**") era **INCORRETO**. É verdade que a gem `SticapiClient::Intranet` (4.0.4) **não expõe** endpoint de roles/perfis — mas o Frequencia tem a **conexão direta `intranet_development`** (`config/database.yml`), usada hoje pelo `Intranet::SyncDigitaisService` (**read-only**), e a **fonte existe** por ela. Medido na conexão: `admin_role` = **13** roles `presenca*` (incl. `presencaVisualizaFrequentadores`/`presencaVisualizaFrequentadoresTerceirizados`), `admin_user` = **9.381** usuários; o legado modela **por PERFIL** (`admin_user.profileId → admin_profile →(admin_profile_role)→ admin_role`, tabelas `admin_user`/`admin_profile`/`admin_profile_role`/`admin_role`, coluna `roleId`). Implementação → **30.9b** (3 pts; **não quebra em 30.10**). Ver §"Ruling D-6".
 - **Q10 (frente 2) — D-4 contagem 11×13. ✅ PREJUDICADA sob o ruling A.** Sem expansão, a divergência "11 roles (§2.3) × 13 nomes enumerados" é **moot**. Só volta a importar num **épico de expansão** futuro (o insumo já está no brief §2.1).
 - **Q11 (frente 2 / 30.9b) — limiar de aborto de não-resolvidos. ✅ RESOLVIDA (dev, 2026-10-06): ABORTAR ACIMA DE 10%.** Se a proporção de não-resolvidos (login legado sem `User` local correspondente) passar de **10%** na execução real, a rake **aborta** (exit ≠ 0) — sinal de que o eixo de casamento `login → username` está errado e precisa ser revisto antes de aplicar. **✅ IMPLEMENTADO (2026-10-06):** `Resultado#proporcao_nao_resolvidos` + `Resultado#abortar_por_nao_resolvidos?` (constante `LIMIAR_NAO_RESOLVIDOS = 0.10`, comparação estrita `>`; guarda de divisão por zero); a rake passou a usar o predicado (o gatilho deixou de ser "qualquer não-resolvido"). O resumo exibe a proporção e o limiar. Testes: +5 (20%/10% exato/5%/vazio/resumo) → arquivo 17/54/0F/0E; **mutação 2/2 mortas** (`>`→`>=` mata o "10% exato"; remoção do guard mata "legado vazio"). Erros (exceções) seguem abortando sempre; `DRY_RUN` nunca aborta por pendência.
+- **Q12 (frente 5 / 30.10) — gestores de unidades inelegíveis/extintas (NOVA, aberta; decisão do dev).** Criar `User` local também para gestores cujo **único** vínculo de gestão aponta para unidade **inelegível** (`active != true`/extinta)? **Recomendação do planejamento: SIM** — a conta é neutra (não concede autorização por si; a elegibilidade é avaliada em tempo de request pelo passo 5, `unidade.elegivel?`), e não criá-la produziria uma cobertura **parcial artificial**. **NÃO decide sozinho** — decisão operacional do dev, como a **Q11**.
 
 **Linha do Tempo:**
 
@@ -307,4 +381,7 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
 | 2026-10-06 | Code Reviewer revisou a **30.9a** (worktree `wt-30.9`/branch `feature/demanda-30-9a-seed-roles-cascata`): escopo do ruling A exato (5 roles, sem as 11, sem atribuição), idempotência provada (2ª execução = 0 criações + id das 3 genéricas preservado), nomes string a string contra `autorizacao_frequencia.rb:131,139`/`frequentadores_visiveis.rb:100,109`, inerte em `:off`/`:shadow`, sem schema. Suíte-alvo 10/37/0F/0E; completa 1098/3876/1F+12E (13 pré-existentes) | 30.9a ✅ **Aprovada** (0 blockers) — relatório `docs/quality/review_report_30_9a.md`; **30.9b permanece pendente** (Q9/D-6) |
 | 2026-10-06 | Code Specialist implementou a **30.9b** (`Intranet::MigrarRolesCascataService`, branch `feature/demanda-30-9b-migracao-roles-legado`) e corrigiu S1/S2 do review. **Schema legado medido read-only** pelo orquestrador: `admin_user` PK = `login`, coluna `profile_profileId` (o brief dizia `profileId`), cadeia perfil→role por string; volumes **44** + **22** usuários (~66 atribuições, não 9.381). Testes 12/44/0F/0E; direcionada 68/237/0F/0E; completa 1110/3920/1F+12E (+12/+44 = testes novos). Mutação do guard `frequencia_authorization.rb:47` reproduzida e morta | 30.9b ✅ **Aprovada** (0 blockers; `docs/quality/review_report_30_9b.md`) — commit `e79d89d`. **Caminho crítico restante: 30.8 (3 pts)** |
 | 2026-10-06 | **CTO registrou o ruling D-6 do dev = (i) migração 1:1 do legado** e **corrigiu o registro factual da Q9**: a fonte **existe** pela conexão `intranet_development` já configurada (read-only, padrão `SyncDigitaisService`) — a gem continua sem endpoint de roles, mas a **conexão direta serve**; medido: 13 roles `presenca*` em `admin_role`, 9.381 usuários em `admin_user`, modelo **por perfil** (`admin_user→admin_profile→admin_profile_role→admin_role`) | **Q9 ✅ RESOLVIDA (D-6 = i)**; **30.9b reescrita como ✅ pronta para implementação** (3 pts, Dev B, depende de 30.9a ✅); riscos/caminho crítico/DoP/total atualizados (19 → **22**); débito das 2 roles → **30.9b**; **Q11 aberta** (limiar de não-resolvidos — decisão do dev) |
+| 2026-10-07 | **Sprint Planner abriu a frente 5 (30.10)** por **diretiva do dev** ("verificar gestores ... e implementar a cascata sobre isso"): registrou o **ruling** (gestor = gestor de unidade/órgão; **fonte = Pessoas**; não é role), os **achados** (1330 unidades; **518** gestores distintos; **494** com lotação vigente; **24 sem lotação**) e a **correção factual** (a diretiva partia de role inexistente). Detalhou a tarefa **30.10 — Garantir o `User` local dos gestores de unidade** (3 pts, Dev B), **na Sprint 30**, precedendo a 30.8 | 30.10 registrada; total 22 → **25**; **Q12 aberta** (gestores de unidades inelegíveis); débito "24 gestores sem `User`" registrado; caminho crítico/DoP/riscos atualizados |
+| 2026-10-07 | Code Specialist implementou a **30.10** (`GarantirUserLocalService` compartilhado + `ImportarGestoresDeUnidadeService` + rake + 14 testes; branch `feature/demanda-30-10-user-local-gestores-unidade`); extração DRY do job p/ o colaborador (desvio de escopo sinalizado) | 30.10 ✅ implementada — evidência 14/56/0F/0E (service), 24/75/0F/0E (job+service), RuboCop 0; aguarda Code Reviewer |
+| 2026-10-07 | Code Reviewer revisou a **30.10**: reproduziu 14/56/0F/0E, 24/75/0F/0E, RuboCop 0; verificou comportamento-preservante do job, read-only no Pessoas, PII contida, idempotência (0 criações/0 escritas na 2ª), dedup/órfã/colisão, `normalizar_cpf` sem duplicata; confirmou stubs com save/restore (nunca `remove_method`). **Desvio de escopo resolvido: extração ACEITA** (paridade provada). 2 🟡 + 2 🟠 não-bloqueantes | 30.10 ✅ **Aprovada** (0 blockers 🔴) — `docs/quality/review_report_30_10.md`; entrega via Source Code Delivery (stage seletivo; sem commit/push — `COMMIT_MODE=manual`) |
 
