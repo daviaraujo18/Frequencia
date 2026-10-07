@@ -235,6 +235,8 @@ O histórico do ruling A **não é apagado** — fica registrado em `iteration_3
 - **Atribuição:** herda o padrão **D-6/i** (read-only do legado, `DRY_RUN`, relatório de não-resolvidos) — ver §8 D-6.
 - **Teste obrigatório da role inerte:** sem atribuição, não altera comportamento (evita regressão silenciosa sob `:off`).
 
+> **Complemento (dev, 2026-10-07 — 2ª decisão).** O dev decidiu **semear as roles granulares desde já** (opção **(a)**), deixando-as **guardadas/inertes** até a seção existir. Portanto, "**a role só nasce com o consumidor**" passa a significar "a role só **é habilitada/atribuída** com o consumidor": o **registro** da role é **semeado antecipadamente** (`db/seeds.rb`; 13 granulares — 11 ainda sem consumidor, inertes), mas **sem** `Ability`/controller e **sem** atribuição. O ganho "sem role decorativa" é preservado **por inércia** (role sem consumidor não concede acesso). Ver `iteration_30.md` §"Emenda do ruling A" (Complemento).
+
 ### 9.3. Gatilhos futuros — qual seção do PRD traz qual role
 
 | Seção do PRD (se/quando implementada) | Role(s) que nascem **na mesma tarefa** | Existe no Frequencia hoje? |

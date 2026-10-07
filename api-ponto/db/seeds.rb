@@ -67,8 +67,20 @@ default_password = "123456"
 # 2/3 não disparavam para ninguém mesmo com a flag `:on` — o gap que a 30.9
 # fecha no seed (30.9a) e na atribuição (30.9b). Semeá-las é inerte fora de
 # `:on`: a cascata curto-circuita em `:off`/`:shadow` e nunca lê essas roles.
+#
+# As DEMAIS roles granulares do legado (`PresencaRolesEnum`, brief da 30.3
+# §2.1) são semeadas aqui por decisão do dev (2026-10-07: "criar as roles
+# manualmente"). Nome local = nome legado `presenca*` sem o prefixo, snake_case.
+# ATENÇÃO: a maioria NÃO tem consumidor hoje na `Ability`/controllers (a seção
+# correspondente não foi portada) — criá-las no seed NÃO concede acesso por si
+# (é inerte até existir a `Ability`/controller que as leia). Ver plano
+# incremental (brief §9): a role passa a valer quando a seção é implementada.
 %w[
   admin gestor operador visualiza_frequentadores visualiza_terceirizados
+  visualiza_estacoes controla_estacoes gerencia_estacao cadastra_estacao
+  gerencia_excepcionais visualiza_excepcionais gerencia_frequentadores
+  visualiza_gestor_individual gerencia_gestor_individual
+  gerencia_retificadores cadastro_digital
 ].each { |name| Role.find_or_create_by!(name: name) }
 
 puts "Roles disponíveis: #{Role.order(:name).pluck(:name).join(', ')}"

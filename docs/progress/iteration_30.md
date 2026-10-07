@@ -162,6 +162,8 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 
 **Efeito na frente 2:** a **30.9** (as 2 roles da cascata — 30.9a ✅ + 30.9b ✅) **permanece como a entrega desta sprint**; a expansão incremental **não** é escopo da Sprint 30. **Nenhuma tarefa nova foi criada** por esta emenda.
 
+**Complemento (dev, 2026-10-07 — 2ª decisão: seed antecipado, opção (a)).** Em seguida o dev decidiu **semear as roles granulares desde já** ("criar as roles manualmente"), deixando-as **guardadas/inertes** até que a seção do PRD que as consome seja implementada. O **seed** das roles passa a ser **antecipado** — as 13 roles granulares foram semeadas (`db/seeds.rb`) e aplicadas ao banco. **Nada** de `Ability`/controller nem de atribuição foi criado: a role **não concede acesso por si**. Assim, a política **"incremental"** incide sobre **habilitar** (reabrir `Ability`/controller + atribuir), **não** sobre **semear** o registro da role. **Estado factual:** das **16** roles hoje no banco, **11 não têm consumidor** e são **inertes** — `visualiza_estacoes`, `controla_estacoes`, `gerencia_estacao`, `cadastra_estacao`, `gerencia_excepcionais`, `visualiza_excepcionais`, `gerencia_frequentadores`, `visualiza_gestor_individual`, `gerencia_gestor_individual`, `gerencia_retificadores`, `cadastro_digital`. **Tensão reconhecida** com o §7 do brief (risco de "role decorativa"): mitigada por serem **inertes** (efeito nulo enquanto o consumidor não existir). O **seed canônico** vive em `api-ponto/db/seeds.rb`.
+
 ##### Ruling D-6 (dev, 2026-10-06) — mecanismo de atribuição das 2 roles
 
 O dev decidiu a **D-6** do brief (`iteration_30_3_brief_roles_granulares.md` §8):
