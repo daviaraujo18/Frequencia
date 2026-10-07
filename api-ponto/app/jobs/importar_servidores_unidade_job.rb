@@ -72,32 +72,12 @@ class ImportarServidoresUnidadeJob < ApplicationJob
     Rails.logger.error("[ImportarServidoresUnidadeJob] Falha ao importar CPF #{cpf}: #{e.message}")
   end
 
-  # Decisões registradas na Sprint 10B/21 sobre campos que o User exige mas
-  # o Pessoas não supre diretamente:
-  #
-  # - password: aleatória/inutilizável (SecureRandom) — ninguém a conhece,
-  #   é só um placeholder para satisfazer `has_secure_password`. Login local
-  #   via senha fica bloqueado para frequentadores criados assim até a
-  #   Sprint 21 substituir a autenticação por `sticapi_authenticatable`
-  #   (login/senha reais do Pessoas, mecanismo já confirmado tecnicamente).
-  #   Biometria continua funcionando (não depende de senha).
-  # - username: usa o `username` real da tabela `pessoas`
-  #   (`pessoa.username`) — mesmo campo que o próprio pessoas2 usa para
-  #   vincular seu User a Pessoa (`has_one :pessoa, foreign_key: "username",
-  #   primary_key: "username"`). Só cai no `generate_username` local
-  #   (callback já existente no model) quando o Pessoas não tem username
-  #   preenchido — não sobrescreve o de quem já existe (só se aplica na
-  #   criação, ver método `new_record?` abaixo).
-  # - status: usa o default do schema (`status: 1`, ativo) — não setado
-  #   explicitamente aqui de propósito, para não duplicar a regra do
-  #   banco/model.
+  # Delegação ao colaborador COMPARTILHADO (tarefa 30.10): a regra de criação
+  # do `User` local (password placeholder, `username` do Pessoas, status
+  # default) vive em `GarantirUserLocalService` para não ser duplicada pela
+  # importação de gestores de unidade. Comportamento externo inalterado: cria
+  # se ausente e nunca sobrescreve o existente.
   def criar_user_se_necessario(cpf, pessoa)
-    user = User.find_or_initialize_by(cpf: cpf)
-    return unless user.new_record?
-
-    user.nome_completo = pessoa.nome
-    user.username = pessoa.username if pessoa.username.present?
-    user.password = SecureRandom.hex(16)
-    user.save!
+    GarantirUserLocalService.call(cpf: cpf, pessoa: pessoa)
   end
 end
