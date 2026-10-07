@@ -159,6 +159,11 @@ Regras:
   = a regra de conformidade do item 7 (prova nos dois) + o teste de propriedade.
 - A flag **lida a cada chamada** tem custo desprezível, mas a cascata **não é vigente** até o PO
   decidir ligá-la — a Sprint 30 (roles granulares) é dependência de valor real.
+  *(Rastreabilidade — emenda de 2026-10-07: a Sprint 30 entrega **só as 2 roles que a cascata
+  consome** (`visualiza_frequentadores`/`visualiza_terceirizados`, tarefa 30.9); as demais roles
+  granulares **não** entram na Sprint 30 — ruling do dev "30.3 = A + expansão incremental dirigida
+  pelo PRD": cada role nasce na tarefa que implementa a seção do PRD que a consome. Ver
+  `docs/progress/iteration_30.md` §"Emenda do ruling A" e `iteration_30_3_brief_roles_granulares.md` §9.)*
 - `frequencia_por_orgao` (agregação por CPF) tem grão próprio e cobertura de matriz mais rasa
   (débito **🟡S3**) — o denomínio de negação ali é por CPF, não por registro.
 

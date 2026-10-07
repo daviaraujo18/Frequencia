@@ -1,6 +1,6 @@
 # Iteration 30 — Gate D5 exposto, roles granulares, débitos S2/S3 e rollout shadow
 
-> Status: 🔄 Em andamento (rulings **30.3 = A** e **D-6 = (i)** registrados, 2026-10-06; **diretiva do dev de 2026-10-07** abre a **frente 5 / tarefa 30.10** — cobertura do `User` local dos gestores de unidade) | Período: a definir (após Sprint 29) | Goal: Dar ponto de entrada HTTP ao gate de desconsideração (D5) atrás da flag, **rulingar** as roles granulares do legado (PRD §9 item 2 — dependência de valor real da cascata), **materializar o mínimo que dá valor à cascata** (semear/atribuir as 2 roles que ela consome e **garantir o `User` local dos gestores de unidade** — furo dos 24 sem lotação vigente), fechar os débitos 🟡S2/🟡S3 e produzir o insumo de decisão de rollout do modo `:shadow`. | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` §2.3, §2.5, §3, §9 itens 2 e 7; `docs/adr/0010-arquitetura-cascata-autorizacao-frequencia.md` (regras 4, 6, 7); ruling **D5** (CTO, 2026-10-01); rulings **30.3 = A** e **D-6 = (i)** (dev, 2026-10-06) + brief `iteration_30_3_brief_roles_granulares.md`
+> Status: 🔄 Em andamento (rulings **30.3 = A** e **D-6 = (i)** registrados, 2026-10-06; **diretiva do dev de 2026-10-07** abre a **frente 5 / tarefa 30.10** — cobertura do `User` local dos gestores de unidade; **emenda do dev de 2026-10-07**: o ruling **30.3 = A** passa a **"A + expansão incremental dirigida pelo PRD"** — a **30.4** deixa de ser "N/A" puro e passa a **substituída pela política incremental**; ver §"Emenda do ruling A") | Período: a definir (após Sprint 29) | Goal: Dar ponto de entrada HTTP ao gate de desconsideração (D5) atrás da flag, **rulingar** as roles granulares do legado (PRD §9 item 2 — dependência de valor real da cascata), **materializar o mínimo que dá valor à cascata** (semear/atribuir as 2 roles que ela consome e **garantir o `User` local dos gestores de unidade** — furo dos 24 sem lotação vigente), fechar os débitos 🟡S2/🟡S3 e produzir o insumo de decisão de rollout do modo `:shadow`. | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` §2.3, §2.5, §3, §9 itens 2 e 7; `docs/adr/0010-arquitetura-cascata-autorizacao-frequencia.md` (regras 4, 6, 7); ruling **D5** (CTO, 2026-10-01); rulings **30.3 = A** e **D-6 = (i)** (dev, 2026-10-06) + **emenda 30.3 = A + expansão incremental dirigida pelo PRD** (dev, 2026-10-07) + brief `iteration_30_3_brief_roles_granulares.md` (§4/§5/§8/§9)
 
 ## Contexto e escopo (definido pelo dev)
 
@@ -59,7 +59,7 @@ regra de negócio de gestão vive no Pessoas).
 
 - Sprint 29 **mergeada** (a 30 consome `AutorizacaoFrequencia`, `FrequentadoresVisiveis`, `ElegibilidadeDesconsideracao`, `FrequenciaAutorizacaoCascata`, `FrequenciaAuthorization` — todos da 29).
 - **Aprovação explícita do dev** (regra global do `CLAUDE.md`: alterar autorização/rotas exige plano claro): a tarefa **30.2** (ponto de entrada HTTP + `Ability`) só inicia após OK do dev sobre o plano da **30.1**.
-- **Ruling de produto** (CTO/PO) antes da implementação das roles — ✅ **SATISFEITO** (dev, 2026-10-06): ruling **30.3 = A** (manter simplificado + semear as 2 roles da cascata; só frequência; adiar perfis). A implementação correspondente é a **30.9** (residual que substitui 30.4/30.5).
+- **Ruling de produto** (CTO/PO) antes da implementação das roles — ✅ **SATISFEITO** (dev, 2026-10-06): ruling **30.3 = A** (manter simplificado + semear as 2 roles da cascata; só frequência; adiar perfis), **emendado em 2026-10-07** para **"A + expansão incremental dirigida pelo PRD"** (ver §"Emenda do ruling A"). A implementação correspondente **da Sprint 30** é a **30.9** (as 2 roles da cascata); a **expansão incremental** não é escopo desta sprint — cada role futura entra na tarefa/sprint que implementa a **seção do PRD que a consome**.
 - Baseline da suíte a isolar: **1083 runs / 3789 assertions / 1F + 11E / 0 skip** (as 12 são pré-existentes: 11× Devise `redirect_to` + 1× timezone em `presenca_endpoints_test.rb`). Isolar as pré-existentes; o 13º erro (`Pessoas::Vinculo.ativos` por `remove_method`) é order-dependent — rodar isolado antes de tratar como regressão.
 
 ## Desenvolvedores
@@ -67,7 +67,7 @@ regra de negócio de gestão vive no Pessoas).
 | Dev | Perfil | Foco |
 |-----|--------|------|
 | Dev A (Code Specialist) | Backend Rails (controllers/Ability/tests) | 30.2, 30.6, 30.7, apoio à 30.8 |
-| Dev B / CTO (rulings) + Code Specialist (impl.) | Autorização/roles/dados | 30.1 (co), 30.3, **30.9** (30.9a ✅ seed; **30.9b** = migração 1:1 do legado — D-6 = (i); 30.4/30.5 = N/A, ruling A), **30.10** (cobertura do `User` local dos gestores de unidade) |
+| Dev B / CTO (rulings) + Code Specialist (impl.) | Autorização/roles/dados | 30.1 (co), 30.3, **30.9** (30.9a ✅ seed; **30.9b** = migração 1:1 do legado — D-6 = (i); 30.4 = **substituída pela política incremental** (emenda 2026-10-07), 30.5 = N/A, ruling A), **30.10** (cobertura do `User` local dos gestores de unidade) |
 | PO | Produto | 30.3 (decisão), 30.8 (insumo de decisão) |
 
 ## Backlog
@@ -107,7 +107,7 @@ regra de negócio de gestão vive no Pessoas).
 
 ### Frente 2 — Roles granulares (PRD §9 item 2)
 
-> **Ruling 30.3 = A (dev, 2026-10-06):** manter simplificado + semear/atribuir **as 2 roles da cascata**; só frequência; adiar perfis. Sob este ruling, **30.4 e 30.5 não se aplicam** (texto preservado para rastreabilidade) e a entrega da frente é a **30.9** (abaixo).
+> **Ruling 30.3 = A (dev, 2026-10-06) — emendado em 2026-10-07:** manter simplificado + semear/atribuir **as 2 roles da cascata**; só frequência; adiar perfis. **Emenda (dev, 2026-10-07):** passa a **"A + expansão incremental dirigida pelo PRD"** — as demais roles do legado nascem **sob demanda**, na **mesma tarefa** que implementa a seção do PRD que as consome. Sob o ruling A, **30.5 não se aplica**; a **30.4** deixa de ser "N/A" puro e fica **substituída pela política incremental** (ver §"Emenda do ruling A"). A entrega da frente **na Sprint 30** segue sendo a **30.9** (abaixo).
 
 #### Tarefa 30.3 — Ruling/desenho de produto e mapeamento das 11 roles + 7 perfis (GATE)
 - User Story: Como PO, quero decidir entre manter as roles simplificadas ou expandir para as 11 roles granulares do legado, para que a cascata tenha a atribuição de valor que hoje a deixa inoperante em produção.
@@ -120,7 +120,7 @@ regra de negócio de gestão vive no Pessoas).
   - [x] Definido o **escopo da integração**: **só frequência** (Q3 respondida — as 11 roles restantes gateiam seções fora do domínio e várias inexistentes → peso morto/decorativo).
   - [x] Definido o **modo de atribuição**: **residual da 30.9** — seed idempotente das 2 roles (30.9a ✅) + mecanismo de atribuição **decidido** (30.9b, **Q9 ✅ RESOLVIDA**; **D-6 = (i) migração 1:1 do legado**).
   - [x] **Aprovação do PO/dev** registrada neste arquivo (dev Davi Araujo, 2026-10-06) antes da implementação (30.9).
-- Status: ✅ **Concluída (ruling registrado pelo dev, 2026-10-06)** — **desbloqueia a 30.9** (residual). **30.4/30.5 = N/A** sob o ruling A; **30.8** passa a depender da 30.9 (e não de 30.4/30.5).
+- Status: ✅ **Concluída (ruling registrado pelo dev, 2026-10-06)** — **desbloqueia a 30.9** (residual). **30.4 = substituída pela política incremental** (emenda de 2026-10-07), **30.5 = N/A** sob o ruling A; **30.8** passa a depender da 30.9 (e não de 30.4/30.5).
 
 ##### Ruling registrado (dev, 2026-10-06)
 
@@ -141,6 +141,26 @@ O dev aprovou a **recomendação do brief** (`iteration_30_3_brief_roles_granula
 - `db/seeds.rb:61` semeia **apenas** `%w[admin gestor operador]` — as 2 roles da cascata (`visualiza_frequentadores`/`visualiza_terceirizados`) **não são semeadas**.
 - A cascata lê **exatamente** essas 2: `autorizacao_frequencia.rb:131` (passo 2) e `:139` (passo 3); espelho SQL em `frequentadores_visiveis.rb:100,109`.
 - **Consequência medida:** mesmo com a flag `:on`, os passos 2/3 **não disparam para ninguém** sem atribuição manual — a flag está implementada mas **sem efeito** para os 2 caminhos de role. **É esse o gap que a 30.9 fecha.**
+
+##### Emenda do ruling A (dev, 2026-10-07) — política de criação incremental dirigida pelo PRD
+
+**Reabertura:** em **2026-10-07** o dev **reabriu a 30.4**. Perguntado sobre a **abrangência** da expansão (Q3 / **D-3** do brief — "só frequência" × "todas as seções"), respondeu **verbatim**:
+
+> *"vamos criando as roles de acordo com o que for sendo implementado baseado no PRD de regras de negocio"*
+
+**Emenda (não revogação):** o ruling **A** (2026-10-06) **não é apagado** — fica **preservado** (§"Ruling registrado" acima); esta emenda o **refina**. Sai de **"A fixo (só as 2 roles)"** para **"A + expansão incremental dirigida pelo PRD"**.
+
+| Decisão | Antes — ruling A (2026-10-06) | Emenda (2026-10-07) |
+|---|---|---|
+| **D-1** (macro) | **A** — manter simplificado; **só** as 2 roles da cascata | **A + expansão incremental** — mantém o mínimo; as demais roles nascem **sob demanda**, dirigidas pelo PRD |
+| **D-3** (abrangência) | **só frequência** (a expansão fica fora / épico próprio) | **dirigida pelo PRD, caso a caso** — cada seção implementada puxa a sua role; **nem** "todas de uma vez" **nem** "nada" |
+| **30.4** | **"Não se aplica"** puro (ruling A) | **Substituída pela política incremental** — a criação de role vira **parte de cada tarefa futura** que implementa a seção do PRD que a consome (não há tarefa "de roles" autônoma) |
+
+**Regra operacional (a política em uma frase):** *toda tarefa que implementar uma seção do `PRD-REGRAS-NEGOCIO-PRESENCA.md` **cria, na própria tarefa, a role que ela consome** e reabre a `Ability`/controller correspondente — com **teste de que a role SEM atribuição não muda comportamento** (inerte fora do consumidor). A **atribuição** segue o mecanismo **D-6/i** (migração 1:1 do legado) ou o que o dev definir para aquela role.*
+
+**Justificativa de produto:** preserva o ganho do ruling A — **evita a "role decorativa"** (role sem consumidor, risco §7 do brief) **sem congelar** o sistema: as roles da expansão deixam de ser um "big-bang" orçado e passam a ser **custo da tarefa que as consome**. Detalhamento (gatilhos por seção do PRD, o que **não** existe no Frequencia) no **brief §9**.
+
+**Efeito na frente 2:** a **30.9** (as 2 roles da cascata — 30.9a ✅ + 30.9b ✅) **permanece como a entrega desta sprint**; a expansão incremental **não** é escopo da Sprint 30. **Nenhuma tarefa nova foi criada** por esta emenda.
 
 ##### Ruling D-6 (dev, 2026-10-06) — mecanismo de atribuição das 2 roles
 
@@ -168,7 +188,8 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
   - [ ] As 3 genéricas e as 2 da 29.4 permanecem intactas (sem regressão na `Ability`/cascata).
   - [ ] Testes: seeds idempotentes (2ª execução = 0 criações); role nova não altera comportamento sob `:off`.
   - [ ] Sem alteração de schema além do que o Rolify já provê.
-- Status: ⚠️ **Não se aplica (ruling 30.3 = A)** — a expansão para as 11+7 não ocorre. **Substituída pela 30.9** (seed + atribuição, restrita às 2 roles da cascata). Texto preservado para rastreabilidade.
+  - **Substituição (emenda 2026-10-07):** estes critérios passam a valer **dentro de cada tarefa futura** que implementar uma seção do `PRD-REGRAS-NEGOCIO-PRESENCA.md` (a role nasce nessa tarefa, com a `Ability`/controller reabertos e o teste da role **inerte** — sem atribuição não muda comportamento). **Não há mais tarefa "de roles" autônoma** (big-bang).
+- Status: ⚠️ **Substituída pela política incremental de roles (emenda do dev, 2026-10-07; ver §"Emenda do ruling A").** A tarefa **autônoma de big-bang** (definir/semear as 11+7 de uma vez) **não se aplica** — sob o ruling **A** ela nunca criaria as 11+7, e sob a **emenda** a criação de role deixa de ser tarefa própria: vira **parte de cada tarefa futura que implementa a seção do PRD que consome a role** (ver regra operacional no brief §9.2). O que sobrevive do escopo desta tarefa (as 2 roles da cascata) foi entregue na **30.9** (30.9a seed ✅ + 30.9b migração ✅). Texto preservado para rastreabilidade.
 
 #### Tarefa 30.5 — Atribuição/migração das roles a partir do Intranet
 - User Story: Como administrador, quero migrar 1:1 as roles legadas dos usuários do Intranet, para que a atribuição real de acesso exista no Frequencia após o desligamento do legado.
@@ -179,7 +200,7 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
   - [ ] Relatório de **não-resolvidos** (usuário/CPF sem correspondência local) — nada é silenciosamente ignorado.
   - [ ] Dry-run sem escrita.
   - [ ] Testes com os mesmos padrões da 29.3 (save/restore do método original, nunca `remove_method` destrutivo).
-- Status: ⚠️ **Não se aplica (ruling 30.3 = A)** — não há migração 1:1 das 11 roles. O subconjunto de atribuição que sobrevive (as 2 roles da cascata) é tratado na **30.9b** (**Q9**). Texto preservado para rastreabilidade.
+- Status: ⚠️ **Não se aplica (ruling 30.3 = A; emendado 2026-10-07)** — não há migração 1:1 das 11 roles **nesta sprint**. O subconjunto de atribuição que sobrevive **agora** (as 2 roles da cascata) é tratado na **30.9b** (**Q9**). **Sob a política incremental**, a migração 1:1 (D-6/i) passa a ser o **padrão de atribuição da role criada em cada tarefa futura** que implementa uma seção do PRD. Texto preservado para rastreabilidade.
 
 #### Tarefa 30.9 — Semear as 2 roles da cascata e atribuí-las (residual do ruling A; substitui 30.4/30.5)
 - User Story: Como administrador, quero as 2 roles que a cascata realmente consome (`visualiza_frequentadores`/`visualiza_terceirizados`) **semeadas e atribuídas**, para que os passos 2/3 da cascata passem a disparar **de fato** sob `:on` — a **30.9a** fez as 2 existirem no seed; a **30.9b** as **atribui** (sem atribuição, a flag segue sem efeito real para os 2 caminhos de role).
@@ -287,8 +308,8 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
 | 30.1 — Plano D5 + aprovação do dev (GATE) ✅ | 2 | Dev B/CTO | — |
 | 30.2 — HTTP do gate D5 sob a flag ✅ | 5 | A | 30.1 |
 | 30.3 — Ruling roles granulares (GATE) ✅ **A** | 3 | CTO/PO | — |
-| ~~30.4 — Implementar roles (definição + seeds)~~ — **N/A (ruling 30.3 = A)** | — | — | — |
-| ~~30.5 — Atribuição/migração das roles~~ — **N/A (ruling 30.3 = A)** | — | — | — |
+| ~~30.4 — Implementar roles (definição + seeds)~~ — **Substituída pela política incremental (emenda 2026-10-07; ver §"Emenda do ruling A")** | — | — | — |
+| ~~30.5 — Atribuição/migração das roles~~ — **N/A (ruling A)**; sob a emenda, a migração 1:1 (D-6/i) é o padrão de atribuição **da role criada em cada tarefa** | — | — | — |
 | 30.6 — Fechar 🟡S2 (PORO + twin SQL) ✅ | 2 | A | — |
 | 30.7 — Fechar 🟡S3 (`frequencia_por_orgao`) ✅ | 2 | A | — |
 | 30.9a — Seed idempotente das 2 roles da cascata ✅ | 2 | B | 30.3 ✅ |
@@ -299,12 +320,12 @@ O registro anterior deste arquivo (**Q9**, §30.9b, Riscos) afirmava que a migra
 | 30.10 — Garantir o `User` local dos gestores de unidade (Pessoas) ✅ | 3 | B | — (precede 30.8) |
 | **Total** | **25** | | |
 
-> **Base do total:** 30.4 (3) + 30.5 (3) saem (=N/A); entra a **30.9** = 30.9a (2) + **30.9b (3)** → 23 − 6 + 5 = **22**. O "+3" antes **condicional** da 30.9b **se realizou** (D-6 = (i)). **+3** pela frente 5 (**30.10**, diretiva do dev de 2026-10-07) → **25**.
+> **Base do total:** 30.4 (3) + 30.5 (3) saem (**30.4 = substituída pela política incremental**; 30.5 = N/A); entra a **30.9** = 30.9a (2) + **30.9b (3)** → 23 − 6 + 5 = **22**. O "+3" antes **condicional** da 30.9b **se realizou** (D-6 = (i)). **+3** pela frente 5 (**30.10**, diretiva do dev de 2026-10-07) → **25**. A **emenda de 2026-10-07** (30.4 → política incremental) **não altera o total**: a expansão incremental **não** é escopo da Sprint 30 (cada role futura é orçada na tarefa que a consome).
 
 ## Caminho Crítico
 
 **30.3 (✅) → 30.9a (✅) → 30.9b (3) → 30.10 (3) → 30.8 (3)** — **9 pontos residuais** (a 30.3 já fechada e a 30.9a já entregue).
-**D-6 = (i) confirmado** → o "+3" antes **condicional** agora **se realizou** (a 30.9b = 3 pts entra no caminho). **30.4/30.5 = N/A**
+**D-6 = (i) confirmado** → o "+3" antes **condicional** agora **se realizou** (a 30.9b = 3 pts entra no caminho). **30.4 = substituída pela política incremental** (emenda 2026-10-07), **30.5 = N/A**
 (ruling 30.3 = A). Em paralelo, o ramo do gate D5 (**30.1 → 30.2**, 7 pontos, já implementado/aprovado) precisa
 **fechar antes da 30.8** porque a 30.8 observa o estado `:on` completo na mesma flag. Os débitos
 **30.6 (✅)** e **30.7 (✅)** são independentes e já rodaram em paralelo (teste-hardening, sem tocar produção).
@@ -315,13 +336,13 @@ sem lotação vigente** não logam e o shadow fica **cego no passo 5**.
 > **Ordem de dependências (explicitada pelo dev):** frente 1 (30.2) e frente 4 (30.8) tocam a **mesma flag**;
 > as roles (frente 2 → agora **30.9**) **precedem** o rollout — são a **dependência de valor real** da cascata.
 > O gate **30.1** (aprovação do dev) **travava** a 30.2 (✅ satisfeito); o gate **30.3** (ruling do PO) **travava**
-> a implementação da frente 2 — **✅ satisfeito em 2026-10-06 (ruling A)** → desbloqueia a **30.9** (e **não** a
-> 30.4, que é N/A). **D-6 = (i) ✅ (2026-10-06)** desbloqueia a **30.9b**. A **30.8** depende agora de **30.9a ✅ + 30.9b** (as 2 roles semeadas **e atribuídas**), não de 30.4/30.5.
+> a implementação da frente 2 — **✅ satisfeito em 2026-10-06 (ruling A), emendado em 2026-10-07 (A + expansão incremental)** → desbloqueia a **30.9** (e **não** a
+> 30.4, que é **substituída pela política incremental**). **D-6 = (i) ✅ (2026-10-06)** desbloqueia a **30.9b**. A **30.8** depende agora de **30.9a ✅ + 30.9b** (as 2 roles semeadas **e atribuídas**), não de 30.4/30.5.
 
 ## Riscos
 
 - **Alteração de autorização/rotas (30.2).** Ampliar acesso indevidamente é o risco central; mitigado por: gate **só passo 5** (`gestor_de_orgao_do?`), nunca `pode_ver?`; fail-closed em `:off`/`:shadow`; teste explícito "`GestorIndividual` vê mas não desconsidera"; aprovação do dev (30.1) antes da implementação.
-- **Escopo das roles (30.3).** ✅ **Rulingado (A, 2026-10-06)** — "manter simplificado × expandir" = **A**; abrangência = **só frequência**; perfis adiados. 30.4/30.5 = N/A; a estimativa precisa agora é da **30.9b** (D-6 = (i), 3 pts; Q9 ✅).
+- **Escopo das roles (30.3).** ✅ **Rulingado (A, 2026-10-06), emendado em 2026-10-07** — "manter simplificado × expandir" = **A + expansão incremental dirigida pelo PRD**; abrangência = **dirigida pelo PRD, caso a caso** (nem "só frequência" fixo, nem "todas de uma vez"); perfis adiados. **30.4 = substituída pela política incremental**, 30.5 = N/A; a estimativa precisa **desta sprint** é da **30.9b** (D-6 = (i), 3 pts; Q9 ✅). **Risco remanescente 🟡:** a expansão incremental exige que **cada** tarefa que implemente uma seção do PRD **crie a role e reabra a `Ability`/controller junto** — se uma tarefa implementar a seção **sem** criar a role (ou criar a role **sem** o consumidor), volta o risco da **role decorativa** (§7 do brief). Mitigação: a regra operacional do brief §9.2 + **Q13** (defaults a confirmar com o dev).
 - **Atribuição das 2 roles (30.9b, Q9 ✅ RESOLVIDA).** O seed (30.9a ✅) é factível, mas **sem atribuição ele fica decorativo** — a cascata só dispara sob `:on` **com** as roles atribuídas. **Decidido D-6 = (i)**: migração 1:1 via a conexão **`intranet_development` já configurada** (read-only; a **fonte existe** pela conexão direta — retirado o registro anterior de "dado inexistente aqui"). Riscos remanescentes: (a) **não-resolvidos** (usuário legado sem `User` local correspondente, `profileId`/`roleId` inesperado) — mitigado pelo **relatório** no padrão `ImportarGestoresIndividuaisService`; o **limiar de aborto é parâmetro a confirmar com o dev (Q11)**, não decidido pelo CTO; (b) **read-only por contrato** — o serviço **não pode** escrever no banco legado ("a api-ponto NUNCA escreve nesse banco"); (c) **volume (9.381 usuários)** exige leitura eficiente (join único) e `DRY_RUN` antes da execução real.
 - **Cobertura do `User` local dos gestores (30.10, diretiva do dev 2026-10-07).** O furo é de **cobertura de dados**, não de autorização (o passo 5 já lê gestor do Pessoas). Riscos: (a) gestor de unidade **inelegível/extinta** — decidir se cria `User` (**Q12**, decisão do dev; recomendado sim, é conta neutra); (b) **colisão** de `username`/CPF existente — vai a relatório, nunca resolve em silêncio; (c) criar `User`s altera **contagens** de FrequentadorCache/relatórios → `DRY_RUN` antes da real; (d) **cobertura de prod não medida** (localhost). Mitigação estrutural: idempotência por CPF + `DRY_RUN` + relatório sem PII (mesmo padrão da 29.3/30.9b).
 - **S3 sem decisão de produto (Q4).** Contas locais sem CPF sob `:on` perdem os próprios registros (fail-closed). A matriz cobre o comportamento, mas a **decisão de produto** é do PO e não é resolvida aqui.
@@ -344,10 +365,10 @@ sem lotação vigente** não logam e o shadow fica **cego no passo 5**.
 
 ## Definição de Pronto
 
-- [ ] 30.1–30.3, 30.6–30.9 e **30.10** com status e Linha do Tempo preenchidos (**30.4/30.5 = N/A**); gates (30.1, 30.3) com aprovação registrada.
+- [ ] 30.1–30.3, 30.6–30.9 e **30.10** com status e Linha do Tempo preenchidos (**30.4 = substituída pela política incremental**; **30.5 = N/A**); gates (30.1, 30.3) com aprovação registrada.
 - [ ] Testes: suíte direcionada verde + suíte completa sem regressão (as 12 pré-existentes inalteradas); mutation testing das tarefas 30.2/30.6/30.7; **30.9 com teste de idempotência do seed (2ª execução = 0 criações)**; **30.9b com teste de migração injetada (registros em memória, sem tocar o legado), `DRY_RUN` sem escrita, 2ª execução = 0 criações e relatório de não-resolvidos — save/restore, nunca `remove_method`**.
 - [ ] Sem commit/push (`COMMIT_MODE=manual`); stage seletivo quando autorizado.
-- [ ] Perguntas abertas ao dev/PO (Q1–Q11) respondidas ou explicitamente adiadas.
+- [ ] Perguntas abertas ao dev/PO (Q1–Q13) respondidas ou explicitamente adiadas.
 - [ ] **30.9b:** `DRY_RUN=1 bin/rails frequencia:migrar_roles_cascata` executado contra o legado, com a taxa de não-resolvidos avaliada contra o limiar de aborto (**Q11** — decisão do dev) antes da execução real.
 - [ ] **30.10:** serviço read-only executado em **`DRY_RUN`** contra o Pessoas antes da execução real, com a cobertura dos **518** gestores (furo dos **24** sem lotação vigente) reportada; **2ª execução = 0 criações**; relatório de não-resolvidos sem PII; testes com **save/restore do método original, nunca `remove_method`**.
 
@@ -367,6 +388,11 @@ sem lotação vigente** não logam e o shadow fica **cego no passo 5**.
 - **Q10 (frente 2) — D-4 contagem 11×13. ✅ PREJUDICADA sob o ruling A.** Sem expansão, a divergência "11 roles (§2.3) × 13 nomes enumerados" é **moot**. Só volta a importar num **épico de expansão** futuro (o insumo já está no brief §2.1).
 - **Q11 (frente 2 / 30.9b) — limiar de aborto de não-resolvidos. ✅ RESOLVIDA (dev, 2026-10-06): ABORTAR ACIMA DE 10%.** Se a proporção de não-resolvidos (login legado sem `User` local correspondente) passar de **10%** na execução real, a rake **aborta** (exit ≠ 0) — sinal de que o eixo de casamento `login → username` está errado e precisa ser revisto antes de aplicar. **✅ IMPLEMENTADO (2026-10-06):** `Resultado#proporcao_nao_resolvidos` + `Resultado#abortar_por_nao_resolvidos?` (constante `LIMIAR_NAO_RESOLVIDOS = 0.10`, comparação estrita `>`; guarda de divisão por zero); a rake passou a usar o predicado (o gatilho deixou de ser "qualquer não-resolvido"). O resumo exibe a proporção e o limiar. Testes: +5 (20%/10% exato/5%/vazio/resumo) → arquivo 17/54/0F/0E; **mutação 2/2 mortas** (`>`→`>=` mata o "10% exato"; remoção do guard mata "legado vazio"). Erros (exceções) seguem abortando sempre; `DRY_RUN` nunca aborta por pendência.
 - **Q12 (frente 5 / 30.10) — gestores de unidades inelegíveis/extintas (NOVA, aberta; decisão do dev).** Criar `User` local também para gestores cujo **único** vínculo de gestão aponta para unidade **inelegível** (`active != true`/extinta)? **Recomendação do planejamento: SIM** — a conta é neutra (não concede autorização por si; a elegibilidade é avaliada em tempo de request pelo passo 5, `unidade.elegivel?`), e não criá-la produziria uma cobertura **parcial artificial**. **NÃO decide sozinho** — decisão operacional do dev, como a **Q11**.
+- **Q13 (frente 2 / reabertura da 30.4, 2026-10-07) — defaults operacionais da política incremental (NOVA, aberta; decisão do dev).** A política **"role nasce na tarefa que consome a seção do PRD"** está fixada (verbatim do dev em §"Emenda do ruling A"); faltam **defaults operacionais** que o CTO **não** decide sozinho:
+  - **(a) Atribuição na mesma tarefa?** A role de cada seção futura é criada **na própria tarefa** que a consome (confirmado). A **atribuição** dela também entra nessa tarefa (aplicando o padrão **D-6/i**), ou continua como **tarefa de migração à parte** (como foi a 30.9b vs. 30.9a)?
+  - **(b) D-4 (contagem 11×13) e composição dos perfis.** Quando a expansão voltar (ex.: seção de excepcionais), a divergência **"11 roles (§2.3) × 13 nomes"** e a **composição omissa dos 7 perfis** (`PresencaProfilesEnum`) precisam ser resolvidas — de quem é a decisão (dev/PO × consulta ao legado)?
+  - **(c) Aplica-se às seções já existentes admin-only?** A política vale só para seções **novas**, ou também para telas que já têm consumidor mas são **admin-only** hoje (estações, `GestorIndividual`) — isto é, **reabrir a `Ability`** para trocar "admin-only" por role granular **também** é gatilho da política?
+  > **Recomendação do CTO 🟡 (o dev decide):** (a) atribuição **na mesma tarefa**, via D-6/i, salvo seção sem dado no legado; (b) **D-4/perfis** só quando a expansão de fato ocorrer — decisão do dev/PO com o insumo do brief §2; (c) **sim**, a política cobre seções existentes admin-only (é lá que a role **tem** consumidor — sem reabrir, vira decorativa).
 
 **Linha do Tempo:**
 
@@ -384,4 +410,5 @@ sem lotação vigente** não logam e o shadow fica **cego no passo 5**.
 | 2026-10-07 | **Sprint Planner abriu a frente 5 (30.10)** por **diretiva do dev** ("verificar gestores ... e implementar a cascata sobre isso"): registrou o **ruling** (gestor = gestor de unidade/órgão; **fonte = Pessoas**; não é role), os **achados** (1330 unidades; **518** gestores distintos; **494** com lotação vigente; **24 sem lotação**) e a **correção factual** (a diretiva partia de role inexistente). Detalhou a tarefa **30.10 — Garantir o `User` local dos gestores de unidade** (3 pts, Dev B), **na Sprint 30**, precedendo a 30.8 | 30.10 registrada; total 22 → **25**; **Q12 aberta** (gestores de unidades inelegíveis); débito "24 gestores sem `User`" registrado; caminho crítico/DoP/riscos atualizados |
 | 2026-10-07 | Code Specialist implementou a **30.10** (`GarantirUserLocalService` compartilhado + `ImportarGestoresDeUnidadeService` + rake + 14 testes; branch `feature/demanda-30-10-user-local-gestores-unidade`); extração DRY do job p/ o colaborador (desvio de escopo sinalizado) | 30.10 ✅ implementada — evidência 14/56/0F/0E (service), 24/75/0F/0E (job+service), RuboCop 0; aguarda Code Reviewer |
 | 2026-10-07 | Code Reviewer revisou a **30.10**: reproduziu 14/56/0F/0E, 24/75/0F/0E, RuboCop 0; verificou comportamento-preservante do job, read-only no Pessoas, PII contida, idempotência (0 criações/0 escritas na 2ª), dedup/órfã/colisão, `normalizar_cpf` sem duplicata; confirmou stubs com save/restore (nunca `remove_method`). **Desvio de escopo resolvido: extração ACEITA** (paridade provada). 2 🟡 + 2 🟠 não-bloqueantes | 30.10 ✅ **Aprovada** (0 blockers 🔴) — `docs/quality/review_report_30_10.md`; entrega via Source Code Delivery (stage seletivo; sem commit/push — `COMMIT_MODE=manual`) |
+| 2026-10-07 | **CTO registrou a reabertura da 30.4** pelo dev e a **emenda ao ruling 30.3 = A**: política de **criação incremental de roles dirigida pelo PRD** — a role nasce **na mesma tarefa** que implementa a seção do `PRD-REGRAS-NEGOCIO-PRESENCA.md` que a consome (verbatim do dev: *"vamos criando as roles de acordo com o que for sendo implementado baseado no PRD de regras de negocio"*). **Não é big-bang** (não cria as 11+7 de uma vez), **não é "nada"**. Histórico do ruling A **preservado** (§"Ruling registrado", 2026-10-06) | 30.4 = **Substituída pela política incremental** (não mais "N/A" puro); brief §4/§5/§8 emendados + **§9 (Desfecho e regra operacional)** adicionado; **Q13 aberta** (defaults operacionais da política); **nenhuma tarefa nova criada**, total segue **25**; **doc-only, sem commit** |
 

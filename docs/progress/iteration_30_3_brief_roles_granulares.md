@@ -1,9 +1,9 @@
 # Brief de decisão — Tarefa 30.3: Roles granulares (PRD §9 item 2)
 
 > **Tipo:** brief de decisão (doc-only). **Não** é o ruling — o ruling é do **dev/PO**.
-> **Autor:** CTO · **Data:** 2026-10-06 · **Status:** insumo de decisão — **aguarda ruling**
-> **Rastreabilidade:** `PRD-REGRAS-NEGOCIO-PRESENCA.md` §2.3, §6, §9 item 2 · `docs/adr/0010` (passos 2/3 da cascata) · `docs/progress/iteration_29.md` (ruling D1, §Decisão D1; quadro §9) · `docs/progress/iteration_30.md` §30.3 (Q3)
-> **Objetivo:** encurtar a decisão do dev/PO entre **(A) manter simplificado** e **(B) expandir**, e fixar a **abrangência** (Q3). O dev decide.
+> **Autor:** CTO · **Data:** 2026-10-06 · **Status:** insumo de decisão — **rulingado (dev): D-1 = A; emendado em 2026-10-07 para A + expansão incremental dirigida pelo PRD** (ver **§9 — Desfecho e regra operacional**)
+> **Rastreabilidade:** `PRD-REGRAS-NEGOCIO-PRESENCA.md` §2.3, §6, §9 item 2 · `docs/adr/0010` (passos 2/3 da cascata) · `docs/progress/iteration_29.md` (ruling D1, §Decisão D1; quadro §9) · `docs/progress/iteration_30.md` §30.3 (Q3), §"Ruling registrado" (2026-10-06) e §"Emenda do ruling A" (2026-10-07)
+> **Objetivo:** encurtar a decisão do dev/PO entre **(A) manter simplificado** e **(B) expandir**, e fixar a **abrangência** (Q3). O dev decide. **Desfecho:** D-1 = **A + expansão incremental**; D-3 = **dirigida pelo PRD, caso a caso** (§9).
 
 ---
 
@@ -93,6 +93,8 @@ Nada neste brief toca `app/`, seeds, rotas ou testes.
 
 ## 4. As duas opções macro
 
+> **⚠️ Desfecho (dev, 2026-10-07):** **D-1 = A + expansão incremental**. A opção vencedora **não é** A puro (só as 2 roles) **nem** B puro (big-bang 11+7): é **A com expansão incremental dirigida pelo PRD** — ver **opção A+** ao fim desta §4 e **§9 (Desfecho e regra operacional)**. As opções A/B abaixo ficam **preservadas como histórico** do que foi decidido e por quê.
+
 ### Opção A — Manter simplificado (3+2) e evoluir pontualmente
 
 **O que é:** manter `admin`/`gestor`/`operador` + as 2 da D1; **semear/atribuir** as 2 roles de cascata; abrir granularidade **só onde há consumidor** (estações e gestor-individual no máximo). Nada de 11+7.
@@ -133,6 +135,21 @@ Nada neste brief toca `app/`, seeds, rotas ou testes.
 | 30.4/30.5 | 🟢 **cabe** se restrito a #1/#2; passa a **estourar** se incluir #3 (reabrir 4 granularidades de estação + GI) |
 | Diferença vs A | só vale a pena se a **abrangência (Q3) = todas as seções** |
 
+### Opção A+ — A com expansão incremental dirigida pelo consumidor (ESCOLHIDA — dev, 2026-10-07)
+
+**O que é:** manter o ruling **A** (3+2 roles; as 2 da cascata semeadas/migradas na **30.9** ✅) **e**, a partir daí, **criar cada role granular do legado sob demanda — na mesma tarefa que implementa a seção do `PRD-REGRAS-NEGOCIO-PRESENCA.md` que a consome**. A role nasce **junto** com a `Ability`/controller que a usa (não antes, não "solta"). **Nada de 11+7 de uma vez** (não é B.1) e **nada de congelar a expansão** (não é A puro).
+
+| | |
+|---|---|
+| Cascata ganha | 🟢 o mesmo que A (as 2 roles da cascata, entregues na 30.9); a expansão **não** é escopo da Sprint 30 |
+| Risco da "role decorativa" (§7) | 🟢 **eliminado por construção** — a role só existe **com** o consumidor (a tarefa que a cria também reabre a `Ability`/controller) |
+| Custo (30.4/30.5 desta sprint) | 🟢 **zero** — a tarefa "de roles" autônoma (big-bang) **não se aplica**; cada role futura é **orçada na tarefa que a consome** |
+| Diferença vs A | **A deixa de ser "fim da linha"** — vira o **piso**; a expansão passa a ser **dirigida pelo PRD, caso a caso** |
+| Diferença vs B | **não** exige reabrir a `Ability` de seções **inexistentes**; só se expande onde há seção implementável — **sem peso morto** |
+| Perfis (7 `PresencaProfilesEnum`) | 🟡 seguem **adiados** (D-5) — Rolify não modela bundles; sem consumidor |
+
+**Como funciona na prática (regra operacional — ver §9.2):** toda tarefa que implementar uma seção do PRD **cria, na própria tarefa, a role que ela consome e reabre a `Ability`/controller correspondente — com teste de que a role SEM atribuição não muda comportamento**. A atribuição segue o mecanismo **D-6/i** (migração 1:1 do legado) ou o que o dev definir para aquela role.
+
 ---
 
 ## 5. Q3 — Abrangência da integração
@@ -141,6 +158,9 @@ Nada neste brief toca `app/`, seeds, rotas ou testes.
 |---|---|---|
 | **Só frequência** | Só #8/#9 importam. As 11 restantes gateiam **outras seções** → criá-las agora = **peso morto** (sem consumidor). | 🟢 **cabe folgado** (provável **< 6 pts**) |
 | **Todas as seções** | Exige roles de **estação (#1–4)** e **gestor-individual (#10–11)** (telas existem) **e** as de excepcionais/retificadores/digital (telas **não** existem → role sem efeito). Implica reabrir `Ability`/controllers por seção. | 🟢 **ESTOURA** 6 pts (mesmo só estações+GI + reabertura de enforcement + migração) |
+| **Dirigida pelo PRD, caso a caso — ESCOLHIDA (dev, 2026-10-07)** | Não cria nada agora; a role de cada seção nasce **na mesma tarefa** que a implementa (a que **reabre a `Ability`/controller**). Evita a role decorativa **sem** virar big-bang; expande conforme o PRD avança. | 🟢 **custo zero** nesta sprint (30.4/30.5 = N/A/substituída); cada role é orçada **na tarefa que a consome** |
+
+🟢 **Desfecho da Q3 (dev, 2026-10-07):** **não** "só frequência" (fixo) **nem** "todas as seções" (de uma vez) — **dirigida pelo PRD, caso a caso**. Ver **§9**.
 
 🟢 **Fato que ancora a Q3:** as roles de **estação**, **excepcionais**, **gestor-individual**, **retificadores** e **cadastro digital** só fazem sentido **fora** do domínio de frequência — e várias apontam para **seções que não existem** no Frequencia. Logo, "expandir" sem "todas as seções" é **incoerente**; e "todas as seções" **não cabe** no orçamento 3+3 desta sprint.
 
@@ -176,11 +196,62 @@ Nada neste brief toca `app/`, seeds, rotas ou testes.
 
 ## 8. Decisões que o dev/PO precisam tomar
 
-| # | Decisão | Opções |
-|---|---|---|
-| **D-1** | Macro | **(A)** manter simplificado × **(B)** expandir |
-| **D-2** | Se (B): escopo | **B.1** completo (11–13+7) × **B.2** subconjunto mínimo (só as 2 da cascata + eventualmente estações/GI) |
-| **D-3** | Abrangência (Q3) | **só frequência** × **todas as seções** (estações/excepcionais/GI) |
+| # | Decisão | Opções | **Desfecho** |
+|---|---|---|---|
+| **D-1** | Macro | **(A)** manter simplificado × **(B)** expandir | ✅ **A + expansão incremental dirigida pelo PRD** (dev, 2026-10-07; **emenda** do ruling A de 2026-10-06 — ver §9) |
+| **D-2** | Se (B): escopo | **B.1** completo (11–13+7) × **B.2** subconjunto mínimo (só as 2 da cascata + eventualmente estações/GI) | ✅ **N/A (big-bang)** — sob A+ **não há** subconjunto a fixar de uma vez; o escopo é **por seção do PRD, caso a caso** (§9.3) |
+| **D-3** | Abrangência (Q3) | **só frequência** × **todas as seções** (estações/excepcionais/GI) | ✅ **Dirigida pelo PRD, caso a caso** (dev, 2026-10-07) — **nem** "todas de uma vez" **nem** "nada"; cada seção implementada puxa a sua role (§9) |
 | **D-4** | Contagem | qual número vale: "11" (§2.3) × **13** nomes enumerados |
 | **D-5** | Perfis | entram no escopo? (exigem camada nova no Rolify — PRD omisso na composição) |
-| **D-6** | Atribuição (critério 4 da 30.3) | seed manual × **migração 1:1 do Intranet** (D1 aponta para 1:1) + tratamento de não-resolvidos |
+| **D-6** | Atribuição (critério 4 da 30.3) | seed manual × **migração 1:1 do Intranet** (D1 aponta para 1:1) + tratamento de não-resolvidos | ✅ **(i) migração 1:1 do legado** (dev, 2026-10-06) — implementada na **30.9b** (`Intranet::MigrarRolesCascataService`); ver `iteration_30.md` §"Ruling D-6" |
+
+---
+
+## 9. Desfecho (dev, 2026-10-07) — A + expansão incremental dirigida pelo PRD
+
+> **Reabertura da 30.4 pelo dev (2026-10-07).** Perguntado sobre a **abrangência** da expansão (**Q3 / D-3**), o dev respondeu **verbatim**:
+>
+> *"vamos criando as roles de acordo com o que for sendo implementado baseado no PRD de regras de negocio"*
+
+**Interpretação (CTO, tendo o texto acima como fonte):** política de **criação incremental, dirigida pelo consumidor**. As roles granulares do legado (§2.1) passam a ser criadas **sob demanda**, à medida que a **seção do `PRD-REGRAS-NEGOCIO-PRESENCA.md` correspondente for implementada** — a role nasce **na MESMA tarefa** que implementa a `Ability`/controller que a consome. **NÃO é big-bang** (não cria as 11+7 de uma vez) e **NÃO é "nada"** (a política não congela: expande conforme o PRD avança). Isso **elimina por construção** o risco da "role decorativa" (§7).
+
+### 9.1. Como a emenda refina o ruling 30.3 = A
+
+| Antes (ruling A, 2026-10-06) | Depois (emenda, 2026-10-07) |
+|---|---|
+| **D-1 = A** — manter simplificado; **só** as 2 roles da cascata; nada de 11+7 | **D-1 = A + expansão incremental** — mantém o mínimo, **mas** as demais roles passam a ser criadas **sob demanda**, dirigidas pelo PRD |
+| **D-3 = só frequência** (expansão fora / épico próprio) | **D-3 = dirigida pelo PRD, caso a caso** — cada seção implementada puxa a sua role; **nem** "todas de uma vez" **nem** "nada" |
+| **30.4/30.5 = N/A** puro | **30.4 = substituída pela política incremental**; a criação de role vira **parte de cada tarefa futura** que implementa a seção do PRD |
+
+O histórico do ruling A **não é apagado** — fica registrado em `iteration_30.md` §"Ruling registrado" (2026-10-06) e nesta §4/§8; esta §9 é a **emenda** que o refina.
+
+### 9.2. Regra operacional (a política em uma frase)
+
+> **Toda tarefa que implementar uma seção do `PRD-REGRAS-NEGOCIO-PRESENCA.md` cria, na própria tarefa, a(s) role(s) que ela consome e reabre a `Ability`/controller correspondente — com teste de que a role SEM atribuição não muda comportamento (inerte fora do consumidor).** A atribuição segue o mecanismo **D-6/i** (migração 1:1 do legado) ou o que o dev definir para aquela role.
+
+**Corolários:**
+- **Sem role decorativa:** a role só nasce **com** o consumidor (§7) — vira gatilho, não dívida.
+- **Custo orçado na tarefa que a consome**, não numa tarefa "de roles" autônoma (a 30.4 big-bang deixa de existir).
+- **Atribuição:** herda o padrão **D-6/i** (read-only do legado, `DRY_RUN`, relatório de não-resolvidos) — ver §8 D-6.
+- **Teste obrigatório da role inerte:** sem atribuição, não altera comportamento (evita regressão silenciosa sob `:off`).
+
+### 9.3. Gatilhos futuros — qual seção do PRD traz qual role
+
+| Seção do PRD (se/quando implementada) | Role(s) que nascem **na mesma tarefa** | Existe no Frequencia hoje? |
+|---|---|---|
+| §4.3 / §6 — cap de banco de horas + 4 flags `CalculoDiario` | `PRESENCA_GERENCIA_FREQUENTADORES` | 🟢 **Não** — só a coluna `descontado_em_folha`; as `liberado_*`/`permitido_*` não existem no schema |
+| §2.3 / §9 item 4 — Direitos, Feriados, Dias Excepcionais, Registros Manuais, Regimes | `PRESENCA_GERENCIA_EXCEPCIONAIS` + `PRESENCA_VISUALIZA_EXCEPCIONAIS` | 🟢 **Só `Regime`** (admin-only); **não há** modelos Feriado/DiaExcepcional/Direito/RegistroManual |
+| §8 / §2.3 — estações (ver/controlar/gerenciar/cadastrar) | `PRESENCA_VISUALIZA_ESTACOES`, `PRESENCA_CONTROLA_ESTACOES`, `PRESENCA_GERENCIA_ESTACAO`, `PRESENCA_CADASTRA_ESTACAO` | 🟡 telas existem (**admin-only**); **controle remoto ausente** (há campos `vnc`/`anydesk`/`teamviewer`, sem ação) |
+| §2.5 / §9 item 7 — `GestorIndividual` como fonte de autorização | `PRESENCA_VISUALIZA_GESTOR_INDIVIDUAL`, `PRESENCA_GERENCIA_GESTOR_INDIVIDUAL` | 🟡 tela `admin/gestores_individuais` (**index apenas**); **write ausente** |
+| §2.3 — retificadores de banco de horas | `PRESENCA_GERENCIA_RETIFICADORES` | 🟡 model `RetificadorBancoHoras` existe; **sem controller/tela** |
+| §2.3 / §8 — cadastro de digital biométrica via estação | `PRESENCA_CADASTRO_DIGITAL` | 🔴 **Inexistente** (sem modelo/controller) |
+
+**O que NÃO existe no Frequencia hoje (não inventar):** modelos `Feriado`/`DiaExcepcional`/`Direito`/`RegistroManual`; as 4-5 flags `CalculoDiario` (§6); ação de controle remoto de estação; `GestorIndividual` **write**; controller/tela de retificadores; cadastro digital. As roles dessas seções **não** podem ser criadas "soltas" — seriam **decorativas** (§7).
+
+### 9.4. Perfis (7 `PresencaProfilesEnum`)
+
+Seguem **adiados** (D-5): Rolify não modela bundles/perfis nativamente e não há consumidor. Reavaliar **apenas se** o dev pedir, junto de uma seção que os consuma.
+
+### 9.5. Perguntas abertas geradas por esta emenda
+
+- **Q13 (defaults operacionais da política)** — ver `iteration_30.md` §"Perguntas abertas": (a) a **atribuição** da role entra na **mesma tarefa** ou em tarefa de migração à parte? (b) quando/quem resolve a **contagem 11×13 (D-4)** e a **composição dos 7 perfis**? (c) a política vale **também** para seções que já têm consumidor **admin-only** (estações/GI — reabrir a `Ability`)? **Decisão do dev** (recomendação do CTO 🟡 registrada na Q13).
