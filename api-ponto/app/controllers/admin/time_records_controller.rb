@@ -23,11 +23,6 @@ module Admin
       # Admin/gestor/operador podem visualizar (todos têm :read em :all).
       # Gestor também pode gerenciar TimeRecord, mas index é apenas leitura.
       authorize! :read, :all
-      # Anos disponíveis pro dropdown de filtro — do ano do registro mais
-      # antigo até o ano atual (nunca futuro). Sem registros ainda, mostra
-      # só o ano atual.
-      primeiro_ano = TimeRecord.minimum(:punched_at)&.year || Time.current.year
-      @anos_disponiveis = (primeiro_ano..Time.current.year).to_a.reverse
 
       # Monta a query base
       registros = TimeRecord.includes(:user).order(punched_at: :asc)
@@ -71,6 +66,18 @@ module Admin
         registros = registros.where(user_id: current_user.id)
         @user = current_user
       end
+
+      # Task 31 (fix de cobertura da cascata) — anos disponíveis pro dropdown
+      # derivados APENAS dos registros VISÍVEIS ao usuário: calculado DEPOIS de
+      # `restringir_frequencia` e do filtro `where(user_id: current_user.id)` do
+      # não-admin (e ANTES do filtro de ano/mês, senão o dropdown só mostraria
+      # o ano já selecionado). Antes era `TimeRecord.minimum(:punched_at)`
+      # GLOBAL, que revelava a um não-admin o ano da batida mais antiga de
+      # TERCEIROS (bug 🟡 do `bug_report_30_cobertura_cascata_bug-finder.md`).
+      # `except(:includes, :order)` evita que o `includes(:user)` force um JOIN
+      # na agregação — o cálculo roda limpo sobre os `where` já aplicados.
+      primeiro_ano = registros.except(:includes, :order).minimum(:punched_at)&.year || Time.current.year
+      @anos_disponiveis = (primeiro_ano..Time.current.year).to_a.reverse
 
       # Filtro por ano/mês (substituiu o calendário De/Até) — o dropdown do
       # lado do cliente já não exibe ano/mês futuro, mas travamos aqui
