@@ -1,5 +1,12 @@
 module Admin
   class UsersController < Admin::ApplicationController
+    # Task 31 (fix de cobertura da cascata) — a listagem lê a MESMA fonte de
+    # `admin/frequentadores` (`Pessoas::Vinculo.frequentadores_ativos`), então
+    # precisa aplicar a MESMA cascata. Sem o concern, um autenticado sem role
+    # enumerava o roster inteiro de frequentadores (bug 🔴 do
+    # `bug_report_30_cobertura_cascata_bug-finder.md`).
+    include FrequenciaAuthorization
+
     before_action :set_user, only: [:edit, :update]
     # Task 23.7 — CanCanCan: load_and_authorize_resource para edit/update
     # (manage User). Index usa autorização explícita porque não segue
@@ -16,9 +23,19 @@ module Admin
       # Task 23.7 — CanCanCan: autorização explícita para leitura da listagem.
       # Admin/gestor/operador podem visualizar (todos têm :read em :all).
       authorize! :read, :all
+
+      # Task 31 — cascata (atrás da flag). A listagem de usuários é a MESMA
+      # fonte de `/frequentadores` (29.7): com a flag LIGADA, restringe aos
+      # CPFs visíveis do usuário logado; em shadow, loga o que seria negado
+      # sem restringir; desligada, nada muda (paridade com a outra tela).
+      observar_cascata_frequentadores
+      # Task 29.8 (débito S4) — no `:on`, registra a negação EFETIVA dos
+      # frequentadores que sairão da listagem; no shadow é no-op.
+      registrar_negacoes_frequentadores
+
       @vinculos = Pessoas::Vinculo.frequentadores_ativos(
         nome: params[:nome],
-        incluir_cpfs: cpfs_exigidos_pelos_filtros_locais,
+        incluir_cpfs: incluir_cpfs_com_cascata,
         excluir_cpfs: cpfs_excluidos_pelos_filtros_locais.presence
       ).page(params[:page])
 
@@ -30,14 +47,11 @@ module Admin
       # Users locais SEM cpf (ex: admins criados manualmente, sem vínculo
       # no pessoas2) não aparecem em `@vinculos` de jeito nenhum — listados
       # à parte pra não ficarem invisíveis/inacessíveis pela tela (decisão
-      # do usuário, 2026-09-02).
-      @users_sem_cpf = User.where(cpf: nil).order(:nome_completo)
-      @users_sem_cpf = @users_sem_cpf.where("nome_completo ILIKE ?", "%#{params[:nome]}%") if params[:nome].present?
-      @users_sem_cpf = @users_sem_cpf.where("username ILIKE ?", "%#{params[:username]}%") if params[:username].present?
-      @users_sem_cpf = @users_sem_cpf.where(status: params[:status_filtro]) if params[:status_filtro].present?
-      if params[:digital].present?
-        @users_sem_cpf = @users_sem_cpf.where(params[:digital] == "1" ? "digitais_hash IS NOT NULL" : "digitais_hash IS NULL")
-      end
+      # do usuário, 2026-09-02). Task 31: são contas LOCAIS (inclui admins) —
+      # expô-las a qualquer autenticado servia de guia de enumeração de contas
+      # privilegiadas (achado 3 do relatório). Gate admin-only, independente
+      # da cascata (a cascata governa frequência, não contas administrativas).
+      @users_sem_cpf = contas_locais_sem_cpf
     end
 
     def edit
@@ -68,6 +82,43 @@ module Admin
         permitted.extract!(:password, :password_confirmation)
       end
       permitted
+    end
+
+    # Task 31 — contas locais SEM cpf (inclui admins criados manualmente).
+    # Admin-only: são contas privilegiadas; o menor privilégio é não listá-las
+    # a um autenticado comum (era vetor de enumeração — achado 3 do relatório).
+    # Devolve `User.none` para quem não é admin, mantendo o contrato de
+    # relação que a view espera (`.any?`/`.each`).
+    def contas_locais_sem_cpf
+      return User.none unless admin_de_contas_locais?
+
+      contas = User.where(cpf: nil).order(:nome_completo)
+      contas = contas.where("nome_completo ILIKE ?", "%#{params[:nome]}%") if params[:nome].present?
+      contas = contas.where("username ILIKE ?", "%#{params[:username]}%") if params[:username].present?
+      contas = contas.where(status: params[:status_filtro]) if params[:status_filtro].present?
+      if params[:digital].present?
+        contas = contas.where(params[:digital] == "1" ? "digitais_hash IS NOT NULL" : "digitais_hash IS NULL")
+      end
+      contas
+    end
+
+    def admin_de_contas_locais?
+      current_user.admin? || current_user.has_role?(:admin)
+    end
+
+    # Task 31 — MESMO padrão de `admin/frequentadores_controller` (29.7):
+    # combina o filtro local (`incluir_cpfs`) com o conjunto de frequentadores
+    # visíveis quando a flag está LIGADA; `nil` = sem filtro (contrato de
+    # `frequentadores_ativos`). Espelha a paridade entre as duas telas que
+    # leem a mesma fonte.
+    def incluir_cpfs_com_cascata
+      exigidos = cpfs_exigidos_pelos_filtros_locais
+      return exigidos unless frequencia_cascata_ligada?
+      # Passo 2 da cascata: quem vê todos não é restringido.
+      return exigidos if frequencia_visao_global?
+
+      visiveis = frequentadores_visiveis_cpfs
+      exigidos.nil? ? visiveis : (exigidos & visiveis)
     end
 
     # Mesmo padrão de admin/frequentadores_controller.rb: filtros que só
