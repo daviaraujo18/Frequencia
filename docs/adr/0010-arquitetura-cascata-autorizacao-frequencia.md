@@ -4,7 +4,9 @@
 
 ## Status
 
-Aceito (CTO, 2026-10-05). Consolida em decisão durável o que a **Sprint 29** produziu e que hoje
+Aceito (CTO, 2026-10-05). **Emenda (CTO, 2026-10-08):** adicionada a **regra 9 — "ONDE restringir"**
+(enforcement opt-in por controller = débito estrutural; causa-raiz do Bug 🔴1 da auditoria de
+cobertura da Sprint 30). Consolida em decisão durável o que a **Sprint 29** produziu e que hoje
 vive apenas dentro de `docs/progress/iteration_29.md` (212 KB — registro primário, difícil de
 descobrir e auditar). Origem direta: `docs/progress/iteration_29_closure.md` §2 ("ADR-0010
 recomendada"). Orienta o rollout da flag, o consumo da cascata na Sprint 30 e a remoção do débito
@@ -140,6 +142,35 @@ Regras:
    `where`/`exists?`/associações). Fail-closed em todos os pontos: usuário/alvo ausente, ou Pessoas
    indisponível nos passos que dele dependem (3 e 5), resulta em **negação com log**.
 
+9. **ONDE restringir — enforcement é opt-in por controller (débito estrutural, emenda 2026-10-08).**
+   Esta ADR cobre bem o **COMO** restringir e deixava **implícito o ONDE**. A realidade medida pela
+   auditoria de cobertura da Sprint 30 (`docs/quality/bug_report_30_cobertura_cascata_bug-finder.md`)
+   é: a cascata **não tem enforcement central**. O concern `FrequenciaAuthorization` é **opt-in**
+   (incluído controller a controller) e `authorize! :read, :all` **satisfaz** o `check_authorization`
+   do base controller. Consequências duráveis:
+
+   - **`Ability#can?(:read, :all)` e `can?(:read, TimeRecord)` por CLASSE seguem `true` mesmo sob
+     `:on`**; a negação sob `:on` é **só** a filtragem de listagem + o bloco **por instância**. Toda
+     tela/autorização que pergunte por `:all`/classe **não** é restringida pela cascata.
+   - **Qualquer controller novo que leia `TimeRecord`/`CalculoDiario`/`Pessoas::Vinculo` e chame
+     `authorize! :read, :all` vaza silenciosamente** o roster/registros — **em qualquer valor da
+     flag**, inclusive `:on`. Caso concreto: `admin/users_controller#index` (Bug 🔴1 da auditoria;
+     corrigido em `f89d312`).
+   - **Regra de conformidade para novos controllers de frequência:** ao criar/alterar um controller
+     que leia `TimeRecord`/`CalculoDiario`/`Pessoas::Vinculo`, é **obrigatório** incluir
+     `FrequenciaAuthorization` (helpers `restringir_frequencia`/`observar_cascata_*`/
+     `registrar_negacoes_*`) **ou** justificar por que a tela está fora do alcance da cascata (ex.:
+     `/presenca/*` — pré-sessão, ver nota). "Perguntar por `:all`" **não** é suficiente.
+   - **Mitigação estrutural (em aberto — NÃO implementada):** (i) enforcement **central** (ex.:
+     `before_action` no base que exija participação na cascata para esses recursos), OU (ii) **teste
+     de conteúdo obrigatório por tela de listagem** (assertar a **ausência** do terceiro), no grão da
+     matriz de aceite da 29.8 — o teste anterior de `users#index` sancionava o **HTTP 200 sem
+     assertar conteúdo**, e foi por isso que o furo passou. Encaminhado como débito (dono: CTO;
+     chore/épico — Project Planner); registrado em `docs/progress/iteration_30.md` §"Débito ESTRUTURAL".
+   - **DRY correlato:** `incluir_cpfs_com_cascata` está **duplicado** (`frequentadores_controller` +
+     `users_controller`); o home natural é o concern `FrequenciaAuthorization`. Extração pendente
+     (débito 🟡; decisão do CTO) — **não** feita no fix `f89d312` para não arriscar a cascata.
+
 ## Consequências
 
 ### Positivas
@@ -166,6 +197,11 @@ Regras:
   `docs/progress/iteration_30.md` §"Emenda do ruling A" e `iteration_30_3_brief_roles_granulares.md` §9.)*
 - `frequencia_por_orgao` (agregação por CPF) tem grão próprio e cobertura de matriz mais rasa
   (débito **🟡S3**) — o denomínio de negação ali é por CPF, não por registro.
+- **Enforcement opt-in (débito estrutural, regra 9).** A cascata **só** vale onde um controller
+  explicitamente a inclui; como `authorize! :read, :all` satisfaz o `check_authorization`, um controller
+  novo que leia frequência **vaza silenciosamente** até ser instrumentado. O furo 🔴1 da Sprint 30
+  (`/users`) é a manifestação concreta. Mitigação estrutural (enforcement central ou teste de conteúdo
+  obrigatório) **ainda não implementada** — débito aberto (dono: CTO).
 
 ### Neutras
 
@@ -187,6 +223,10 @@ Regras:
 - O gate de **desconsiderar** usa **apenas** `gestor_de_orgao_do?` (passo 5); jamais `pode_ver?`.
 - **Regra do débito 🟡S2:** mudança em passo compartilhado exige teste do **PORO** (`motivo`) **e** do
   twin SQL no mesmo cenário, ambos no baseline.
+- **Regra 9 (onde restringir):** todo controller que leia `TimeRecord`/`CalculoDiario`/
+  `Pessoas::Vinculo` **deve** incluir `FrequenciaAuthorization` (ou justificar a exclusão — ex.:
+  `/presenca/*` pré-sessão); `authorize! :read, :all` **não** basta. Débito estrutural de enforcement
+  central registrado em `iteration_30.md` §"Débito ESTRUTURAL".
 
 ## Notas
 
@@ -196,6 +236,18 @@ Regras:
   (integração com Pessoas).
 - Fontes: `docs/progress/iteration_29.md` (rulings D1/D4/D5, Ruling M2, matriz 29.8);
   `docs/progress/iteration_29_closure.md` (§1–§2); PRD-REGRAS-NEGOCIO-PRESENCA §3 e §9 item 1.
+- **Emenda 2026-10-08 (CTO)** — origem: auditoria de cobertura da Sprint 30
+  (`docs/quality/bug_report_30_cobertura_cascata_bug-finder.md`) + fix `f89d312`
+  (`docs/quality/review_report_fix_cascata_cobertura.md`). Acrescenta a **regra 9** ("onde restringir") e
+  registra, para rastreabilidade: (i) o **débito estrutural** de enforcement opt-in (causa-raiz do Bug
+  🔴1 — `admin/users#index`); (ii) o **DRY** de `incluir_cpfs_com_cascata`; (iii) que os furos 🔴/🟡 só
+  fecham de fato sob **`:on`** (em `:off`/`:shadow` permanece a paridade atual). Fechamento da Sprint 30
+  em `docs/progress/iteration_30.md` §"Re-escopo da 30.8 e encerramento da Sprint 30".
+- **Fora do grão desta ADR — Bug 🟠2 (`/presenca/PontoDePresenca` + `DynFrequentadoresEstacao` sem
+  autenticação).** A cascata é **pré-sessão administrativa**; ali a barreira é outra (código de ativação
+  da Estação / restrição de rede, ADR-0003). **Risco aceito temporariamente** (decisão do dev,
+  2026-10-08; ADIADO até o fim dos testes manuais da Estação; **gatilho de revisita: após os testes**).
+  **Não resolvido** — registrado em `iteration_30.md` §"Bug 🟠2 = Risco Aceito".
 - Artefatos: `app/models/autorizacao_frequencia.rb`; `app/models/frequentadores_visiveis.rb`;
   `app/models/frequencia_autorizacao_cascata.rb`; `app/models/ability.rb`;
   `app/controllers/concerns/frequencia_authorization.rb`;
