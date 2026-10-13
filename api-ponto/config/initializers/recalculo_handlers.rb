@@ -23,4 +23,9 @@ Rails.application.config.to_prepare do
 
   ExecutaTarefasJob.registrar_handler("REGISTRO_FREQUENCIA", handler)
   ExecutaTarefasJob.registrar_handler("REGISTRO_ESTACAO", handler)
+
+  # `RECALCALAR_TODOS` (§5.2, L146 — task 31.4): gatilho GLOBAL, sem alvo no
+  # payload. Handler PRÓPRIO (eixo diferente dos handlers de registro): resolve
+  # todos os frequentadores com vínculo ativo e roda o pipeline por usuário.
+  ExecutaTarefasJob.registrar_handler("RECALCULAR_TODOS", RecalcularTodosHandler.method(:call))
 end
