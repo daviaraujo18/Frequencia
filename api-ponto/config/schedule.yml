@@ -38,6 +38,16 @@ calcular_frequencia:
   class: "CalcularFrequenciaJob"
   queue: default
 
+# Despacho da fila assíncrona de recálculo por evento (PRD §5.2) — drena
+# `TarefaRecalculo.pendentes` a cada 5min e despacha por `tipo_entidade` ao
+# handler correspondente. Tipos adiados (sem domínio no Frequência) são
+# pulados com segurança. Independente do `calcular_frequencia` acima: este é
+# reativo a eventos de mudança, não o recálculo noturno geral.
+executa_tarefas:
+  cron: "*/5 * * * *"
+  class: "ExecutaTarefasJob"
+  queue: default
+
 <% else %>
 {}
 <% end %>
