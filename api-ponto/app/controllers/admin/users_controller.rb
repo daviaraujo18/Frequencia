@@ -7,11 +7,11 @@ module Admin
     # `bug_report_30_cobertura_cascata_bug-finder.md`).
     include FrequenciaAuthorization
 
-    before_action :set_user, only: [:edit, :update]
+    before_action :set_user, only: [ :edit, :update ]
     # Task 23.7 — CanCanCan: load_and_authorize_resource para edit/update
     # (manage User). Index usa autorização explícita porque não segue
     # resources padrão (lê de Pessoas::Vinculo, não de User).
-    load_and_authorize_resource :user, only: [:edit, :update]
+    load_and_authorize_resource :user, only: [ :edit, :update ]
 
     # Pedido do usuário (2026-09-02): mesma abordagem já aplicada em
     # admin/frequentadores (task 10.10) — a listagem deixa de ser só o

@@ -48,7 +48,7 @@ Rails.application.routes.draw do
     # contas locais sem cpf (admins/cadastros manuais pré-existentes) — o
     # próprio controller bloqueia edição de quem tem cpf.
     get "users/:id/edit", to: "users#edit", as: :edit_user
-    resources :users, only: [:index, :update]
+    resources :users, only: [ :index, :update ]
     # Task 30.2 (Sprint 30) — ponto de entrada HTTP do gate D5 (desconsiderar),
     # atrás da flag `FREQUENCIA_AUTORIZACAO_CASCATA`. A rota SÓ existe quando a
     # cascata NÃO está em `:off`: a constraint é avaliada por request e
@@ -58,12 +58,12 @@ Rails.application.routes.draw do
     # (fail-closed; não revela autorização nem chega à Ability). Path real
     # `/time_records/:id/desconsiderar` (o controller vive em `scope module:
     # "admin"`, não `namespace` — ver plano da 30.1 §1.3).
-    resources :time_records, only: [:index] do
+    resources :time_records, only: [ :index ] do
       member do
         post :desconsiderar, constraints: ->(_req) { FrequenciaAutorizacaoCascata.modo != :off }
       end
     end
-    resources :frequentadores, only: [:index] do
+    resources :frequentadores, only: [ :index ] do
       member do
         post :reimportar_dados_pessoa
       end
@@ -73,23 +73,23 @@ Rails.application.routes.draw do
     end
     get "estacoes/new", to: "estacoes#new", as: :new_estacao
     get "estacoes/:id/edit", to: "estacoes#edit", as: :edit_estacao
-    resources :estacoes, only: [:index, :create, :update, :destroy]
+    resources :estacoes, only: [ :index, :create, :update, :destroy ]
     get "versoes/new", to: "versoes#new", as: :new_versao
     get "versoes/:id/edit", to: "versoes#edit", as: :edit_versao
-    resources :versoes, only: [:index, :create, :update, :destroy]
-    resources :relatorio_terceirizados, only: [:index]
+    resources :versoes, only: [ :index, :create, :update, :destroy ]
+    resources :relatorio_terceirizados, only: [ :index ]
     get "frequencia_por_orgao", to: "frequencia_por_orgao#index", as: :frequencia_por_orgao
     get "parcial", to: "parcial#index", as: :parcial
     get "frequencia", to: "frequencia#index", as: :frequencia
     get "regimes/new", to: "regimes#new", as: :new_regime
     get "regimes/:id/edit", to: "regimes#edit", as: :edit_regime
-    resources :regimes, only: [:index, :create, :update, :destroy]
-    resources :direitos_deveres, only: [:index] do
+    resources :regimes, only: [ :index, :create, :update, :destroy ]
+    resources :direitos_deveres, only: [ :index ] do
       collection do
         post :sincronizar_agora
       end
     end
-    resources :gestores_individuais, only: [:index]
+    resources :gestores_individuais, only: [ :index ]
   end
 
   namespace :presenca do

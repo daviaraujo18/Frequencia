@@ -2,7 +2,7 @@ require "test_helper"
 
 class CryptoDesTest < ActiveSupport::TestCase
   setup do
-    @plain_texts = ["jose.silva", "123456", "admin", "a", "test_user"]
+    @plain_texts = [ "jose.silva", "123456", "admin", "a", "test_user" ]
   end
 
   test "encrypt and decrypt roundtrip" do

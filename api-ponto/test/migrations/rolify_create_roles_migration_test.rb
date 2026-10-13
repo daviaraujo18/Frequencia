@@ -61,7 +61,7 @@ class RolifyCreateRolesMigrationTest < ActiveSupport::TestCase
   test "roles has composite index on name, resource_type, resource_id" do
     indexes = ActiveRecord::Base.connection.indexes("roles")
     composite = indexes.find do |i|
-      i.columns == ["name", "resource_type", "resource_id"]
+      i.columns == [ "name", "resource_type", "resource_id" ]
     end
     assert composite,
            "missing composite index on roles [name, resource_type, resource_id]"
@@ -70,7 +70,7 @@ class RolifyCreateRolesMigrationTest < ActiveSupport::TestCase
   test "users_roles has composite index on user_id, role_id" do
     indexes = ActiveRecord::Base.connection.indexes("users_roles")
     composite = indexes.find do |i|
-      i.columns == ["user_id", "role_id"]
+      i.columns == [ "user_id", "role_id" ]
     end
     assert composite,
            "missing composite index on users_roles [user_id, role_id]"

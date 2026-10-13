@@ -28,7 +28,7 @@
 #   processados, atualizados, sem_alteracao, ignorados, erros
 # }
 class Intranet::SyncDigitaisService
-  LOG_PATH = Rails.root.join('log', 'digitais_migracao.log')
+  LOG_PATH = Rails.root.join("log", "digitais_migracao.log")
 
   def self.call(dry_run: false, only_cpfs: nil)
     new(dry_run: dry_run, only_cpfs: only_cpfs).call
@@ -90,7 +90,7 @@ class Intranet::SyncDigitaisService
   end
 
   def carregar_mysql2!
-    require 'mysql2'
+    require "mysql2"
     true
   rescue LoadError => e
     log("ERRO: gem mysql2 indisponível. Verifique o Gemfile/libmariadb.so.3 (LD_LIBRARY_PATH) — #{e.message}")
@@ -113,11 +113,11 @@ class Intranet::SyncDigitaisService
     if Rails.env.production?
       # Produção: credenciais prioritariamente via variáveis de ambiente.
       config = config.merge(
-        host: ENV.fetch('INTRANET_HOST', config['host']),
-        port: ENV.fetch('INTRANET_PORT', config['port']).to_i,
-        username: ENV.fetch('INTRANET_USER', config['username']),
-        password: ENV.fetch('INTRANET_PASSWORD', config['password']),
-        database: ENV.fetch('INTRANET_DATABASE', config['database'])
+        host: ENV.fetch("INTRANET_HOST", config["host"]),
+        port: ENV.fetch("INTRANET_PORT", config["port"]).to_i,
+        username: ENV.fetch("INTRANET_USER", config["username"]),
+        password: ENV.fetch("INTRANET_PASSWORD", config["password"]),
+        database: ENV.fetch("INTRANET_DATABASE", config["database"])
       )
     end
 
@@ -127,7 +127,7 @@ class Intranet::SyncDigitaisService
   def converter_charset(registro)
     registro.transform_values do |valor|
       next if valor.nil?
-      valor.is_a?(String) ? valor.encode('UTF-8') : valor
+      valor.is_a?(String) ? valor.encode("UTF-8") : valor
     end
   end
 
@@ -181,7 +181,7 @@ class Intranet::SyncDigitaisService
   end
 
   def log(mensagem)
-    File.open(@log_path, 'a') do |f|
+    File.open(@log_path, "a") do |f|
       f.puts("[#{Time.current.strftime('%Y-%m-%d %H:%M:%S')}] #{mensagem}")
     end
     Rails.logger.info("[SyncDigitais] #{mensagem}")

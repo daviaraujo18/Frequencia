@@ -61,7 +61,7 @@ module Presenca
       assert_includes @response.body, 'id="loginManualForm"'
       assert_includes @response.body, 'name="accessKey"'
       assert_includes @response.body, 'name="plainPassword"'
-      assert_includes @response.body, 'Registrar'
+      assert_includes @response.body, "Registrar"
       refute_includes @response.body, 'id="btnLoginManual"'
     end
 

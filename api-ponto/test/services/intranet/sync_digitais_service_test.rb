@@ -111,7 +111,7 @@ class Intranet::SyncDigitaisServiceTest < ActiveSupport::TestCase
     ]
 
     stub_dados_intranet(stubs) do
-      resumo = Intranet::SyncDigitaisService.call(only_cpfs: ["11122233344"])
+      resumo = Intranet::SyncDigitaisService.call(only_cpfs: [ "11122233344" ])
       assert_equal 1, resumo[:atualizados]
     end
 

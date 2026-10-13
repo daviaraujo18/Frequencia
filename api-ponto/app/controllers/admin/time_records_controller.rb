@@ -88,7 +88,7 @@ module Admin
 
         if params[:mes].present?
           mes = params[:mes].to_i.clamp(1, 12)
-          mes = [mes, Time.current.month].min if ano == Time.current.year
+          mes = [ mes, Time.current.month ].min if ano == Time.current.year
 
           inicio = Time.zone.local(ano, mes, 1).beginning_of_month
           fim = inicio.end_of_month
@@ -108,7 +108,7 @@ module Admin
       @ano_titulo = params[:ano].present? ? params[:ano].to_i.clamp(..Time.current.year) : Time.current.year
       @mes_titulo = if params[:mes].present?
         m = params[:mes].to_i.clamp(1, 12)
-        @ano_titulo == Time.current.year ? [m, Time.current.month].min : m
+        @ano_titulo == Time.current.year ? [ m, Time.current.month ].min : m
       else
         Time.current.month
       end
@@ -130,13 +130,13 @@ module Admin
 
         @resumo_mensal = calcular_resumo_mensal(@user, @ano_titulo, @mes_titulo)
       else
-        agrupado = registros.group_by { |r| [r.punched_at.to_date, r.user_id] }
+        agrupado = registros.group_by { |r| [ r.punched_at.to_date, r.user_id ] }
 
         @daily_records = agrupado.sort_by { |chave, _| chave }
                                  .reverse
                                  .first(PER_PAGE)
                                  .map { |(data, _user_id), regs|
-          [data, regs.first.user, formatar_registro(regs)]
+          [ data, regs.first.user, formatar_registro(regs) ]
         }
       end
     end
@@ -246,7 +246,7 @@ module Admin
 
     def montar_linha_dia(data, regs)
       dia_label = "#{data.day} #{I18n.t('date.abbr_day_names')[data.wday]}"
-      [dia_label, calcular_trabalhado(regs), formatar_registro(regs), nil]
+      [ dia_label, calcular_trabalhado(regs), formatar_registro(regs), nil ]
     end
 
     # Resumo mensal exibido no card "Registro Mensal". Só os campos que já

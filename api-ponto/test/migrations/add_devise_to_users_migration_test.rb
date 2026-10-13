@@ -71,21 +71,21 @@ class AddDeviseToUsersMigrationTest < ActiveSupport::TestCase
 
   test "reset_password_token has a unique index" do
     indexes = ActiveRecord::Base.connection.indexes("users")
-    token_index = indexes.find { |i| i.columns == ["reset_password_token"] }
+    token_index = indexes.find { |i| i.columns == [ "reset_password_token" ] }
     assert token_index, "missing index on reset_password_token"
     assert token_index.unique, "reset_password_token index should be unique"
   end
 
   test "username unique index still exists" do
     indexes = ActiveRecord::Base.connection.indexes("users")
-    username_index = indexes.find { |i| i.columns == ["username"] }
+    username_index = indexes.find { |i| i.columns == [ "username" ] }
     assert username_index, "username index removed"
     assert username_index.unique
   end
 
   test "cpf unique index still exists" do
     indexes = ActiveRecord::Base.connection.indexes("users")
-    cpf_index = indexes.find { |i| i.columns == ["cpf"] }
+    cpf_index = indexes.find { |i| i.columns == [ "cpf" ] }
     assert cpf_index, "cpf index removed"
     assert cpf_index.unique
   end
