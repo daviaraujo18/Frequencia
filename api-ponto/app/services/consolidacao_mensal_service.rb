@@ -65,6 +65,21 @@ class ConsolidacaoMensalService
     registro
   end
 
+  # Task 31.3 (correção pós-review, bug A) — predicado público MÍNIMO: o
+  # mês-alvo (`user`/`ano`/`mes`) JÁ está finalizado? Usado pelo
+  # `RegistroRecalculoHandler` para pular o recálculo INTEIRO (dia E mês)
+  # ANTES de tocar em qualquer coisa. Motivo: `consolidar` só detecta o mês
+  # fechado levantando `MesFinalizadoError` no FIM, DEPOIS que o dia afetado
+  # já foi reescrito por `CalculoDiarioService.calcular` (que não tem trava
+  # própria — faz `save!` direto) — o que burlaria o congelamento da 17.2.
+  # Reusa a MESMA condição que `consolidar` usa para levantar (registro
+  # persistido e `finalizado?`) — não duplica a regra. NÃO altera o
+  # comportamento de `consolidar`.
+  def self.finalizado?(user, ano, mes)
+    registro = RegistroMensalFrequencia.find_by(user: user, ano: ano, mes: mes)
+    !registro.nil? && registro.finalizado?
+  end
+
   # Task 18.2 — reaplica só a soma de retificadores e recalcula
   # saldo/banco de horas de um mês JÁ consolidado, sem reagregar os
   # `CalculoDiario` do zero (preserva trabalhado/meta/faltas/dias_em_aberto

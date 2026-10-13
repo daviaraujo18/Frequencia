@@ -119,6 +119,23 @@ module Presenca
           horario: record.punched_at.strftime("%d/%m/%Y %H:%M:%S"),
           punch_type: record.punch_type
         }
+
+        # Sprint 31 (task 31.3) — produtor da fila de recálculo por evento
+        # (PRD §5.2): a criação do `TimeRecord` pela sincronização de estação
+        # dispara o recálculo do dia (se a data é hoje) ou do mês, sem esperar
+        # o job noturno.
+        #
+        # Enfileira DENTRO da transação do lote (a mesma que persiste os
+        # `TimeRecord`): um rollback posterior derruba registros E tarefa
+        # juntos — não sobra tarefa órfã. `enfileirar!` é idempotente por
+        # referência estável `tipo:user_id:data`, então o lote com várias
+        # batidas do mesmo usuário no mesmo dia gera UMA tarefa pendente
+        # (a dedup por `punched_at` acima também já evita repetições idênticas).
+        TarefaRecalculo.enfileirar!(
+          tipo_entidade: "REGISTRO_ESTACAO",
+          referencia: "REGISTRO_ESTACAO:#{user.id}:#{punched_at.to_date.iso8601}",
+          payload: { "user_id" => user.id, "data" => punched_at.to_date.iso8601 }
+        )
       end # each
     end # transaction
 

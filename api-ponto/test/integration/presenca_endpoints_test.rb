@@ -188,6 +188,44 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
     assert_equal false, aceito["foto"]["disponivel"]
   end
 
+  # --- Sprint 31, task 31.3: produtor da fila de recálculo por evento ---
+
+  test "POST SincronizarRegistrosPonto enfileira 1 recálculo REGISTRO_ESTACAO com referência estável" do
+    registros = "#{@user.id}-15:07:2026:14:30:45"
+    enc = CryptoDes.encrypt(registros)
+
+    assert_difference "TarefaRecalculo.count", 1 do
+      post presenca_ajax_SincronizarRegistrosPonto_url,
+        params: { registros: enc, codAtivacao: "poc-ativacao-001" }
+    end
+
+    tarefa = TarefaRecalculo.last
+    assert_equal "REGISTRO_ESTACAO", tarefa.tipo_entidade
+    assert_equal "REGISTRO_ESTACAO:#{@user.id}:2026-07-15", tarefa.referencia
+    assert_equal @user.id, tarefa.payload["user_id"]
+    assert_equal "2026-07-15", tarefa.payload["data"]
+  end
+
+  test "POST SincronizarRegistrosPonto idempotente: 2 batidas do mesmo dia = 1 tarefa pendente" do
+    registros = "#{@user.id}-15:07:2026:14:30:45;#{@user.id}-15:07:2026:14:31:00"
+    enc = CryptoDes.encrypt(registros)
+
+    assert_difference "TarefaRecalculo.pendentes.count", 1 do
+      post presenca_ajax_SincronizarRegistrosPonto_url,
+        params: { registros: enc, codAtivacao: "poc-ativacao-001" }
+    end
+  end
+
+  test "POST SincronizarRegistrosPonto com registro rejeitado NÃO enfileira recálculo" do
+    registros = "99999-15:07:2026:14:30:45"
+    enc = CryptoDes.encrypt(registros)
+
+    assert_no_difference "TarefaRecalculo.count" do
+      post presenca_ajax_SincronizarRegistrosPonto_url,
+        params: { registros: enc, codAtivacao: "poc-ativacao-001" }
+    end
+  end
+
   test "POST SincronizarRegistrosPonto handles multiple records" do
     registros = "#{@user.id}-15:07:2026:14:30:45;#{@user.id}-15:07:2026:14:31:00"
     enc = CryptoDes.encrypt(registros)
@@ -310,7 +348,7 @@ class PresencaEndpointsTest < ActionDispatch::IntegrationTest
     line1 = "#{@user.id}-#{(now - 2.hours).strftime("%d:%m:%Y:%H:%M:%S")}"
     line2 = "#{@user.id}-#{(now - 1.hour).strftime("%d:%m:%Y:%H:%M:%S")}"
     line3 = "#{@user.id}-#{now.strftime("%d:%m:%Y:%H:%M:%S")}"
-    registros = [line1, line2, line3].join(";")
+    registros = [ line1, line2, line3 ].join(";")
 
     enc = CryptoDes.encrypt(registros)
     post presenca_ajax_SincronizarRegistrosPonto_url,

@@ -33,6 +33,23 @@ class RegistroManualFrequenciaService
             authentication_mode: "manual",
             raw_data: "Batida manual registrada por #{responsavel.nome_completo}"
           )
+
+          # Sprint 31 (task 31.3) — produtor da fila de recálculo por evento
+          # (PRD §5.2): a criação do `TimeRecord` dispara o recálculo do dia
+          # (se a data é hoje) ou do mês, sem esperar o job noturno.
+          #
+          # Enfileira DENTRO da mesma transação de criação (decidido na 31.3):
+          # se algo depois falhar e a transação sofrer rollback, o `TimeRecord`
+          # E a tarefa somem juntos — não sobra tarefa órfã apontando para um
+          # registro que não existe. `enfileirar!` é idempotente por referência
+          # estável `tipo:user_id:data` (2 batidas no mesmo dia = 1 tarefa
+          # pendente). Só a batida manual cria `TimeRecord` (errata não cria —
+          # ver o branch `tipo` acima), então só ela enfileira.
+          TarefaRecalculo.enfileirar!(
+            tipo_entidade: "REGISTRO_FREQUENCIA",
+            referencia: "REGISTRO_FREQUENCIA:#{user.id}:#{momento.to_date.iso8601}",
+            payload: { "user_id" => user.id, "data" => momento.to_date.iso8601 }
+          )
         end
 
         IntervencaoFrequencia.create!(
