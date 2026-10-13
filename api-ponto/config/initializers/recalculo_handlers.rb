@@ -28,4 +28,10 @@ Rails.application.config.to_prepare do
   # payload. Handler PRÓPRIO (eixo diferente dos handlers de registro): resolve
   # todos os frequentadores com vínculo ativo e roda o pipeline por usuário.
   ExecutaTarefasJob.registrar_handler("RECALCULAR_TODOS", RecalcularTodosHandler.method(:call))
+
+  # `VINCULAR_DESVINCULAR` (§5.2, L144 — task 31.5): recálculo dos DIAS do
+  # período do vínculo (`RegimeFrequentador`). Handler PRÓPRIO: alvo = período
+  # (`user_id` + `momento_inicial`/`momento_final`) vindo do payload; o produtor
+  # é o callback `after_commit` de `RegimeFrequentador`.
+  ExecutaTarefasJob.registrar_handler("VINCULAR_DESVINCULAR", VincularDesvincularHandler.method(:call))
 end
