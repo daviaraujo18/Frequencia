@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_09_29_130000) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_13_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -280,6 +280,18 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_29_130000) do
     t.datetime "updated_at", null: false
     t.index ["name", "resource_type", "resource_id"], name: "index_roles_on_name_and_resource_type_and_resource_id"
     t.index ["resource_type", "resource_id"], name: "index_roles_on_resource"
+  end
+
+  create_table "tarefas_recalculo", force: :cascade do |t|
+    t.string "tipo_entidade", null: false
+    t.string "status", default: "pendente", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.string "referencia", null: false
+    t.datetime "processada_em"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status"], name: "index_tarefas_recalculo_on_status"
+    t.index ["tipo_entidade", "referencia"], name: "index_tarefas_recalculo_on_pendente_unico", unique: true, where: "((status)::text = 'pendente'::text)"
   end
 
   create_table "time_records", force: :cascade do |t|
