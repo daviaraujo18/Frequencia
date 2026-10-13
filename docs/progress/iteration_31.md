@@ -1,6 +1,6 @@
 # Iteration 31 — Fila assíncrona de recálculo por evento (PRD §5.2)
 
-> Status: 📋 Planejada | Período: a definir (após Sprint 30) | Goal: materializar o **mecanismo estrutural** de recálculo em lote por evento do PRD §5.2 (gap §9 #3) — uma **fila persistente** de tarefas + um **job de despacho** a cada ~5min + os **handlers dos eventos cujo domínio já existe no Frequência** (`REGISTRO_FREQUENCIA`/`REGISTRO_ESTACAO`, `VINCULAR_DESVINCULAR`, `RECALCULAR_TODOS`), deixando `FERIADO`/`DIAEXCEPCIONAL`/`DIREITO` **explicitamente adiados** (models inexistentes). | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` **§5.2 (L139-148)** e **§9 item 3 (L201)**; contexto de §5.1 (L133-137); `docs/progress/iteration_30.md` (política incremental de roles — emenda 2026-10-07).
+> Status: 🟢 **ENCERRADA (CTO, 2026-10-13)** — **5/5 tasks implementadas, testadas, revisadas e COMMITADAS** (Code Reviewer: **0 blockers** em todas). Pilha **LINEAR** `feature/demanda-31-1…` → `…-31-5-vincular-desvincular` (`b417fef` → `97095bc` → `b50e425` → `e13f782` → `dae631f`; +`1fa033e` = fix D2). **NÃO** pushada nem mergeada em `integration/sprint-29`. Baseline final **1214/4239/3F+12E/0 skip** (as 15 defeitos pré-existentes). Consolidação durável: **ADR-0011** (ver §"Encerramento da Sprint 31"). | Período: 2026-10-13 | Goal: materializar o **mecanismo estrutural** de recálculo em lote por evento do PRD §5.2 (gap §9 #3) — uma **fila persistente** de tarefas + um **job de despacho** a cada ~5min + os **handlers dos eventos cujo domínio já existe no Frequência** (`REGISTRO_FREQUENCIA`/`REGISTRO_ESTACAO`, `VINCULAR_DESVINCULAR`, `RECALCULAR_TODOS`), deixando `FERIADO`/`DIAEXCEPCIONAL`/`DIREITO` **explicitamente adiados** (models inexistentes). | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` **§5.2 (L139-148)** e **§9 item 3 (L201)**; contexto de §5.1 (L133-137); `docs/progress/iteration_30.md` (política incremental de roles — emenda 2026-10-07).
 
 ## Contexto e escopo (definido pelo dev)
 
@@ -203,17 +203,22 @@ O PRD §5.2 (L139-148) descreve o **mecanismo estrutural** do legado que hoje **
 ## Débitos Técnicos
 
 - [ ] **Sprints 29/30/31 ausentes do `implementation_plan.md`** (o plano descreve só 24–28) — Severidade: 🟡 — Tarefa: (chore de planejamento / Project Planner), herdado da 30.
-- [ ] **`docs/progress/_context.md` defasado** (HEAD `da26ee8`; real `8bd6755`; Sprint 30 concluída não refletida) — Severidade: 🟡 — Tarefa: (Summarizer), **não** atualizar nesta tarefa.
-- [ ] **Concorrência fina do despacho** (se não coberta por completo na 31.2) — Severidade: 🟢/🟡 — Tarefa: **31.2** ou futura.
+- [x] ~~**`docs/progress/_context.md` defasado**~~ — **FECHADO pelo CTO na virada da 31** (o `_context` foi regerado; ver §"Encerramento da Sprint 31" → atualizações doc). Convém ao **Summarizer** confirmar no próximo ciclo Guardian.
+- [ ] **Concorrência fina do despacho** — coberta por advisory lock próprio (`728_104_536`) + `pendentes` via `find_each`; **crash-window** entre marcar `processada` e o efeito do handler permanece débito documentado (idempotência mora nos handlers) — Severidade: 🟢 — Tarefa: futura (se observado em produção).
+- [ ] **D2 da 17.5 (pré-existente):** `CalcularFrequenciaJob` recalcula os **últimos 3 dias SEM guarda de mês finalizado** — mesmo padrão do **bug A da 31.3** (que foi corrigido só no handler de recálculo). Corrigir **só o handler** criaria divergência handler × job; o tratamento correto é **tarefa própria sobre a 17.5** (guard por dia no job; o handler passa a espelhar). Severidade: 🟠 — Tarefa: **nova** (17.x).
+- [ ] **TOCTOU residual de mês finalizado** (31.3/31.5): o guard `ConsolidacaoMensalService.finalizado?` é "melhor esforço"; se OUTRO processo finalizar o mês entre o guard e o `consolidar`, o ramo "passado" já reescreveu o `CalculoDiario` do dia. Probabilidade desprezível (finalização manual); **documentado honestamente** no código (a 31.5 até removeu o `rescue` morto). Severidade: 🟢 — Tarefa: futura (se a finalização passar a ser automatizada).
+- [ ] **Q16 — "cauda" do período ao encolher o vínculo** (31.5): ao **reduzir** `momento_final`, os dias após o novo fim **não** são recalculados (fiel ao literal "dias do período") ⇒ `CalculoDiario` pode ficar **stale**. Mitigação: nenhuma (decisão do dev pendente — manter literal × estender). Severidade: 🟠 — Tarefa: **decisão do dev**.
+- [ ] **Migration `create_tarefas_recalculo` (31.1) só aplicada no banco de TESTE local** — falta `db:migrate` no **dev remoto** antes de qualquer uso do mecanismo fora do teste. Severidade: 🟠 (operacional) — Tarefa: **deploy**.
+- [ ] **RuboCop-77** (`chore/limpeza-rubocop-77`) — deadline **2026-10-13** (hoje); gatilho binário = `rubocop` EXIT 0. Severidade: 🟡 — Tarefa: chore.
 
 ## Definição de Pronto
 
-- [ ] 31.1–31.5 com status e Linha do Tempo preenchidos.
-- [ ] Testes: **idempotência da fila** (2× = 1 efeito), **despacho por tipo sem tocar os adiados**, **sem `remove_method`** (helper save/restore), **sem regressão no recálculo existente**; mutation testing dos pontos críticos.
-- [ ] `db/schema.rb` atualizado (só a nova tabela `tarefas_recalculo`); `config/schedule.yml` com o job a cada 5min (production-only).
-- [ ] **Nenhuma** alteração de `Ability`/cascata/autorização.
-- [ ] Sem commit/push (`COMMIT_MODE=manual`); stage seletivo quando autorizado.
-- [ ] Perguntas abertas (**Q14**) respondidas ou explicitamente adiadas.
+- [x] 31.1–31.5 com status e Linha do Tempo preenchidos.
+- [x] Testes: **idempotência da fila** (2× = 1 efeito), **despacho por tipo sem tocar os adiados**, **sem `remove_method`** (helper save/restore), **sem regressão no recálculo existente**; mutation testing dos pontos críticos (5/5, 6/6, 6/6, 3/3, 5/5 mortas por task).
+- [x] `db/schema.rb` atualizado (só a nova tabela `tarefas_recalculo`); `config/schedule.yml` com o job a cada 5min (**production-only**, entrada `executa_tarefas`, cron `*/5 * * * *`).
+- [x] **Nenhuma** alteração de `Ability`/cascata/autorização (registro global do `CLAUDE.md` respeitado).
+- [x] Commit **realizado** (manual, pelo dev — pilha linear até `dae631f`); **push/merge PENDENTES** (ver §"Encerramento da Sprint 31" → sequência de entrega).
+- [x] Perguntas abertas: **Q14 resolvida**; **Q15/Q16** explicitamente abertas (decisão do dev).
 
 ## Perguntas abertas ao dev / PO
 
@@ -226,3 +231,63 @@ O PRD §5.2 (L139-148) descreve o **mecanismo estrutural** do legado que hoje **
 | Horário | O que foi feito | Resultado |
 |---------|-----------------|-----------|
 | 2026-10-07 | Sprint Planner detalhou a **Sprint 31** a partir da escolha do dev (**opção 3 = PRD §5.2**, gap §9#3) | 5 tarefas, **14 pontos**, núcleo §5.2 (fila + despacho + 3 handlers de domínio existente); `FERIADO`/`DIAEXCEPCIONAL`/`DIREITO` **adiados**; **Q14/Q15** abertas |
+| 2026-10-13 | **31.1** — fila/model `TarefaRecalculo` + `enfileirar!` idempotente (`b417fef`); **31.2** — `ExecutaTarefasJob` com lock próprio `728_104_536` + registry (`97095bc`) | Implementado, testado (20+7 testes), revisado (0 blockers); D2 do 31.1 exposto na 31.3 e corrigido (`1fa033e`, savepoint) |
+| 2026-10-13 | **31.3** — `RegistroRecalculoHandler` + 2 produtores in-transaction (`b50e425`; correções A/B: trava de mês finalizado no DIA + nunca dia futuro) | Implementado, testado, revisado (0 blockers, 2 bugs reais fechados) |
+| 2026-10-13 | **31.4** — `RecalcularTodosHandler` eixo `Pessoas::Vinculo.ativos` (`e13f782`); **31.5** — `VincularDesvincularHandler` + produtor `after_commit` em `RegimeFrequentador` (`dae631f`); **Q14 resolvida** | Implementado, testado, revisado (0 blockers); S1 da 31.5 corrigido; **Q16 aberta** (cauda do período) |
+| 2026-10-13 | **CTO encerra a Sprint 31** — fecha rastreabilidade doc: header/DoP/Débitos/Linha do Tempo, **ADR-0011**, catalogação na inception de domínio, lições, `_context` | 🟢 **ENCERRADA** (doc-only, sem commit — `COMMIT_MODE=manual`) |
+
+---
+
+## Encerramento da Sprint 31 (CTO, 2026-10-13)
+
+**Veredito:** 🟢 **SPRINT 31 ENCERRADA.** As **5 tasks** estão **implementadas, testadas, revisadas (0 blockers) e commitadas** (pilha linear `b417fef → 97095bc → b50e425 → e13f782 → dae631f`, + `1fa033e`). O **mecanismo estrutural §5.2** (fila + despacho + 3 handlers de domínio existente) **existe no app**; os 3 tipos sem domínio (`FERIADO`/`DIAEXCEPCIONAL`/`DIREITO`) ficam **declarados e adiados** (política incremental vigente). Baseline final **1214/4239/3F+12E/0 skip** (15 defeitos pré-existentes, nenhum da 31).
+
+### O que a Sprint 31 muda no entendimento do sistema
+
+- **Novo subsistema de infraestrutura de recálculo.** Nasce o par **fila persistente (`TarefaRecalculo`) × despachante (`ExecutaTarefasJob`, cron `*/5` production-only)** com **registry de handlers** por `tipo_entidade`. É o **"trigger" real de recálculo em lote por evento** que o PRD §5.2 aponta como *sem equivalente conhecido no Frequência* (§9 gap #3) — agora **existe**.
+- **Tensão arquitetural registrada (inception).** O doc de domínio existente (`docs/03-dominio/05-eventos-dominio.md`) **propõe** modelar a fila como **eventos de domínio** ("não como tabela de tarefas genérica"). A Sprint 31 implementou deliberadamente o **oposto pragmático**: **tabela de tarefas genérica** + `tipo_entidade` (fiel ao legado `presenca_historicotarefa`). **Decisão registrada na ADR-0011** (Alternativa descartada = barramento de eventos). O doc de domínio recebe **nota de reconciliação** (ver §catalogação).
+- **Fronteira com a §5.1 preservada.** O mecanismo **reusa** o pipeline existente (`CalculoDiarioService`/`ConsolidacaoMensalService`/`CalcularFrequenciaJob`) e **não** replica os jobs autônomos do legado (`RecalculoDiario` etc.).
+- **Zero acoplamento com autorização.** §5.2 é infra de recálculo; nada toca a cascata/flags.
+
+### Decisões arquiteturais consolidadas → **ADR-0011**
+
+As 7 decisões da sprint foram consolidadas em **uma** ADR (padrão de consolidação já usado na ADR-0010 para a cascata). Mapeamento decisão → tratamento:
+
+| # (do briefing) | Decisão | Tratamento |
+|---|---|---|
+| 1 | **Registry de handlers** por `tipo_entidade` (mapa `tipo→callable`, vazio de fábrica, populado por initializer `to_prepare`) | **ADR-0011 regra 1** (padrão novo, deliberadamente mínimo) |
+| 2 | **Advisory lock PRÓPRIO** `728_104_536`; **NÃO** reusar o lock do `CalcularFrequenciaJob` dentro do handler (evita *drain-without-effect*) | **ADR-0011 regra 2** |
+| 3 | **Produtor dentro × fora da transação** (31.3 in-transaction; 31.5 `after_commit`) | **ADR-0011 regra 3** (contrato caso a caso) |
+| 4 | **Trava de mês finalizado (17.2)** aplicada ao recálculo por evento — inclusive ao DIA (correção A/31.3) + débito TOCTOU | **ADR-0011 regra 4** |
+| 5 | **Nunca recalcular dia futuro** (correção B/31.3) | **ADR-0011 regra 5** |
+| 6 | **Q14** — `RegimeFrequentador` emite `VINCULAR_DESVINCULAR`; produtor = callback `after_commit` | **ADR-0011 regra 6** + nota em `05-eventos-dominio.md` |
+| 7 | **Tipos adiados** declarados sem produtor/handler | **ADR-0011 regra 7** (política incremental) |
+
+**Por que uma só ADR (e não sete):** as 7 decisões são **facetas de um mesmo mecanismo** (contrato de uma fila governada por registry). Fragmentá-las em 7 ADRs infla a série e perde a coesão — o mesmo critério que a ADR-0010 aplicou à cascata. As decisões **operacionais** (5 = regra de 1 linha; 7 = política já vigente) e o **ruling de domínio** (6/Q14) entram como **regras/notas dentro da ADR-0011**, **não** como ADRs próprias. *(Candidata a ADR própria, se o dev quiser rastreabilidade de domínio isolada: a #6/Q14 — recomendo **não** abrir; fica como regra 6 + nota no doc de eventos.)*
+
+### Riscos/decisões que exigem o dev nesta virada (checklist)
+
+- [ ] **Q15 — quadro real de devs.** O plano assumiu **Dev A** (31.1/2/3) e **Dev B** (31.4/31.5) para dimensionar paralelismo; a execução foi **sequencial** (pilha linear). Responder se o quadro real difere (impacta retrospectiva/planejamento da próxima sprint).
+- [ ] **Q16 — "cauda" do período ao encolher o vínculo (31.5).** Manter o **literal** ("dias do período" = `[início, fim]`; cauda fica como débito) **ou** estender o handler para recalcular a cauda `(novo_fim, fim_anterior]`? Registrar a decisão **antes** de qualquer mudança; hoje está fiel-ao-literal com o furo documentado.
+- [ ] **D2 da 17.5 — `CalcularFrequenciaJob` recalcula os últimos 3 dias SEM guarda de mês finalizado.** É o **mesmo padrão do bug A da 31.3** (pré-existente). Corrigir só o handler criaria divergência; **abrir tarefa própria sobre a 17.5** ou aceitar explicitamente. Decisão de priorização do dev.
+- [ ] **Deploy da migration `create_tarefas_recalculo` (31.1) no dev remoto.** Só foi aplicada no banco de **teste local**; sem `db:migrate` no dev remoto, o mecanismo **não opera** fora do teste.
+- [ ] **RuboCop-77 — deadline 2026-10-13 (hoje).** Chore `chore/limpeza-rubocop-77`, gatilho binário `rubocop` EXIT 0.
+- [ ] **Merge + push da pilha.** Ver sequência abaixo; **nada foi pushado/mergeado** (`COMMIT_MODE=manual`).
+
+### Sequência recomendada de entrega (proposta — CTO NÃO executa)
+
+1. **Gate de CI local** (`ci-cd-pipeline`) sobre a pilha inteira: security → quality → **test** (mandatório). Baseline final **1214/4239/3F+12E** (15 pré-existentes devem ser reconhecidas, não atribuídas à sprint).
+2. **Merge da pilha linear** `feature/demanda-31-5-vincular-desvincular` (que já contém 31.1→31.5) **em `integration/sprint-29`** — via `--no-ff` (preserva o agrupamento da sprint), após confirmar que a pilha está **rebased/atualizada** sobre o HEAD atual de `integration/sprint-29`.
+3. **`db:migrate` no dev remoto** (item de deploy acima) — **antes** de ligar o cron na branch integrada.
+4. **Push** da `integration/sprint-29` para os remotes (GitLab + fork GitHub), conforme o padrão do repo.
+5. **Fechamento** já materializado: header 🟢 + Encerramento + ADR-0011 + catalogação + lições + `_context`. Commit **doc-only** do pacote do CTO (o dev commita/pusha manualmente — `COMMIT_MODE=manual`).
+6. **Próxima sprint** (31+1): abrir com os débitos herdados (D2/17.5, Q16, RuboCop-77) + o **`implementation_plan.md` a formalizar** (Sprints 29–31 ausentes — Project Planner).
+
+### Artefatos da consolidação (editados pelo CTO nesta virada)
+
+- `docs/adr/0011-mecanismo-recalculo-por-evento.md` — **NOVO** (decisão durável do mecanismo §5.2).
+- `docs/README.md` — índice de ADRs `0000–0010` → **`0000–0011`**.
+- `docs/03-dominio/05-eventos-dominio.md` — **nota de reconciliação** (implementado como tabela de tarefas, não barramento de eventos).
+- `docs/governance/lessons.md` — **lições novas** (savepoint/`RecordNotUnique`, lock-herdado, guard de escrita).
+- `docs/progress/_context.md` — **regerado** (estava em `da26ee8`; Sprints 30/31 ausentes).
+- *(Recomendado ao Summarizer no próximo Guardian: `docs/governance/_context.md` — contagem de lições 37→41, ADR 0010→0011, Sprints 30/31.)*

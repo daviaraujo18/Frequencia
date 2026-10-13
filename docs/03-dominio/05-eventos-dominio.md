@@ -62,5 +62,29 @@ Catalogar os **eventos de domínio** do contexto FREQUÊNCIA (fatos relevantes q
 > ⚠️ **Dívida:** a divergência v1/v2 em recalculos (E5 vs E8/E9/E10) é um problema de corretude a resolver na Fase 4/8 (testes de contraste). Ver `01-inventario/03-calculo-diario.md` §3.
 
 ---
-**Última atualização:** 2026-08-05
+
+## Reconciliação — mecanismo material (Sprint 31, 2026-10-13)
+
+> **Nota do CTO.** O "Barramento/Transporte no alvo" acima **recomendava** modelar os recálculos como
+> **eventos de domínio publicados** (substituindo a fila `presenca_historicotarefa`). A **Sprint 31**
+> materializou o mecanismo do PRD §5.2 com a **decisão oposta e pragmática**: uma **tabela persistente
+> de tarefas** (`TarefaRecalculo`, com `tipo_entidade`/`status`/`referencia` idempotente) + o job
+> `ExecutaTarefasJob` (cron `*/5`, production-only) que **despacha por `TipoEntidade`**. Não há barramento
+> de eventos. **Decisão durável: [ADR-0011](../adr/0011-mecanismo-recalculo-por-evento.md)** (Alternativa
+> B — barramento — foi **rejeitada**). A recomendação original fica preservada acima, para rastreabilidade.
+
+**Mapa `TipoEntidade` (§5.2) → `tarefa_recalculo.tipo_entidade` (implementado):**
+
+| `TipoEntidade` (PRD §5.2) | Produtor (enfileira) | Handler (recalcula) | Status |
+|---|---|---|---|
+| `REGISTRO_FREQUENCIA` / `REGISTRO_ESTACAO` | `RegistroManualFrequenciaService` + `Presenca::SincronizarRegistrosPontoController#create` (**in-transaction**) | `RegistroRecalculoHandler` | ✅ |
+| `VINCULAR_DESVINCULAR` | callback `after_commit` em `RegimeFrequentador` (**fora da transação**) | `VincularDesvincularHandler` | ✅ |
+| `RECALCULAR_TODOS` | **sem produtor** (enfileirado manual/console) | `RecalcularTodosHandler` | ✅ |
+| `FERIADO` / `DIAEXCEPCIONAL` / `DIREITO` | — | — | ⏸️ **adiados** (sem model de domínio) |
+
+> As regras de negócio que o recálculo por evento **não pode burlar** (trava de mês finalizado/17.2, nunca
+> dia futuro) e o contrato de produtores estão na **ADR-0011**.
+
+---
+**Última atualização:** 2026-10-13 (nota de reconciliação — CTO, Sprint 31)
 **Fase:** 3 — Mapeamento de Domínio (DDD)

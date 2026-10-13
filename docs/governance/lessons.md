@@ -667,3 +667,93 @@ transformando um teste verde em failure de "mensagem não casa".
    Um baseline medido com outro ruby não é comparável.
 3. Para medição determinística, `PARALLEL_WORKERS=1` elimina o ruído order-dependent (aqui, o 12º
    erro `PessoasSchemaLoaderTest` só aparece sob paralelização).
+
+---
+
+### 2026-10-13 — `RecordNotUnique` DENTRO da transação do chamador aborta a transação inteira: isolar o `INSERT` num SAVEPOINT
+
+**Contexto:** Sprint 31, task 31.1 → exposto na 31.3 (débito D2). `TarefaRecalculo.enfileirar!` faz
+`INSERT` com índice UNIQUE **parcial** (`[tipo_entidade, referencia] WHERE status='pendente'`) e trata a
+corrida com `rescue ActiveRecord::RecordNotUnique` → `pendentes.find_by!(...)` (idempotência).
+
+**Problema:** os produtores (31.3/31.5) chamam `enfileirar!` **DENTRO** da transação do `TimeRecord`. No
+caminho de corrida, a violação de unicidade do Postgres **não** é um erro local: ela **aborta a transação
+inteira** (`25P02 in_failed_sql_transaction`). O `rescue` capturava o `RecordNotUnique`, mas o
+`pendentes.find_by!` seguinte já rodava numa transação abortada e levantava
+`PG::InFailedSqlTransaction` — **não capturado** → **perda do `TimeRecord`**. Só apareceu quando o
+`enfileirar!` passou a ser chamado dentro de uma transação de outro usuário (o model isolado testava
+"fora de transação" e passava).
+
+**Solução:** isolar o `INSERT` num **SAVEPOINT** —
+`ActiveRecord::Base.transaction(requires_new: true) do … end` — mantendo os `rescue` **fora** do bloco. A
+violação faz `ROLLBACK TO SAVEPOINT`, que **limpa o estado abortado** do PG; a transação externa do
+chamador segue saudável. Fora de transação, `requires_new` só abre uma transação normal (comportamento
+externo inalterado). Teste reproduz o estado abortado real (linha concorrente PENDENTE + SELECT inicial
+defasado + `save!(validate: false)` para forçar a violação) e **prova que a transação externa continua
+utilizável** (query subsequente dentro dela).
+
+**Lição:**
+1. Um `rescue` de `RecordNotUnique` **só** funciona se a violação **não** abortou a transação em curso.
+   Se o `INSERT` roda dentro da transação de **outro** usuário, isole-o num SAVEPOINT
+   (`requires_new: true`) — senão o `rescue` recupera o objeto, mas a transação do chamador já está
+   **morta** e o próximo SELECT explode com `PG::InFailedSqlTransaction`.
+2. "Trata a corrida" testado **fora** de transação não prova nada sobre o caminho **real** (in-transaction).
+   O teste tem de **entrar** numa transação externa e assertar que ela **sobrevive** ao `RecordNotUnique`.
+3. Sintoma de diagnóstico: `PG::InFailedSqlTransaction` num `rescue ActiveRecord::RecordNotUnique` =
+   SAVEPOINT faltando, **não** lógica de idempotência errada.
+
+---
+
+### 2026-10-13 — Reusar um advisory lock ÚNICO dentro de um job que já segura lock ⇒ tarefa "drenada sem efeito" silenciosa
+
+**Contexto:** Sprint 31, task 31.4. O handler `RECALCULAR_TODOS` roda **dentro** do drain do
+`ExecutaTarefasJob`, que já segura o advisory lock próprio `728_104_536`. A tentação natural era o
+handler — na mesma filosofia do `CalcularFrequenciaJob` (17.5) — pegar o lock `451_926_073` daquele job
+para serializar com ele.
+
+**Problema:** sob concorrência, `pg_try_advisory_lock(451_926_073)` retornaria `false` (o job noturno
+detém o lock). O handler sairia **sem recalcular nada**, e o `ExecutaTarefasJob` marcaria a tarefa
+`processada` — **uma tarefa drenada sem efeito, silenciosamente**. Ninguém veria erro; o recálculo
+simplesmente não aconteceria.
+
+**Solução:** **NÃO** herdar/reusar lock dentro do handler. A sobreposição com o job noturno é
+**convergente** (ambos idempotentes sobre os mesmos dados) ⇒ o pior caso aceitável é **trabalho
+duplicado**, não dado incorreto. A decisão fica **documentada no código** (não é "esqueceram o lock").
+
+**Lição:**
+1. Advisory lock é uma **seção crítica de exclusão mútua**. Usá-lo para "esperar/coordenar" produz
+   `false` (não bloqueia) — e um `try_lock` que falha vira **no-op silencioso** num pipeline de fila.
+2. Ao compor um pipeline (job → handler), pergunte: *"o que acontece se o lock interno não for obtido?"*.
+   Se a resposta é "a tarefa é marcada como feita sem fazer nada", **não** herde o lock — assuma a
+   convergência/idempotência.
+3. Correção idempotente + locks independentes > exclusão mútua frágil entre jobs que se sobrepõem.
+
+---
+
+### 2026-10-13 — Guarda de "estado finalizado" só protege se aplicada ANTES de TODA escrita (o `save!` de outro caminho pula a trava que "levanta erro" no fim)
+
+**Contexto:** Sprint 31, task 31.3, correção do **bug A**. A trava de mês finalizado (17.2) vive no
+`ConsolidacaoMensalService.consolidar`, que **levanta** `MesFinalizadoError` se o mês está fechado. O
+handler de `REGISTRO_FREQUENCIA` recalculava **o dia** (`CalculoDiarioService.calcular`, que faz `save!`
+**sem** guarda) **antes** de `consolidar`.
+
+**Problema:** para um mês **finalizado**, o dia era **reescrito** (o `save!` do dia não passa pela trava)
+e **só então** `consolidar` levantava o erro — engolido pelo handler como "salvaguarda". Resultado: o
+`CalculoDiario` de um mês fechado era alterado e o `RegistroMensalFrequencia` ficava **desatualizado** —
+**burla silenciosa da trava 17.2**. A trava existia, mas **a jusante** de uma escrita.
+
+**Solução:** predicado público **mínimo** `ConsolidacaoMensalService.finalizado?(user, ano, mes)`
+(**reusa** a mesma condição de `consolidar`, sem duplicar a regra), avaliado **ANTES de qualquer
+recálculo** — mês finalizado ⇒ **skip silencioso** (não recalcula o dia **nem** o mês). O `rescue
+MesFinalizadoError` fica só como salvaguarda de corrida (TOCTOU documentado).
+
+**Lição:**
+1. Uma trava que **levanta exceção no fim** do fluxo **não** é uma trava — é um alarme tardio. Se o
+   fluxo escreve antes de checar, a escrita **já aconteceu**. Toda guarda de estado tem de ser um
+   **predicado lido ANTES da primeira escrita**.
+2. Ao compor "recalcula X, depois consolida Y (que pode recusar)", pergunte **qual** das escritas
+   precede a checagem. Se X escreve e Y recusa depois, X já violou a regra.
+3. O predicado de guarda deve **reusar** a condição da trava (não recriá-la) — senão nasce um **segundo**
+   crivo que pode divergir do primeiro.
+
+---
