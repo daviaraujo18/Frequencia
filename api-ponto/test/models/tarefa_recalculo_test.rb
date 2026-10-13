@@ -137,22 +137,47 @@ class TarefaRecalculoTest < ActiveSupport::TestCase
 
   # ----------------------------------------------------- corrida (banco/rescue)
 
-  test "corrida: RecordNotUnique concorrente devolve a tarefa pendente existente" do
-    # Simula a corrida: o create! insere a linha concorrente e SÓ DEPOIS falha,
-    # como aconteceria se outro `enfileirar!` tivesse commitado entre o SELECT
-    # inicial e o INSERT — o índice único parcial garantiu a unicidade.
-    corpo = lambda do |**kwargs|
-      TarefaRecalculo.new(**kwargs).save!
-      raise ActiveRecord::RecordNotUnique, "corrida simulada"
+  # Stub do scope `pendentes` que simula a JANELA DE CORRIDA: na 1ª chamada
+  # (o SELECT inicial de `enfileirar!`) ele INSERE a linha PENDENTE concorrente
+  # "no instante seguinte" e devolve vazio — como se outro processo tivesse
+  # vencido a corrida DEPOIS do SELECT. Nas demais chamadas devolve o estado
+  # real (usado pelo `find_by!` do rescue). A inserção acontece FORA do
+  # savepoint de `enfileirar!`, então sobrevive ao rollback do savepoint —
+  # fiel ao cenário real, em que a linha concorrente vive em outra transação.
+  def scope_com_corrida(referencia)
+    vencedora = nil
+    chamadas = 0
+    scope = lambda do
+      chamadas += 1
+      if chamadas == 1
+        vencedora = TarefaRecalculo.new(tipo_entidade: "REGISTRO_FREQUENCIA", referencia: referencia)
+        vencedora.save!
+        TarefaRecalculo.none # SELECT inicial NÃO enxerga a linha recém-inserida
+      else
+        TarefaRecalculo.where(status: TarefaRecalculo::STATUS_PENDENTE)
+      end
     end
+    [ scope, -> { vencedora } ]
+  end
+
+  test "corrida: RecordNotUnique concorrente devolve a tarefa pendente existente" do
+    # O `create!` representa o INSERT que o PostgreSQL rejeitou com
+    # `unique_violation` (índice único parcial) porque outra linha PENDENTE do
+    # mesmo par foi inserida entre o SELECT inicial e o INSERT.
+    scope, vencedora = scope_com_corrida("corrida")
+    corpo = ->(**_kwargs) { raise ActiveRecord::RecordNotUnique, "corrida simulada" }
 
     resultado = nil
-    com_metodo_de_classe_stubado(TarefaRecalculo, :create!, corpo) do
+    com_metodos_de_classe_stubados([
+      [ TarefaRecalculo, :pendentes, scope ],
+      [ TarefaRecalculo, :create!, corpo ]
+    ]) do
       resultado = TarefaRecalculo.enfileirar!(tipo_entidade: "REGISTRO_FREQUENCIA", referencia: "corrida")
     end
 
     assert resultado.persisted?
     assert resultado.pendente?
+    assert_equal vencedora.call.id, resultado.id
     assert_equal 1, TarefaRecalculo.count
   end
 
@@ -160,20 +185,57 @@ class TarefaRecalculoTest < ActiveSupport::TestCase
     # Variante em que a linha concorrente já era visível à validação de
     # unicidade (o outro INSERT commitou antes dela rodar) ⇒ RecordInvalid
     # com o erro `:referencia taken` em vez de RecordNotUnique.
+    scope, _vencedora = scope_com_corrida("corrida-2")
     corpo = lambda do |**kwargs|
-      TarefaRecalculo.new(**kwargs).save!
       duplicada = TarefaRecalculo.new(**kwargs)
       duplicada.valid? # popula o erro `:referencia taken` antes de levantar
       raise ActiveRecord::RecordInvalid, duplicada
     end
 
     resultado = nil
-    com_metodo_de_classe_stubado(TarefaRecalculo, :create!, corpo) do
+    com_metodos_de_classe_stubados([
+      [ TarefaRecalculo, :pendentes, scope ],
+      [ TarefaRecalculo, :create!, corpo ]
+    ]) do
       resultado = TarefaRecalculo.enfileirar!(tipo_entidade: "REGISTRO_FREQUENCIA", referencia: "corrida-2")
     end
 
     assert resultado.persisted?
     assert_equal 1, TarefaRecalculo.count
+  end
+
+  test "corrida in-transaction: unique violation nao aborta a transacao do caller (savepoint)" do
+    # PROVA do savepoint (débito D2 pós-review): reproduz o estado ABORTADO do
+    # PostgreSQL. Uma linha PENDENTE concorrente já existe (venceu a corrida),
+    # o SELECT inicial de `enfileirar!` NÃO a enxerga e o INSERT real viola o
+    # índice único parcial — em PG isso ABORTA a transação. Sem o savepoint, o
+    # `pendentes.find_by!` do rescue levantaria `PG::InFailedSqlTransaction`
+    # (não capturado) e derrubaria a transação externa (perdendo o `TimeRecord`
+    # do caller). Com o savepoint, o `ROLLBACK TO SAVEPOINT` limpa o estado
+    # abortado e o rescue roda normalmente.
+    scope, vencedora = scope_com_corrida("corrida-tx")
+    # `create!` representando o INSERT real, SEM a validação de unicidade do
+    # Rails (`save!(validate: false)`, como `create!` faz END-TO-END): a
+    # violação vem do BANCO — é isso que aborta a transação no PostgreSQL.
+    create_corrida = ->(**kwargs) { TarefaRecalculo.new(**kwargs).save!(validate: false) }
+
+    resultado = nil
+    ActiveRecord::Base.transaction do
+      com_metodos_de_classe_stubados([
+        [ TarefaRecalculo, :pendentes, scope ],
+        [ TarefaRecalculo, :create!, create_corrida ]
+      ]) do
+        resultado = TarefaRecalculo.enfileirar!(tipo_entidade: "REGISTRO_FREQUENCIA", referencia: "corrida-tx")
+      end
+
+      # PROVA de que a transação externa CONTINUA UTILIZÁVEL: uma query
+      # subsequente DENTRO da mesma transação não levanta
+      # PG::InFailedSqlTransaction (é exatamente o que quebraria hoje).
+      assert_equal 1, TarefaRecalculo.pendentes.where(referencia: "corrida-tx").count
+    end
+
+    assert_equal vencedora.call.id, resultado.id
+    assert resultado.pendente?
   end
 
   # --------------------------------------------------------------- meta-teste

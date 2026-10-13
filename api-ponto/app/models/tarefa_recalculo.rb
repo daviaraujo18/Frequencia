@@ -72,6 +72,22 @@ class TarefaRecalculo < ApplicationRecord
   # O `payload` de uma tarefa já pendente NÃO é sobrescrito — a tarefa que
   # existe é devolvida como está (o alvo é o mesmo; o despacho lê o estado
   # atual do alvo, não um snapshot do payload).
+  #
+  # O `INSERT` é isolado num SAVEPOINT (`transaction(requires_new: true)`).
+  # PORQUÊ: os produtores (RegistroManualFrequenciaService, SincronizarRegistrosPontoController)
+  # chamam `enfileirar!` DENTRO da transação que persiste o `TimeRecord`. No
+  # caminho de corrida, o `create!` estoura `ActiveRecord::RecordNotUnique`
+  # (índice único parcial) e o `rescue` abaixo faz `pendentes.find_by!` — uma
+  # query NOVA. Em PostgreSQL, um `unique_violation` ABORTA a transação inteira:
+  # sem o savepoint, essa query subsequente levantaria `PG::InFailedSqlTransaction`
+  # (não capturado) → derrubaria a transação do produtor → perderia o `TimeRecord`
+  # (erro espúrio, sem corrupção). O savepoint confina o `unique_violation`, então
+  # o `ROLLBACK TO SAVEPOINT` limpa o estado abortado e a transação do caller
+  # segue saudável — o `find_by!` do rescue roda normalmente.
+  #
+  # Comportamento externo inalterado: fora de transação, `requires_new` só abre
+  # uma transação normal; a idempotência (pendente existente ⇒ devolve a
+  # existente; após drenada ⇒ cria nova) é a mesma.
   def self.enfileirar!(tipo_entidade:, referencia:, payload: {})
     tipo = tipo_entidade.to_s
     ref = referencia.to_s
@@ -79,7 +95,12 @@ class TarefaRecalculo < ApplicationRecord
     existente = pendentes.find_by(tipo_entidade: tipo, referencia: ref)
     return existente if existente
 
-    create!(tipo_entidade: tipo, referencia: ref, payload: payload)
+    # SAVEPOINT em volta SÓ do INSERT (ver comentário acima): protege a
+    # transação do caller caso outro processo insira a linha PENDENTE do mesmo
+    # par entre o SELECT acima e este INSERT.
+    ActiveRecord::Base.transaction(requires_new: true) do
+      create!(tipo_entidade: tipo, referencia: ref, payload: payload)
+    end
   rescue ActiveRecord::RecordNotUnique
     # Corrida: outra linha PENDENTE do mesmo par foi inserida entre o SELECT
     # acima e o INSERT — o índice único parcial garantiu a unicidade; devolve
