@@ -290,4 +290,4 @@ As 7 decisões da sprint foram consolidadas em **uma** ADR (padrão de consolida
 - `docs/03-dominio/05-eventos-dominio.md` — **nota de reconciliação** (implementado como tabela de tarefas, não barramento de eventos).
 - `docs/governance/lessons.md` — **lições novas** (savepoint/`RecordNotUnique`, lock-herdado, guard de escrita).
 - `docs/progress/_context.md` — **regerado** (estava em `da26ee8`; Sprints 30/31 ausentes).
-- *(Recomendado ao Summarizer no próximo Guardian: `docs/governance/_context.md` — contagem de lições 37→41, ADR 0010→0011, Sprints 30/31.)*
+- *(Recomendado ao Summarizer no próximo Guardian: `docs/governance/_context.md` — contagem de lições 37→~~41~~ **42**, ADR 0010→0011, Sprints 30/31.)* **✅ FEITO (Summarizer, 2026-10-13):** `docs/governance/_context.md` regerado — contagem REAL medida por `grep -cE "^### [0-9]{4}-[0-9]{2}-[0-9]{2}" docs/governance/lessons.md` = **42** (a estimativa "41" desta linha estava subcontada: omitia a lição de 2026-10-06); ADRs `0000–0011` (com a ADR-0011 descrita); Sprints 30/31 refletidas; ambiente reconferido (Ruby 3.3.8 / Rails 8.1.4).
