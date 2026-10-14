@@ -31,6 +31,8 @@ A v1 deste plano descrevia **apenas** a linha de scaffolds/CRUD basic8 (Sprints 
 3. O plano v1 **não tinha entrada** para 29–31 (gap de rastreabilidade declarado nas próprias iterations 29/30/31). Esta v2 corrige.
 
 > ⚠️ **Ponto pendente de decisão (não resolvido aqui):** *a linha basic8 (templates de scaffold + piloto P2 + remoção do kaminari) foi abandonada ou apenas pausada?* As Sprints 25/27/28 permanecem listadas como **não executadas** e o dev/PO precisa decidir se voltam ao horizonte. Não as movo para "concluídas" nem as apago.
+>
+> ✅ **RESOLVIDO (dev, 2026-10-14):** a linha basic8 (25/27/28) está **PAUSADA** — não abandonada, não cancelada; pode voltar ao horizonte depois. Elas seguem **não executadas** (registro factual) e agora **pausadas** (decisão). Registrado também na `iteration_32.md` §"Perguntas abertas".
 
 ---
 
@@ -251,7 +253,7 @@ As decisões das linhas de autorização e recálculo foram consolidadas em ADRs
 
 | Risco | Severidade | Mitigação |
 |---|---|---|
-| **Linha basic8 inacabada (Sprints 25/27/28 não executadas)** — templates de scaffold, piloto P2 e remoção do kaminari pendentes; RF08–RF10 não entregues | 🟠 | Decisão do dev/PO: retomar a linha ou declará-la abandonada e ajustar o escopo do PRD basic8; hoje listada como **não executada** |
+| **Linha basic8 inacabada (Sprints 25/27/28 não executadas)** — templates de scaffold, piloto P2 e remoção do kaminari pendentes; RF08–RF10 não entregues | 🟠 | ✅ **Resolvido (dev, 2026-10-14): PAUSADA** (não abandonada). Seguem **não executadas** (registro factual) e **pausadas** (decisão); retomada fica no horizonte, sem data |
 | **Numeração do plano historicamente divergente** (Sprint 26 real ≠ Sprint 26 planejada) | 🟡 | Esta v2 registra a reconciliação; futuras sprints mantêm a numeração real das iterations |
 | **Enforcement opt-in da cascata** (ADR-0010 regra 9) — novo controller que leia frequência vaza silenciosamente, em **qualquer** valor da flag | 🟠 Alto | Emenda ADR-0010 regra 9; tarefa estrutural no horizonte (33+); até lá, disciplina de incluir o concern + teste de conteúdo |
 | **Cascata não vigente** — flag `FREQUENCIA_AUTORIZACAO_CASCATA` default `:off`; migração de atribuição das roles (30.9b) bloqueada a 87,9% de não-resolvidos (> limiar 10%) | 🟠 | Decisão `d50f317`: ativar `:on` quando todas as roles estiverem prontas; desbloquear o eixo de casamento da migração antes |
