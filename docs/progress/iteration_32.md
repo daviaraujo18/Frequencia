@@ -98,20 +98,31 @@ Esta é uma sprint de **HARDENING / DÉBITOS HERDADOS** (não é feature). O dev
   - **Reusar** o predicado `finalizado?` (sem segundo crivo).
 - **Escopo (o que NÃO ENTRA):** alterar o eixo `Pessoas::Vinculo.ativos` (31.4, correto per PRD); alterar a decisão de lock (31.4, correto per ADR-0011 regra 2); mexer no `RegistroRecalculoHandler` (31.3 — já tem a guarda; é a **referência**, não se altera).
 - Critérios de aceite:
-  - [ ] Guarda por dia antes de `calcular`; mês finalizado ⇒ **skip silencioso** (não recalcula o dia).
-  - [ ] **Sem divergência handler × job:** a semântica de guarda do `RecalcularTodosHandler` converge com a do `CalcularFrequenciaJob` (32.1) e com o `RegistroRecalculoHandler` (31.3).
-  - [ ] Idempotência preservada (rodar 2× = mesma saída); erro por usuário **isolado** (`rescue StandardError` por usuário) mantido.
-  - [ ] Teste com o conjunto de usuários/CPFs **injetado em memória**; `class_method_stub_helper` (save/restore; nunca `remove_method`).
-  - [ ] Sem regressão no baseline; RuboCop/Zeitwerk OK.
-- Status: ⬜ Pendente
+  - [x] Guarda por dia antes de `calcular`; mês finalizado ⇒ **skip silencioso** (não recalcula o dia).
+  - [x] **Sem divergência handler × job:** a semântica de guarda do `RecalcularTodosHandler` converge com a do `CalcularFrequenciaJob` (32.1) e com o `RegistroRecalculoHandler` (31.3).
+  - [x] Idempotência preservada (rodar 2× = mesma saída); erro por usuário **isolado** (`rescue StandardError` por usuário) mantido.
+  - [x] Teste com o conjunto de usuários/CPFs **injetado em memória**; `class_method_stub_helper` (save/restore; nunca `remove_method`).
+  - [x] Sem regressão no baseline; RuboCop/Zeitwerk OK.
+- Status: ✅ **Concluída (2026-10-14)** — o `RecalcularTodosHandler#processar_usuario` passou a espelhar o `CalcularFrequenciaJob` (32.1): guarda `finalizado?` **por dia** antes de `calcular`, guarda **pré-consolidação** e **memoização por `[ano, mes]`** local à execução por usuário, reusando o predicado canônico `ConsolidacaoMensalService.finalizado?`. Rescues (`MesFinalizadoError` como salvaguarda de corrida; `StandardError` por usuário) e o guard `user.cpf.blank?` mantidos. Arquivos: `api-ponto/app/services/recalcular_todos_handler.rb`, `api-ponto/test/services/recalcular_todos_handler_test.rb`. Branch: `feature/demanda-32-2-espelho-handler` (base `fe7f8ff` = 32.1).
+
+  **Evidência:** `bin/rails test test/services/recalcular_todos_handler_test.rb` = **11 runs / 30 assertions / 0F / 0E / 0 skips** (7 pré-existentes seguem verdes **sem mudança de expectativa**; +4 novos: snapshot mês finalizado, virada de mês, consolidar não chamado, memoização). Suíte completa = **1222 runs / 4257 assertions / 3F+12E / 0 skips** (as 15 são as pré-existentes do baseline; +4 runs / +9 asserts = os 4 testes novos). RuboCop = **0 offenses** nos 2 arquivos tocados; `zeitwerk:check` = "All is good!". Mutation testing: remover a guarda per-dia ⇒ **2 failures** (snapshot + virada); remover a guarda pré-consolidação ⇒ **1 failure** (consolidar não chamado); trocar o memo `Hash#key?` por truthiness ⇒ **1 failure** (memoização reconsulta 4×).
+
+  **Equivalência handler × job (comparação lado a lado de `processar_usuario`):** estruturas idênticas — mesmo guard `cpf.blank?`, mesmo memo `{}` + lambda com `return ... if key?`, mesma guarda per-dia (`next if finalizado.call(dia.year, dia.month)`), mesmo `return if finalizado.call(hoje.year, hoje.month)` pré-consolidação, mesmos 2 `rescue`. Divergências **apenas não-semânticas**: indentação (o handler vive em `class << self`) e o prefixo do log (`[RecalcularTodosHandler]` × `[CalcularFrequenciaJob]`). **0 divergência de regra.**
 
   **Linha do Tempo:**
 
   | Horário | O que foi feito | Resultado |
   |---------|-----------------|-----------|
-  |         |                 |           |
+  | 2026-10-14 | Branch `feature/demanda-32-2-espelho-handler` criada a partir de `fe7f8ff` (32.1) | OK |
+  | 2026-10-14 | Guarda per-dia + pré-consolidação + memo no `RecalcularTodosHandler#processar_usuario` | implementado |
+  | 2026-10-14 | +4 testes (snapshot, virada de mês, consolidar não chamado, memoização) | 11 runs / 30 asserts / 0F / 0E |
+  | 2026-10-14 | Mutation testing (3 pontos de decisão) | 2F/1F/1F conforme esperado |
+  | 2026-10-14 | Suíte completa + RuboCop + Zeitwerk | 1222/4257/3F+12E; 0 offenses; OK |
 
-- Riscos: **ordem invertida** (corrigir o handler antes do job) recria a divergência que o débito D2 alerta → a dependência 32.1 → 32.2 é **obrigatória**.
+- Riscos: **ordem invertida** (corrigir o handler antes do job) recria a divergência que o débito D2 alerta → a dependência 32.1 → 32.2 foi respeitada (branch nasce de `fe7f8ff`). Duplicação handler × job: **intencional e registrada** (31.4) — não extraída para colaborador compartilhado; a equivalência foi conferida lado a lado.
+  - **🟢 Nota de escopo:** o `RegistroRecalculoHandler` (31.3), o `VincularDesvincularHandler` (31.5/Q16) e o `CalcularFrequenciaJob` **não foram tocados** (fora de escopo).
+
+- **📋 Relatório de Revisão — Dev 1 (Code Reviewer):** `docs/quality/review_report_32_2.md` — ✅ **Aprovado** (2026-10-14), **0 Blockers / 0 Sugestões formais**. Equivalência handler × job confirmada linha a linha; memo local por usuário (sem vazamento); 4 testes novos não-vacuosos (mutation A/B/C = 2F/1F/1F reproduzidos); suíte 1222/4257/3F+12E (15 pré-existentes em arquivos não relacionados); RuboCop/Zeitwerk OK. Escopo e ordem 32.1 → 32.2 respeitados.
 
 ### Área — 2. Operação e governança (condicionadas à aprovação/decisão do dev)
 
@@ -186,7 +197,7 @@ Outros candidatos do **horizonte 33+** já documentados (apenas registrados, **s
 | Tarefa | Área | Pontos | Dependência | Natureza | Status |
 |--------|------|--------|-------------|----------|--------|
 | **32.1** | Recálculo — D2/17.5 | **3** | nenhuma | código | ✅ Concluída (2026-10-14) |
-| **32.2** | Recálculo — espelho 31.4 | **2** | **32.1** | código | ⬜ Pendente |
+| **32.2** | Recálculo — espelho 31.4 | **2** | **32.1** | código | ✅ Implementado, ✅ Aprovado (2026-10-14) |
 | **32.3** | Operação — deploy migration | **1** | pilha 31 | operacional (aprov. dev) | ⬜ Condicionada |
 | **32.4** | Governança — ponteiro docs | **1** | decisão do dev | governança (fora do repo) | ⬜ Condicionada |
 | **32.O1** | Horizonte — enforcement cascata | *(5)* | aprov. dev | **candidato opcional** | ⛔ Não comprometido |
@@ -217,7 +228,7 @@ Outros candidatos do **horizonte 33+** já documentados (apenas registrados, **s
 ## Débitos Técnicos
 
 - [x] **D2 da 17.5** — `CalcularFrequenciaJob` recalcula os últimos 3 dias **sem** guarda de mês finalizado ⇒ `CalculoDiario` de mês fechado pode ser reescrito e o `RegistroMensalFrequencia` ficar stale. **TRATADO (32.1, 2026-10-14):** guarda `finalizado?` por dia + pré-consolidação. Severidade: 🟠 — Tarefa: 32.1 ✅.
-- [ ] **D2 da 31.4** — `RecalcularTodosHandler` sem guard `finalizado?` por dia (mesma classe de D2/17.5). **Tratado nesta sprint (32.2), espelhando o job.** Severidade: 🟠 — Tarefa: 32.2.
+- [x] **D2 da 31.4** — `RecalcularTodosHandler` sem guard `finalizado?` por dia (mesma classe de D2/17.5). **TRATADO (32.2, 2026-10-14):** guarda `finalizado?` por dia + pré-consolidação + memo, espelhando o job (32.1). Severidade: 🟠 — Tarefa: 32.2 ✅.
 - [x] ~~**Q16 — "cauda" do período ao encolher o vínculo (31.5)**~~ — **FECHADO como débito ACEITO (dev, 2026-10-14): MANTER O LITERAL.** A cauda não é recalculada; decisão documentada, **não** é tarefa da 32. Severidade: 🟠 (aceito) — Tarefa: (nenhuma).
 - [ ] **Migration `create_tarefas_recalculo` (31.1) só no banco de TESTE local** — falta `db:migrate` no dev remoto. **Item operacional 32.3 (aprov. do dev).** Severidade: 🟠 (operacional) — Tarefa: 32.3.
 - [ ] **Governança de docs** — `CLAUDE.md` do workspace aponta para `pessoas2/docs/` (multi-projeto). **Item condicionado 32.4.** Severidade: 🟡 — Tarefa: 32.4.
