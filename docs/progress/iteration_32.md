@@ -62,22 +62,32 @@ Esta é uma sprint de **HARDENING / DÉBITOS HERDADOS** (não é feature). O dev
   - Preservar o `rescue ConsolidacaoMensalService::MesFinalizadoError` como **salvaguarda de corrida** (TOCTOU) e a consolidação do mês corrente inalterada.
 - **Escopo (o que NÃO ENTRA):** alterar a filosofia dos 3 dias + mês corrente (decisão já tomada, **não reabrir**); tocar no `RecalcularTodosHandler` (é a **32.2**); reabrir TOCTOU (débito aceito).
 - Critérios de aceite:
-  - [ ] A guarda é avaliada **antes de qualquer escrita** de `CalculoDiario` para cada um dos 3 dias; mês finalizado ⇒ **o dia não é recalculado** (skip silencioso).
-  - [ ] Teste com **snapshot**: `CalculoDiario` de um mês finalizado **permanece inalterado** após rodar o job (sem stub — mês realmente finalizado via `ConsolidacaoMensalService.finalizar`).
-  - [ ] Teste cobre a **virada de mês**: 3 dias cruzando 2 meses, um finalizado e outro não ⇒ o dia do mês aberto é recalculado, o do mês fechado **não**.
-  - [ ] A guarda **reusa** `ConsolidacaoMensalService.finalizado?` (grep prova: nenhuma segunda condição de finalização criada).
-  - [ ] A consolidação do mês corrente continua rodando; `MesFinalizadoError` segue tratado como salvaguarda.
-  - [ ] Testes via `test/support/class_method_stub_helper.rb` (**save/restore; NUNCA `remove_method`**) quando houver stub.
-  - [ ] Sem regressão no baseline (as 15 pré-existentes inalteradas); RuboCop/Zeitwerk OK.
-- Status: ⬜ Pendente
+  - [x] A guarda é avaliada **antes de qualquer escrita** de `CalculoDiario` para cada um dos 3 dias; mês finalizado ⇒ **o dia não é recalculado** (skip silencioso).
+  - [x] Teste com **snapshot**: `CalculoDiario` de um mês finalizado **permanece inalterado** após rodar o job (sem stub — mês realmente finalizado via `ConsolidacaoMensalService.finalizar`).
+  - [x] Teste cobre a **virada de mês**: 3 dias cruzando 2 meses, um finalizado e outro não ⇒ o dia do mês aberto é recalculado, o do mês fechado **não**.
+  - [x] A guarda **reusa** `ConsolidacaoMensalService.finalizado?` (grep prova: nenhuma segunda condição de finalização criada).
+  - [x] A consolidação do mês corrente continua rodando; `MesFinalizadoError` segue tratado como salvaguarda.
+  - [x] Testes via `test/support/class_method_stub_helper.rb` (**save/restore; NUNCA `remove_method`**) quando houver stub.
+  - [x] Sem regressão no baseline (as 15 pré-existentes inalteradas); RuboCop/Zeitwerk OK.
+- Status: ✅ **Concluída (2026-10-14)** — guarda de mês finalizado **por dia** + guarda pré-consolidação implementadas no `CalcularFrequenciaJob`, reusando `ConsolidacaoMensalService.finalizado?`. Arquivos: `api-ponto/app/jobs/calcular_frequencia_job.rb`, `api-ponto/test/jobs/calcular_frequencia_job_test.rb`. Branch: `feature/demanda-32-1-guarda-finalizado-job` (base `chore/limpeza-rubocop-77`).
+
+  **Evidência:** `bin/rails test test/jobs/calcular_frequencia_job_test.rb` = **8 runs / 23 assertions / 0F / 0E / 0 skips**. Suíte completa = **1217 runs / 4247 assertions / 3F+12E / 0 skips** (as 15 são as pré-existentes do baseline; +3 runs = os 3 testes novos). RuboCop = **0 offenses** nos 2 arquivos tocados; `zeitwerk:check` = "All is good!". Mutation testing: neutralizar a guarda per-dia ⇒ falham os testes de snapshot e de virada de mês (2 failures); neutralizar a guarda pré-consolidação ⇒ falha o teste "consolidar NAO e chamado" (1 failure).
 
   **Linha do Tempo:**
 
   | Horário | O que foi feito | Resultado |
   |---------|-----------------|-----------|
-  |         |                 |           |
+  | 2026-10-14 | Branch `feature/demanda-32-1-guarda-finalizado-job` criada a partir de `chore/limpeza-rubocop-77` | OK |
+  | 2026-10-14 | Guarda per-dia + guarda pré-consolidação no `CalcularFrequenciaJob#processar_usuario` | implementado |
+  | 2026-10-14 | +3 testes (snapshot mês finalizado, virada de mês, consolidar não chamado) | 8 runs / 23 asserts / 0F / 0E |
+  | 2026-10-14 | Mutation testing (2 pontos de decisão) | 2F/1F conforme esperado |
+  | 2026-10-14 | Suíte completa + RuboCop + Zeitwerk | 1217/4247/3F+12E; 0 offenses; OK |
 
 - Riscos: **duplicar** a regra de finalização (criar um segundo crivo que pode divergir) → mitigado por **reusar** `finalizado?`. Confundir mês do dia × mês corrente → a guarda é **por dia** e o teste cobre a virada de mês.
+
+  **Review:** relatório em `docs/quality/review_report_32_1.md` — ✅ **Aprovado, 0 Blockers** (1 sugestão 🟡 S1). O revisor confirmou por mutation testing que os 3 testes novos são não-vacuosos, que o predicado canônico `finalizado?` é reusado (sem segundo crivo) e que os handlers não foram tocados (32.2 preservada).
+  - **🟡 S1 (Melhoria) — APLICADO (2026-10-14):** memoização de `ConsolidacaoMensalService.finalizado?` por `[ano, mes]` dentro de `processar_usuario`, com um `Hash` **local à execução/usuário** (não ivar de classe, não cache global) consultado via `Hash#key?` — necessário porque o valor é booleano e o caminho comum é `false` ("mês aberto"); um `||=` simples faria o `false` reconsultar e anularia o ganho. Fora da virada de mês os 3 dias e a consolidação prévia caem no mesmo mês ⇒ os até 4 lookups por usuário passam a no máximo 2 (o corrente e, na virada, o anterior). **Comportamento externo inalterado** (otimização pura de lookups; guarda per-dia + pré-consolidação e rescues intactos). Novo teste não-vacuoso prova a memoização: cobre o mesmo mês aberto consultado **1×** (contra 4× sem memo); mutação `key?` → truthy ⇒ falha com 4 chamadas.
+  - **Evidência pós-S1:** focado = **9 runs / 24 asserts / 0F / 0E**; suíte completa = **1218 runs / 4248 asserts / 3F+12E** (baseline 1217/4247 + 1 teste novo); RuboCop = **0 offenses** nos 2 arquivos tocados; `zeitwerk:check` = "All is good!".
 
 #### Tarefa 32.2 — Espelho da guarda no handler `RECALCULAR_TODOS` (débito D2 da 31.4)
 - User Story: Como sistema, quero que o handler `RECALCULAR_TODOS` aplique a **mesma guarda por dia** do job noturno, para que o recálculo em lote **não divirja** do `CalcularFrequenciaJob` (mesma classe de débito D2/17.5).
@@ -175,7 +185,7 @@ Outros candidatos do **horizonte 33+** já documentados (apenas registrados, **s
 
 | Tarefa | Área | Pontos | Dependência | Natureza | Status |
 |--------|------|--------|-------------|----------|--------|
-| **32.1** | Recálculo — D2/17.5 | **3** | nenhuma | código | ⬜ Pendente |
+| **32.1** | Recálculo — D2/17.5 | **3** | nenhuma | código | ✅ Concluída (2026-10-14) |
 | **32.2** | Recálculo — espelho 31.4 | **2** | **32.1** | código | ⬜ Pendente |
 | **32.3** | Operação — deploy migration | **1** | pilha 31 | operacional (aprov. dev) | ⬜ Condicionada |
 | **32.4** | Governança — ponteiro docs | **1** | decisão do dev | governança (fora do repo) | ⬜ Condicionada |
@@ -206,7 +216,7 @@ Outros candidatos do **horizonte 33+** já documentados (apenas registrados, **s
 
 ## Débitos Técnicos
 
-- [ ] **D2 da 17.5** — `CalcularFrequenciaJob` recalcula os últimos 3 dias **sem** guarda de mês finalizado ⇒ `CalculoDiario` de mês fechado pode ser reescrito e o `RegistroMensalFrequencia` ficar stale. **Tratado nesta sprint (32.1).** Severidade: 🟠 — Tarefa: 32.1.
+- [x] **D2 da 17.5** — `CalcularFrequenciaJob` recalcula os últimos 3 dias **sem** guarda de mês finalizado ⇒ `CalculoDiario` de mês fechado pode ser reescrito e o `RegistroMensalFrequencia` ficar stale. **TRATADO (32.1, 2026-10-14):** guarda `finalizado?` por dia + pré-consolidação. Severidade: 🟠 — Tarefa: 32.1 ✅.
 - [ ] **D2 da 31.4** — `RecalcularTodosHandler` sem guard `finalizado?` por dia (mesma classe de D2/17.5). **Tratado nesta sprint (32.2), espelhando o job.** Severidade: 🟠 — Tarefa: 32.2.
 - [x] ~~**Q16 — "cauda" do período ao encolher o vínculo (31.5)**~~ — **FECHADO como débito ACEITO (dev, 2026-10-14): MANTER O LITERAL.** A cauda não é recalculada; decisão documentada, **não** é tarefa da 32. Severidade: 🟠 (aceito) — Tarefa: (nenhuma).
 - [ ] **Migration `create_tarefas_recalculo` (31.1) só no banco de TESTE local** — falta `db:migrate` no dev remoto. **Item operacional 32.3 (aprov. do dev).** Severidade: 🟠 (operacional) — Tarefa: 32.3.
