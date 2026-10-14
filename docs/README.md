@@ -6,17 +6,18 @@
 
 ---
 
-## ✅ Estado Atual do Projeto (2026-08-05)
+## ✅ Estado Atual do Projeto (2026-10-14)
 
 | Fase | Status | Onde |
 |------|--------|------|
 | **Fase 1 — Inventário do legado** | ✅ **CONCLUÍDO** (domínios + DUVs + **schema físico coletado do MySQL**) | `01-inventario/` |
 | **Fase 2 — Engenharia Reversa (Fluxos A–D)** | ✅ **CONCLUÍDA** | `09-intranet/fluxos/` |
 | **Fase 3 — Mapeamento de Domínio (DDD)** | ✅ **CONCLUÍDA** | `03-dominio/` |
-| **Fases 4+ (ARQUITETURA / CÓDIGO)** | ⏸️ **SUSPENSAS** por decisão do usuário | `02-arquitetura/` |
-| **PRD + Plano (Sprints/Tasks)** | 🔜 Próximo passo (após inventário fechado) | — |
+| **Fase 4 — ARQUITETURA / CÓDIGO (Rails)** | 🚧 **EM ANDAMENTO** — arquitetura definida; sistema em implementação por sprints | `02-arquitetura/` |
+| **PRD + Plano (Sprints/Tasks)** | ✅ **ENTREGUES** — PRDs na raiz + `implementation_plan.md`/`SPRINT-PLAN.md` | `12-plano-implementacao/` |
+| **Implementação (Sprints)** | ✅ **Sprints 23–31 implementadas** (última: 31 — recálculo por evento, **ADR-0011**, 2026-10-13) | `progress/` |
 
-> **Fluxo definido pelo usuário:** Inventário ✅ → **PRD** → **Plano de Desenvolvimento (Sprints + Tasks)** → só então Fase 4 (arquitetura/código Rails).
+> **Fluxo executado:** Inventário ✅ → **PRD** ✅ → **Plano de Desenvolvimento (Sprints + Tasks)** ✅ → **implementação Rails em curso** (Sprints 23–31 concluídas; débitos herdados e próximas sprints em `progress/_context.md`).
 
 ---
 
@@ -28,10 +29,10 @@
 | **1** | Inventário completo do legado (domínios, tabelas, schema) | ✅ Concluída |
 | **2** | Engenharia Reversa (fluxos A–D, regras com evidência) | ✅ Concluída |
 | **3** | Mapeamento de Domínio / DDD (bounded contexts, agregados, eventos, casos de uso) | ✅ Concluída |
-| **4** | Arquitetura Alvo (Rails + DDD) | ⏸️ Suspensa (após PRD) |
+| **4** | Arquitetura Alvo (Rails + DDD) | 🚧 Em andamento (arquitetura definida; código implementado por sprints) |
 | **5** | Estratégia de Migração (Strangler Fig) | 🔜 Pendente |
 | **6** | Plano de Compatibilidade (EstaçãoPonto) | 🔜 Pendente |
-| **7** | Plano de Implementação (Sprints/Tasks) | 🔜 Pendente (PRD antes) |
+| **7** | Plano de Implementação (Sprints/Tasks) | ✅ Entregue (PRDs + `implementation_plan.md`/`SPRINT-PLAN.md`; Sprints 23–31 implementadas) |
 | **8** | Plano de Testes | 🔜 Pendente |
 | **9** | Plano de Implantação | 🔜 Pendente |
 
@@ -50,7 +51,7 @@
 | `07-estacao-ponto/` | **Fase 6** | **EstaçãoPonto** (arquitetura, endpoints, compat DES) | [`00-indice.md`](07-estacao-ponto/00-indice.md) |
 | `08-pessoas/` | Integrações | **Pessoas** (fonte de dados cadastrais, ADR-0001) | [`00-indice.md`](08-pessoas/00-indice.md) |
 | `09-intranet/` | **Fases 1–2** | **Intranet legada** — módulo `presenca`, fluxos A–D, DUVs | [`00-indice-modulo-presenca.md`](09-intranet/00-indice-modulo-presenca.md) |
-| `02-arquitetura/` | **Fase 4** | Arquitetura do novo sistema — **a preencher** (após PRD) | *(vazia)* |
+| `02-arquitetura/` | **Fase 4** | Arquitetura do novo sistema — decisões consolidadas em `adr/`; pasta a preencher | *(vazia → ver `adr/`)* |
 | `10-testes/` / `11-deploy/` | **Fases 8/9** | Testes e implantação — a preencher | *(vazias)* |
 | `adr/` | Decisões | Architecture Decision Records | [ADRs `0000`–`0011`](adr/) |
 | `specs/` | — | Memória/estado da sessão (Spec-Driven) | `STATE.md` |
@@ -108,9 +109,9 @@
 
 ---
 
-## Fase 4 — Arquitetura Alvo ⏸️ SUSPENSA (após PRD)
+## Fase 4 — Arquitetura Alvo 🚧 EM ANDAMENTO
 
-Este é o **próximo bloco de trabalho após o PRD** (decisão do usuário: **não construir antes**). Quando iniciada, cobrirá (`02-arquitetura/`):
+Com o PRD entregue, a Fase 4 foi destravada e a implementação Rails está em curso (Sprints 23–31). Cobre (`02-arquitetura/`):
 - Diagrama de camadas (Controllers, Services, Models, Domain, Infrastructure) — Rails API-only
 - Definição de API (endpoints, formato, versionamento)
 - Estratégia de autenticação/autorização
@@ -118,17 +119,17 @@ Este é o **próximo bloco de trabalho após o PRD** (decisão do usuário: **n�
 - Definição de jobs, filas e processamento assíncrono
 - ADRs das decisões arquiteturais
 
-> A Fase 4 depende diretamente do entendimento sólido de domínio (Fase 3) e do PRD, que está em **próximo passo** na fila do usuário.
+> A Fase 4 partiu do domínio (Fase 3) e do PRD; as decisões arquiteturais estão consolidadas em **ADRs** (`adr/`, `0000`–`0011`) e a evolução por sprints fica registrada em `progress/`.
 
 ---
 
-## Fases 5–9 🔜 PENDENTES
+## Fases 5–9 — status por fase
 
 | Fase | Conteúdo | Onde (quando iniciada) |
 |------|----------|------------------------|
 | **5 — Estratégia de Migração** | Strangler Fig com proxy reverso; estratégia já recomendada no framework | `05-migracao/` |
 | **6 — Compatibilidade EstaçãoPonto** | Adaptador / proxy / replicação de API; mínimo de alteração na estação | `07-estacao-ponto/` / `06-integracoes/` |
-| **7 — Plano de Implementação** | Sprints e Tasks (a partir do **PRD**) | — |
+| **7 — Plano de Implementação** | Sprints e Tasks (a partir do **PRD**) — ✅ entregue; Sprints 23–31 implementadas | `12-plano-implementacao/` |
 | **8 — Plano de Testes** | RSpec, integração, contrato (Pact), regressão, homologação | `10-testes/` |
 | **9 — Plano de Implantação** | CI/CD, rollback, monitoramento, observabilidade | `11-deploy/` |
 
@@ -142,4 +143,4 @@ Este é o **próximo bloco de trabalho após o PRD** (decisão do usuário: **n�
 - Os **fluxos de engenharia reversa** (Fase 2) ficam em `09-intranet/fluxos/` com evidência `arquivo:linha`.
 
 ---
-**Última atualização:** 2026-08-05
+**Última atualização:** 2026-10-14

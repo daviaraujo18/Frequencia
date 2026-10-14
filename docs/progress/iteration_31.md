@@ -1,6 +1,6 @@
 # Iteration 31 — Fila assíncrona de recálculo por evento (PRD §5.2)
 
-> Status: 🟢 **ENCERRADA (CTO, 2026-10-13)** — **5/5 tasks implementadas, testadas, revisadas e COMMITADAS** (Code Reviewer: **0 blockers** em todas). Pilha **LINEAR** `feature/demanda-31-1…` → `…-31-5-vincular-desvincular` (`b417fef` → `97095bc` → `b50e425` → `e13f782` → `dae631f`; +`1fa033e` = fix D2). **NÃO** pushada nem mergeada em `integration/sprint-29`. Baseline final **1214/4239/3F+12E/0 skip** (as 15 defeitos pré-existentes). Consolidação durável: **ADR-0011** (ver §"Encerramento da Sprint 31"). | Período: 2026-10-13 | Goal: materializar o **mecanismo estrutural** de recálculo em lote por evento do PRD §5.2 (gap §9 #3) — uma **fila persistente** de tarefas + um **job de despacho** a cada ~5min + os **handlers dos eventos cujo domínio já existe no Frequência** (`REGISTRO_FREQUENCIA`/`REGISTRO_ESTACAO`, `VINCULAR_DESVINCULAR`, `RECALCULAR_TODOS`), deixando `FERIADO`/`DIAEXCEPCIONAL`/`DIREITO` **explicitamente adiados** (models inexistentes). | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` **§5.2 (L139-148)** e **§9 item 3 (L201)**; contexto de §5.1 (L133-137); `docs/progress/iteration_30.md` (política incremental de roles — emenda 2026-10-07).
+> Status: 🟢 **ENCERRADA (CTO, 2026-10-13)** — **5/5 tasks implementadas, testadas, revisadas e COMMITADAS** (Code Reviewer: **0 blockers** em todas). Pilha **LINEAR** `feature/demanda-31-1…` → `…-31-5-vincular-desvincular` (`b417fef` → `97095bc` → `b50e425` → `e13f782` → `dae631f`; +`1fa033e` = fix D2; +`4ddca3b` = docs/ADR-0011). **PUSHADA** (2026-10-14) em `origin` e `gitlab` na branch `chore/limpeza-rubocop-77` @ `ceaac87`; **merge em `integration/sprint-29` segue PENDENTE** (bloqueado por decisão do dev). Baseline final **1214/4239/3F+12E/0 skip** (as 15 defeitos pré-existentes). Consolidação durável: **ADR-0011** (ver §"Encerramento da Sprint 31"). | Período: 2026-10-13 | Goal: materializar o **mecanismo estrutural** de recálculo em lote por evento do PRD §5.2 (gap §9 #3) — uma **fila persistente** de tarefas + um **job de despacho** a cada ~5min + os **handlers dos eventos cujo domínio já existe no Frequência** (`REGISTRO_FREQUENCIA`/`REGISTRO_ESTACAO`, `VINCULAR_DESVINCULAR`, `RECALCULAR_TODOS`), deixando `FERIADO`/`DIAEXCEPCIONAL`/`DIREITO` **explicitamente adiados** (models inexistentes). | Rastreabilidade: `Frequencia/PRD-REGRAS-NEGOCIO-PRESENCA.md` **§5.2 (L139-148)** e **§9 item 3 (L201)**; contexto de §5.1 (L133-137); `docs/progress/iteration_30.md` (política incremental de roles — emenda 2026-10-07).
 
 ## Contexto e escopo (definido pelo dev)
 
@@ -38,7 +38,7 @@ O PRD §5.2 (L139-148) descreve o **mecanismo estrutural** do legado que hoje **
 
 - Última iteration com arquivo: **30** (`docs/progress/iteration_30.md`). Próximo número livre: **31**.
 - **Gap de rastreabilidade declarado:** o `docs/12-plano-implementacao/implementation_plan.md` **não cobre as Sprints 29/30/31** (descreve só as Sprints 24–28, stack basic8). **Não é fonte de escopo desta sprint**; a formalização do épico/Gantt é do **Project Planner** (fora desta sprint) — mesmo débito herdado da 30.
-- **`docs/progress/_context.md` está DEFASADO** (registra HEAD `da26ee8`, branch `integration/sprint-29`). O **HEAD real medido nesta árvore é `8bd6755`** (`feat: semeia as 13 roles granulares do legado (guardadas/inertes) + registra a decisao`). **Não atualizar o `_context.md` nesta tarefa** (fora do escopo; o Summarizer é o dono).
+- **`docs/progress/_context.md` está DEFASADO** (registra HEAD `da26ee8`, branch `integration/sprint-29`). O **HEAD real medido nesta árvore é `8bd6755`** (`feat: semeia as 13 roles granulares do legado (guardadas/inertes) + registra a decisao`). **Não atualizar o `_context.md` nesta tarefa** (fora do escopo; o Summarizer é o dono). *[**CORRIGIDO (2026-10-14):** o `_context.md` foi regenerado; o HEAD real hoje é `ceaac87` na branch `chore/limpeza-rubocop-77`, pushada em `origin`/`gitlab`.]*
 
 ## Pré-condições
 
@@ -271,8 +271,9 @@ As 7 decisões da sprint foram consolidadas em **uma** ADR (padrão de consolida
 - [ ] **Q16 — "cauda" do período ao encolher o vínculo (31.5).** Manter o **literal** ("dias do período" = `[início, fim]`; cauda fica como débito) **ou** estender o handler para recalcular a cauda `(novo_fim, fim_anterior]`? Registrar a decisão **antes** de qualquer mudança; hoje está fiel-ao-literal com o furo documentado.
 - [ ] **D2 da 17.5 — `CalcularFrequenciaJob` recalcula os últimos 3 dias SEM guarda de mês finalizado.** É o **mesmo padrão do bug A da 31.3** (pré-existente). Corrigir só o handler criaria divergência; **abrir tarefa própria sobre a 17.5** ou aceitar explicitamente. Decisão de priorização do dev.
 - [ ] **Deploy da migration `create_tarefas_recalculo` (31.1) no dev remoto.** Só foi aplicada no banco de **teste local**; sem `db:migrate` no dev remoto, o mecanismo **não opera** fora do teste.
-- [ ] **RuboCop-77 — deadline 2026-10-13 (hoje).** Chore `chore/limpeza-rubocop-77`, gatilho binário `rubocop` EXIT 0.
-- [ ] **Merge + push da pilha.** Ver sequência abaixo; **nada foi pushado/mergeado** (`COMMIT_MODE=manual`).
+- [x] **RuboCop-77** — ✅ **FEITO no prazo (2026-10-13):** 75→0 offenses, `bin/rubocop` EXIT 0 (chore `chore/limpeza-rubocop-77`, commit `51992e8`).
+- [x] **Push da pilha** — ✅ **FEITO (2026-10-14):** branch `chore/limpeza-rubocop-77` @ `ceaac87` publicada em `origin` e `gitlab`.
+- [ ] **Merge em `integration/sprint-29`** — **PENDENTE / bloqueado por decisão do dev** (`COMMIT_MODE=manual`).
 
 ### Sequência recomendada de entrega (proposta — CTO NÃO executa)
 

@@ -113,4 +113,4 @@ necessário (nem permitido) re-executá-la.
 
 | Débito | Dono | Critério de pronto |
 |---|---|---|
-| Commit + push da branch `chore/limpeza-rubocop-77` | coordenador (COMMIT_MODE=manual) | revisão do Code Reviewer aprovada |
+| Commit + push da branch `chore/limpeza-rubocop-77` | coordenador (COMMIT_MODE=manual) | ✅ **CONCLUÍDO (2026-10-14):** commit `51992e8`; pushada em `origin` e `gitlab` (`ceaac87`). Falta apenas o **merge em `integration/sprint-29`** — pendente/bloqueado por decisão do dev. |
