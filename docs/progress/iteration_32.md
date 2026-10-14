@@ -138,15 +138,17 @@ Esta é uma sprint de **HARDENING / DÉBITOS HERDADOS** (não é feature). O dev
   - [ ] **Aprovação explícita do dev** registrada antes da execução (operação de deploy).
   - [ ] `tarefas_recalculo` existe no dev remoto com o índice UNIQUE parcial (`ActiveRecord::Base.connection.table_exists?(:tarefas_recalculo)` + índice).
   - [ ] O cron `executa_tarefas` **não** é ligado antes da migration aplicada.
-- Status: ⬜ Pendente — **condicionada à aprovação do dev**
+- Status: 🟡 **BLOQUEADA POR INFRAESTRUTURA** (2026-10-14) — aprovação do dev **concedida** (`/code-specialist 32.3`), mas **não executável**: o host do dev remoto está inalcançável.
 
   **Linha do Tempo:**
 
   | Horário | O que foi feito | Resultado |
   |---------|-----------------|-----------|
-  |         |                 |           |
+  | 2026-10-14 | Aprovação do dev registrada (critério de aceite nº 1 satisfeito) | concedida |
+  | 2026-10-14 | Teste de alcance do dev remoto (`10.150.110.174:5000`) | ❌ **`Não há rota para o host`** |
+  | 2026-10-14 | `db:migrate` executado? | **NÃO** — host inalcançável; nada foi migrado |
 
-- Riscos: aplicar antes de aprovação; ligar o cron na branch integrada **antes** do `db:migrate` ⇒ o `ExecutaTarefasJob` falha (`relation does not exist`).
+- Riscos: aplicar antes de aprovação; ligar o cron na branch integrada **antes** do `db:migrate` ⇒ o `ExecutaTarefasJob` falha (`relation does not exist`). **Como destravar:** restaurar a rota de rede (VPN) até `10.150.110.174:5000` e rodar `cd api-ponto && bin/rails db:migrate` — só a migration `20261013120000_create_tarefas_recalculo` está pendente no dev; **ou** rodar de uma máquina com rota e trazer a evidência. **Estado atual:** cron `executa_tarefas` **desligado** (correto).
 
 #### Tarefa 32.4 — Governança de docs: ponteiro do `CLAUDE.md` do workspace → `Frequencia/docs/`
 - User Story: Como agente/dev do projeto Frequência, quero que o ponteiro de documentação aponte para a árvore correta (`Frequencia/docs/`), para não ser conduzido à árvore do **outro** projeto (`pessoas2/docs/`).
@@ -156,17 +158,20 @@ Esta é uma sprint de **HARDENING / DÉBITOS HERDADOS** (não é feature). O dev
 - **Escopo (o que ENTRA):** corrigir/escopar o ponteiro de docs para o **projeto Frequência** apontar para `Frequencia/docs/` (ideal: **escopar por projeto**, de modo que o Frequência não seja conduzido à árvore do Pessoas2).
 - **Escopo (o que NÃO ENTRA):** alterar a documentação do projeto Pessoas2; quebrar o carregamento para os **outros** projetos do workspace.
 - Critérios de aceite:
-  - [ ] **Decisão do dev** registrada: abordagem **escopada por projeto** × correção global (o arquivo é multi-projeto).
-  - [ ] Para o Frequência, o ponteiro de docs não conduz a `pessoas2/docs/`.
-  - [ ] A mudança **não** afeta negativamente os demais projetos do workspace.
-- Status: ⬜ Pendente — **condicionada à decisão do dev** (não é tarefa fechada)
+  - [x] **Decisão do dev (2026-10-14): abordagem ESCOPADA POR PROJETO** — NÃO a correção global (uma correção global conduziria todo o workspace ao Frequência e degradaria quem trabalha no Pessoas2 na mesma pasta).
+  - [x] Para o Frequência, o ponteiro de docs **não conduz mais** a `pessoas2/docs/`.
+  - [x] A mudança **não** afeta os demais projetos: o Pessoas2 continua apontando para `pessoas2/docs/`.
+- Status: ✅ **CONCLUÍDA** (2026-10-14) — `workspace_integração/CLAUDE.md` reescrito com ponteiro **por projeto** (`Frequência → Frequencia/docs/`; `Pessoas2 → pessoas2/docs/`; governança `<projeto>/docs/governance/`). Executado **diretamente pelo coordenador** (não por agente): é um arquivo de **configuração do workspace**, fora do repo Frequencia, e as regras pedem cuidado extra com esse tipo de arquivo. **Sem commit** (o arquivo não pertence ao repo `Frequencia`).
 - Riscos: editar um arquivo **compartilhado** do workspace e quebrar outros projetos; tratar como tarefa fechada antes da decisão do dev. Nota: a alteração está **fora do repo Frequencia** — se o guia for "não tocar fora do repo", a tarefa vira apenas **recomendação** ao dev.
 
   **Linha do Tempo:**
 
   | Horário | O que foi feito | Resultado |
   |---------|-----------------|-----------|
-  |         |                 |           |
+  | 2026-10-14 | Decisão do dev: abordagem **escopada por projeto** (não global) | decidido |
+  | 2026-10-14 | `workspace_integração/CLAUDE.md` reescrito (2 seções) — ponteiro por projeto | aplicado |
+  | 2026-10-14 | Verificação: Pessoas2 segue apontando `pessoas2/docs/`; Frequência → `Frequencia/docs/` | OK |
+  | 2026-10-14 | Commit | **N/A** — arquivo fora do repo `Frequencia` |
 
 ## Candidatos opcionais (horizonte 33+ — **NÃO comprometidos nesta sprint**)
 
@@ -198,8 +203,8 @@ Outros candidatos do **horizonte 33+** já documentados (apenas registrados, **s
 |--------|------|--------|-------------|----------|--------|
 | **32.1** | Recálculo — D2/17.5 | **3** | nenhuma | código | ✅ Concluída (2026-10-14) |
 | **32.2** | Recálculo — espelho 31.4 | **2** | **32.1** | código | ✅ Implementado, ✅ Aprovado (2026-10-14) |
-| **32.3** | Operação — deploy migration | **1** | pilha 31 | operacional (aprov. dev) | ⬜ Condicionada |
-| **32.4** | Governança — ponteiro docs | **1** | decisão do dev | governança (fora do repo) | ⬜ Condicionada |
+| **32.3** | Operação — deploy migration | **1** | pilha 31 | operacional (aprov. dev) | 🟡 Bloqueada por infra (aprovada, host inalcançável) |
+| **32.4** | Governança — ponteiro docs | **1** | decisão do dev | governança (fora do repo) | ✅ Concluída (2026-10-14) |
 | **32.O1** | Horizonte — enforcement cascata | *(5)* | aprov. dev | **candidato opcional** | ⛔ Não comprometido |
 
 **Total comprometido (código + operacional/governança):** **7 pontos** (2 tarefas de código = **5 pts**; 2 itens operacional/governança = **2 pts**, ambos gated no dev).
@@ -231,7 +236,7 @@ Outros candidatos do **horizonte 33+** já documentados (apenas registrados, **s
 - [x] **D2 da 31.4** — `RecalcularTodosHandler` sem guard `finalizado?` por dia (mesma classe de D2/17.5). **TRATADO (32.2, 2026-10-14):** guarda `finalizado?` por dia + pré-consolidação + memo, espelhando o job (32.1). Severidade: 🟠 — Tarefa: 32.2 ✅.
 - [x] ~~**Q16 — "cauda" do período ao encolher o vínculo (31.5)**~~ — **FECHADO como débito ACEITO (dev, 2026-10-14): MANTER O LITERAL.** A cauda não é recalculada; decisão documentada, **não** é tarefa da 32. Severidade: 🟠 (aceito) — Tarefa: (nenhuma).
 - [ ] **Migration `create_tarefas_recalculo` (31.1) só no banco de TESTE local** — falta `db:migrate` no dev remoto. **Item operacional 32.3 (aprov. do dev).** Severidade: 🟠 (operacional) — Tarefa: 32.3.
-- [ ] **Governança de docs** — `CLAUDE.md` do workspace aponta para `pessoas2/docs/` (multi-projeto). **Item condicionado 32.4.** Severidade: 🟡 — Tarefa: 32.4.
+- [x] **Governança de docs** — ✅ **RESOLVIDO (32.4, 2026-10-14):** o `CLAUDE.md` do workspace foi reescrito para **escopar por projeto** (`Frequência → Frequencia/docs/`; `Pessoas2 → pessoas2/docs/`; governança `<projeto>/docs/governance/`) — decisão do dev. Não conduz mais o Frequência à árvore do Pessoas2, e preserva o caminho do Pessoas2. Sem commit (arquivo fora do repo `Frequencia`). Severidade original: 🟡.
 - [ ] **TOCTOU residual de mês finalizado** (31.3/31.5) — guard "melhor esforço"; documentado honestamente. Severidade: 🟢 — Tarefa: futura (se a finalização for automatizada).
 - [ ] **Crash-window do despacho** (31.2) — entre `processada` e o efeito do handler; idempotência mora nos handlers. Severidade: 🟢 — Tarefa: futura (se observado em produção).
 - [ ] **Enforcement opt-in da cascata** (ADR-0010 regra 9) — causa-raiz do Bug 🔴1; **candidato opcional 32.O1**, horizonte 33+. Severidade: 🟠 — Tarefa: 32.O1 (não comprometida).
@@ -239,7 +244,7 @@ Outros candidatos do **horizonte 33+** já documentados (apenas registrados, **s
 
 ## Definição de Pronto
 
-- [ ] 32.1 e 32.2 implementadas com Status e Linha do Tempo preenchidos; 32.3/32.4 refletem a decisão/aprovação do dev (executadas **ou** explicitamente não autorizadas).
+- [x] 32.1 e 32.2 implementadas com Status e Linha do Tempo preenchidos; **32.3 e 32.4 refletem a decisão/aprovação do dev** — 32.4 **executada**; 32.3 **aprovada mas bloqueada por infraestrutura** (host inalcançável), registrada com o caminho de destravamento.
 - [ ] Testes: **guard de mês finalizado como predicado antes da escrita** (job + handler), **virada de mês coberta**, **sem divergência handler × job**, **sem `remove_method`**, **sem regressão**; mutation testing dos pontos críticos.
 - [ ] `db/schema.rb` **inalterado** por esta sprint (nenhuma migration nova) — só o `db:migrate` de deploy (32.3) sobre a migration **já existente**.
 - [ ] **Nenhuma** alteração de `Ability`/cascata/autorização (salvo aprovação explícita do `32.O1`), respeitando o registro global do `CLAUDE.md`.
@@ -252,7 +257,7 @@ Outros candidatos do **horizonte 33+** já documentados (apenas registrados, **s
 - **Q16 (cauda do período do vínculo/31.5) — ✅ RESOLVIDA (dev, 2026-10-14):** **MANTER O LITERAL.** O `VincularDesvincularHandler` recalcula `[momento_inicial, momento_final]`; ao encolher o período, a cauda **não** é recalculada — **débito ACEITO e documentado**. **Não é tarefa da Sprint 32.**
 - **basic8 (Sprints 25/27/28) — ✅ RESOLVIDA (dev, 2026-10-14):** **PAUSADA** (não cancelada; pode voltar ao horizonte). Não é tarefa da 32.
 - **Q32-A — merge da pilha 31 em `integration/sprint-29` — ✅ RESOLVIDA (dev, 2026-10-14):** a Sprint 32 é **baseada na branch `chore/limpeza-rubocop-77`** (que já contém a pilha 31 inteira + os docs). Isso **desbloqueia 32.2 e 32.3** sem exigir o merge, que **segue pendente/bloqueado pelo dev**.
-- **Q32-B (aberta) — aprovação do deploy (32.3)** e **abordagem do ponteiro de docs (32.4)**: escopar por projeto × corrigir global; e se a alteração do `CLAUDE.md` do workspace (fora do repo Frequencia) é autorizada. **Aguarda decisão do dev.**
+- **Q32-B — PARCIALMENTE RESOLVIDA (dev, 2026-10-14):** o **ponteiro de docs (32.4)** foi **decidido e executado** — abordagem **escopada por projeto** (não a global); a alteração do `CLAUDE.md` do workspace foi autorizada e aplicada. **Segue aberta apenas a parte do deploy (32.3):** a **aprovação** do dev foi dada, mas a **execução está bloqueada por INFRAESTRUTURA** — o host `10.150.110.174:5000` (dev remoto, `config/database.yml:23-30`) está **inalcançável** desta máquina (`Não há rota para o host`), a mesma condição da 31.1. **Nada foi migrado**; o cron `executa_tarefas` continua **desligado** (correto — ligá-lo antes do migrate faria o job falhar com `relation does not exist`).
 - **Q32-C — tamanho da sprint — ✅ RESOLVIDA (dev, 2026-10-14):** rodar a sprint **CURTA como planejada** — **7 pts** (32.1 + 32.2 + os 2 itens condicionados). O candidato **`32.O1` (enforcement opt-in da cascata) NÃO foi puxado** — segue como candidato não comprometido (horizonte), por tocar autorização e depender da migração de roles.
 
 ## Veredito honesto sobre o tamanho da sprint
