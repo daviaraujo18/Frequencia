@@ -1,6 +1,6 @@
 # Iteration 32 — Hardening e débitos herdados
 
-> Status: 📋 **PLANEJADA** | Período: 2026-10-14 → (≈1 semana, execução SEQUENCIAL por 1 dev) | Goal: **fechar os débitos herdados das Sprints 30/31 e a operação pendente, sem introduzir funcionalidade nova** — em especial a **guarda de mês finalizado no `CalcularFrequenciaJob` (D2/17.5)** e o **espelho no handler `RECALCULAR_TODOS`**, mais os itens operacional/de governança condicionados à aprovação do dev. | Rastreabilidade: `iteration_31.md` §"Débitos Técnicos" · **ADR-0011** (regra 4/consequências — D2/17.5) · `docs/12-plano-implementacao/implementation_plan.md` **v2 — Épico 7** · `SPRINT-PLAN.md:536` (17.5) · `iteration_30.md` §"Débito de rastreabilidade".
+> Status: 🟢 **ENCERRADA (CTO, 2026-10-14)** — o **núcleo de código** (**32.1 + 32.2 = 5 pts**) está **implementado, testado, revisado e commitado**: pilha `fe7f8ff` (32.1) → `905d8fb` (32.2), + `40740b3` (docs/32.4). **Code Reviewer: 0 blockers** em ambas; **Bug Finder: 0 bugs novos** (1 🟢 confirmado + 1 ⚪ pré-existente). Baseline final **1222/4257/3F+12E/0 skip** (as 15 pré-existentes). Os **dois espelhos** do débito **D2/17.5** (job 32.1 + handler 31.4/32.2) estão **fechados**. A **32.3** (deploy da migration) foi **reclassificada como pendência OPERACIONAL STANDALONE** (bloqueio de **rede**, fora do caminho crítico — **não** mantém a sprint aberta). **Sem ADR nova** — coberto pela **ADR-0011 regra 4** (ver §"Encerramento da Sprint 32"). **Nada de commit/push pelo agente** (`COMMIT_MODE=manual`). | Período: 2026-10-14 | Goal: **fechar os débitos herdados das Sprints 30/31 e a operação pendente, sem introduzir funcionalidade nova** — em especial a **guarda de mês finalizado no `CalcularFrequenciaJob` (D2/17.5)** e o **espelho no handler `RECALCULAR_TODOS`**, mais os itens operacional/de governança condicionados à aprovação do dev. | Rastreabilidade: `iteration_31.md` §"Débitos Técnicos" · **ADR-0011** (regra 4/consequências — D2/17.5) · `docs/12-plano-implementacao/implementation_plan.md` **v2 — Épico 7** · `SPRINT-PLAN.md:536` (17.5) · `iteration_30.md` §"Débito de rastreabilidade".
 
 ## Contexto e escopo (definido pelo dev — rulings de 2026-10-14)
 
@@ -124,6 +124,8 @@ Esta é uma sprint de **HARDENING / DÉBITOS HERDADOS** (não é feature). O dev
 
 - **📋 Relatório de Revisão — Dev 1 (Code Reviewer):** `docs/quality/review_report_32_2.md` — ✅ **Aprovado** (2026-10-14), **0 Blockers / 0 Sugestões formais**. Equivalência handler × job confirmada linha a linha; memo local por usuário (sem vazamento); 4 testes novos não-vacuosos (mutation A/B/C = 2F/1F/1F reproduzidos); suíte 1222/4257/3F+12E (15 pré-existentes em arquivos não relacionados); RuboCop/Zeitwerk OK. Escopo e ordem 32.1 → 32.2 respeitados.
 
+- **🐞 Relatório de Bug Finder — Dev 1 (32.1 + 32.2):** `docs/quality/bug_report_32_hardening_guard_finalizado.md` — ✅ **0 bugs NOVOS** (🔴 0 / 🟠 0 / 🟡 0 / 🟢 1 / ⚪ 1). Teste adversarial (9 cenários exploratórios, motor real + 6 categorias + 88 testes relacionados): guarda correta na virada de mês / ano bissexto / fronteira de ano; predicado único (sem 2º crivo); memo sem vazamento entre usuários; handler × job semanticamente idênticos; idempotente. O 🟢 é a **confirmação** (não descoberta) do TOCTOU residual já documentado; o ⚪ é a staleness pré-existente de mês anterior aberto na virada (fora de escopo). Nenhuma correção obrigatória.
+
 ### Área — 2. Operação e governança (condicionadas à aprovação/decisão do dev)
 
 > ⚠️ Os dois itens abaixo **não são tarefas de código** e **exigem decisão/aprovação explícita do dev**. Não avançam por iniciativa do agente (regra global do `CLAUDE.md`).
@@ -138,7 +140,7 @@ Esta é uma sprint de **HARDENING / DÉBITOS HERDADOS** (não é feature). O dev
   - [ ] **Aprovação explícita do dev** registrada antes da execução (operação de deploy).
   - [ ] `tarefas_recalculo` existe no dev remoto com o índice UNIQUE parcial (`ActiveRecord::Base.connection.table_exists?(:tarefas_recalculo)` + índice).
   - [ ] O cron `executa_tarefas` **não** é ligado antes da migration aplicada.
-- Status: 🟡 **BLOQUEADA POR INFRAESTRUTURA** (2026-10-14) — aprovação do dev **concedida** (`/code-specialist 32.3`), mas **não executável**: o host do dev remoto está inalcançável.
+- Status: 🔵 **RECLASSIFICADA como pendência OPERACIONAL STANDALONE (CTO, 2026-10-14)** — **NÃO** integra mais o escopo de fechamento da Sprint 32 e **não** a mantém aberta. Motivo: o bloqueio é **de REDE** (host do dev remoto inalcançável), de **duração indefinida** e **independente** do trabalho de código (que está 100% encerrado). A **aprovação** do dev foi **concedida** (`/code-specialist 32.3`), mas a **execução** segue **impossível**: `Não há rota para o host 10.150.110.174:5000`. **Nada foi migrado; cron `executa_tarefas` DESLIGADO** (correto). Perde a dependência da sprint; **segue rastreada** até o destravamento (ver "caminho de destravamento" abaixo e §Débitos).
 
   **Linha do Tempo:**
 
@@ -203,11 +205,11 @@ Outros candidatos do **horizonte 33+** já documentados (apenas registrados, **s
 |--------|------|--------|-------------|----------|--------|
 | **32.1** | Recálculo — D2/17.5 | **3** | nenhuma | código | ✅ Concluída (2026-10-14) |
 | **32.2** | Recálculo — espelho 31.4 | **2** | **32.1** | código | ✅ Implementado, ✅ Aprovado (2026-10-14) |
-| **32.3** | Operação — deploy migration | **1** | pilha 31 | operacional (aprov. dev) | 🟡 Bloqueada por infra (aprovada, host inalcançável) |
+| **32.3** | Operação — deploy migration | **1** | pilha 31 | operacional (aprov. dev) | 🔵 **Reclassificada — pendência OPERACIONAL STANDALONE** (bloqueio de rede; fora do caminho crítico; **não** mantém a sprint aberta) |
 | **32.4** | Governança — ponteiro docs | **1** | decisão do dev | governança (fora do repo) | ✅ Concluída (2026-10-14) |
 | **32.O1** | Horizonte — enforcement cascata | *(5)* | aprov. dev | **candidato opcional** | ⛔ Não comprometido |
 
-**Total comprometido (código + operacional/governança):** **7 pontos** (2 tarefas de código = **5 pts**; 2 itens operacional/governança = **2 pts**, ambos gated no dev).
+**Total comprometido e ENCERRADO nesta sprint:** **6 pontos** (32.1 = 3 + 32.2 = 2 de código; 32.4 = 1 de governança). A **32.3** (1 pt operacional) é **STANDALONE** — rastreada fora do fechamento da sprint (bloqueio de rede).
 **Total com o candidato 32.O1 aprovado:** **12 pontos**.
 
 ## Caminho Crítico
@@ -235,21 +237,22 @@ Outros candidatos do **horizonte 33+** já documentados (apenas registrados, **s
 - [x] **D2 da 17.5** — `CalcularFrequenciaJob` recalcula os últimos 3 dias **sem** guarda de mês finalizado ⇒ `CalculoDiario` de mês fechado pode ser reescrito e o `RegistroMensalFrequencia` ficar stale. **TRATADO (32.1, 2026-10-14):** guarda `finalizado?` por dia + pré-consolidação. Severidade: 🟠 — Tarefa: 32.1 ✅.
 - [x] **D2 da 31.4** — `RecalcularTodosHandler` sem guard `finalizado?` por dia (mesma classe de D2/17.5). **TRATADO (32.2, 2026-10-14):** guarda `finalizado?` por dia + pré-consolidação + memo, espelhando o job (32.1). Severidade: 🟠 — Tarefa: 32.2 ✅.
 - [x] ~~**Q16 — "cauda" do período ao encolher o vínculo (31.5)**~~ — **FECHADO como débito ACEITO (dev, 2026-10-14): MANTER O LITERAL.** A cauda não é recalculada; decisão documentada, **não** é tarefa da 32. Severidade: 🟠 (aceito) — Tarefa: (nenhuma).
-- [ ] **Migration `create_tarefas_recalculo` (31.1) só no banco de TESTE local** — falta `db:migrate` no dev remoto. **Item operacional 32.3 (aprov. do dev).** Severidade: 🟠 (operacional) — Tarefa: 32.3.
+- [ ] **Migration `create_tarefas_recalculo` (31.1) só no banco de TESTE local** — falta `db:migrate` no dev remoto. **PENDÊNCIA OPERACIONAL STANDALONE** (reclassificada da 32.3 — CTO, 2026-10-14): aprovada pelo dev, **bloqueada por rede** (host inalcançável), **fora do caminho crítico**, **não** mantém a sprint aberta. **Caminho de destravamento:** restaurar a rota/VPN até `10.150.110.174:5000` → `cd api-ponto && bin/rails db:migrate` (só a migration `20261013120000_create_tarefas_recalculo` está pendente no dev) → conferir `table_exists?(:tarefas_recalculo)` + índice UNIQUE parcial → **somente então** ligar o cron. **Estado atual:** cron `executa_tarefas` **DESLIGADO** (correto). Severidade: 🟠 (operacional/rede) — Tarefa: standalone.
 - [x] **Governança de docs** — ✅ **RESOLVIDO (32.4, 2026-10-14):** o `CLAUDE.md` do workspace foi reescrito para **escopar por projeto** (`Frequência → Frequencia/docs/`; `Pessoas2 → pessoas2/docs/`; governança `<projeto>/docs/governance/`) — decisão do dev. Não conduz mais o Frequência à árvore do Pessoas2, e preserva o caminho do Pessoas2. Sem commit (arquivo fora do repo `Frequencia`). Severidade original: 🟡.
-- [ ] **TOCTOU residual de mês finalizado** (31.3/31.5) — guard "melhor esforço"; documentado honestamente. Severidade: 🟢 — Tarefa: futura (se a finalização for automatizada).
+- [ ] **TOCTOU residual de mês finalizado** (31.3/31.5) — guard "melhor esforço"; documentado honestamente. **Reconfirmado reproduzível pelo Bug Finder na 32 (🟢 Bug 1 do `bug_report_32_…`)** — o hardening (32.1/32.2) **reduziu** a janela (predicado→escrita) de "toda execução" para "entre o predicado e a escrita". **Nuance NOVA (introduzida pela memoização S1):** como o predicado é memoizado por `[ano, mes]` **local ao usuário**, o estado `false` é "grudento" até o fim do processamento daquele usuário ⇒ a janela **intra-usuário** passa de "por consulta" para "por usuário" (impacto prático desprezível: finalização **manual**, janela de microssegundos). Severidade: 🟢 — Tarefa: futura (reabrir com lock compartilhado — ex.: `SELECT … FOR UPDATE` no `RegistroMensalFrequencia` dentro de `consolidar` — **somente** se a finalização de mês deixar de ser manual).
+- [ ] **Staleness pré-existente na virada** (⚪ Info do Bug Finder na 32) — na virada (ex.: `hoje`=01/11), o job recalcula os 3 últimos dias, podendo incluir 31/10 e 30/10. Se **outubro estiver ABERTO**, esses dias são recalculados mas **outubro não é reconsolidado** (o job só consolida o mês de `hoje`) ⇒ `RegistroMensalFrequencia` de outubro fica **stale** face ao `CalculoDiario`; o `acumulado` lido por novembro (`buscar_saldo_mes_anterior`) pode refletir o valor antigo. **NÃO é regressão da 32.1/32.2** — é a **filosofia de propósito** do `CalcularFrequenciaJob` (3 dias + mês corrente), **proibida de ser reaberta** (§"Fronteira explícita"). Registrado como observação de interação, **sem ação nesta sprint**. Severidade: ⚪ (informativo/pré-existente) — Tarefa: fora do escopo da 32.
 - [ ] **Crash-window do despacho** (31.2) — entre `processada` e o efeito do handler; idempotência mora nos handlers. Severidade: 🟢 — Tarefa: futura (se observado em produção).
 - [ ] **Enforcement opt-in da cascata** (ADR-0010 regra 9) — causa-raiz do Bug 🔴1; **candidato opcional 32.O1**, horizonte 33+. Severidade: 🟠 — Tarefa: 32.O1 (não comprometida).
 - [ ] **Linha basic8 (Sprints 25/27/28)** — **PAUSADA** por ruling do dev (2026-10-14); pode voltar ao horizonte. Severidade: 🟡 — Tarefa: fora da 32.
 
 ## Definição de Pronto
 
-- [x] 32.1 e 32.2 implementadas com Status e Linha do Tempo preenchidos; **32.3 e 32.4 refletem a decisão/aprovação do dev** — 32.4 **executada**; 32.3 **aprovada mas bloqueada por infraestrutura** (host inalcançável), registrada com o caminho de destravamento.
-- [ ] Testes: **guard de mês finalizado como predicado antes da escrita** (job + handler), **virada de mês coberta**, **sem divergência handler × job**, **sem `remove_method`**, **sem regressão**; mutation testing dos pontos críticos.
-- [ ] `db/schema.rb` **inalterado** por esta sprint (nenhuma migration nova) — só o `db:migrate` de deploy (32.3) sobre a migration **já existente**.
-- [ ] **Nenhuma** alteração de `Ability`/cascata/autorização (salvo aprovação explícita do `32.O1`), respeitando o registro global do `CLAUDE.md`.
-- [ ] Q16 registrada como **fechada (literal)**; basic8 registrada como **pausada**; Q15 = **1 dev sequencial**.
-- [ ] Commit/push **manuais** (pelo dev — `COMMIT_MODE=manual`); nenhum commit/push do agente.
+- [x] 32.1 e 32.2 implementadas com Status e Linha do Tempo preenchidos; **32.4 executada**; **32.3 aprovada mas reclassificada como pendência OPERACIONAL STANDALONE** (bloqueio de rede; fora do caminho crítico), registrada com o caminho de destravamento e o estado correto do cron.
+- [x] Testes: **guard de mês finalizado como predicado antes da escrita** (job 32.1 + handler 32.2), **virada de mês coberta**, **sem divergência handler × job**, **sem `remove_method`**, **sem regressão**; mutation testing dos pontos críticos (32.1: 2F/1F; 32.2: 2F/1F/1F).
+- [x] `db/schema.rb` **inalterado** por esta sprint (nenhuma migration nova) — só o `db:migrate` de deploy (32.3, **standalone**) sobre a migration **já existente** (`20261013120000_create_tarefas_recalculo`).
+- [x] **Nenhuma** alteração de `Ability`/cascata/autorização (o `32.O1` **não** foi puxado), respeitando o registro global do `CLAUDE.md`.
+- [x] Q16 registrada como **fechada (literal)**; basic8 registrada como **pausada**; Q15 = **1 dev sequencial**.
+- [x] Commit **realizado pelo dev** (pilha `fe7f8ff` → `905d8fb`; +`40740b3` docs); push em `origin`/`gitlab`; **o agente NÃO commita/pusha** (`COMMIT_MODE=manual`).
 
 ## Perguntas abertas ao dev / PO
 
@@ -271,3 +274,84 @@ Outros candidatos do **horizonte 33+** já documentados (apenas registrados, **s
 3. **Ou** reagrupar: **absorver 32.1/32.2 na retomada de features** e encerrar a 32 como uma sprint operacional curta (deploy + docs), já que ambos os itens condicionados dependem do dev.
 
 Nenhuma das opções altera o ruling do dev sobre Q16 (literal), basic8 (pausada) ou Q15 (1 dev sequencial).
+
+## Linha do Tempo
+
+| Horário | O que foi feito | Resultado |
+|---------|-----------------|-----------|
+| 2026-10-14 | Planejamento da **Sprint 32** (hardening/débitos) + rulings do dev (Q16=literal, basic8=pausada, Q15=1 dev, Q32-A/B/C) — `0e55c2a`; reconciliação do plano v2 + README (Onda 1) | 4 tarefas, **7 pts** comprometidos; candidato `32.O1` **não** puxado |
+| 2026-10-14 | **32.1** — guarda de mês finalizado **por dia** + guarda pré-consolidação + memo no `CalcularFrequenciaJob` (`fe7f8ff`) | implementado/testado/revisado (**0 blockers**); focado 9/24; suíte **1218/4248/3F+12E** |
+| 2026-10-14 | **32.2** — espelho no `RecalcularTodosHandler` (`905d8fb`) | implementado/testado/revisado (**0 blockers, 0 sugestões**); focado 11/30; suíte **1222/4257/3F+12E** |
+| 2026-10-14 | **Bug Finder** (32.1+32.2) — teste adversarial (9 cenários + 6 categorias + 88 testes relacionados) | **0 bugs novos** (🟢 1 TOCTOU **confirmado** + nuance do memo; ⚪ 1 staleness pré-existente) |
+| 2026-10-14 | **32.4** — `CLAUDE.md` do workspace reescrito com ponteiro **escopado por projeto** (arquivo **fora** do repo, sem commit) — registrado no doc `40740b3` | ✅ Concluída |
+| 2026-10-14 | **32.3** — deploy da migration `create_tarefas_recalculo` (31.1) no dev remoto | 🔵 **Reclassificada STANDALONE** — host `10.150.110.174:5000` inalcançável (**"Não há rota para o host"**); **nada migrado; cron desligado** |
+| 2026-10-14 | **CTO encerra a Sprint 32** — header/DoD/Débitos/Linha do Tempo + §Encerramento; ADR (decisão: **nenhuma**); catalogação dos achados; lições | 🟢 **ENCERRADA** (doc-only, sem commit — `COMMIT_MODE=manual`) |
+
+---
+
+## Encerramento da Sprint 32 (CTO, 2026-10-14)
+
+**Veredito:** 🟢 **SPRINT 32 ENCERRADA.** O **núcleo de código** — **32.1** (guarda de mês finalizado no `CalcularFrequenciaJob`, débito **D2/17.5**) e **32.2** (espelho no `RecalcularTodosHandler`, débito **D2 da 31.4**) — está **implementado, testado, revisado e commitado** (pilha `fe7f8ff` → `905d8fb`, sobre `chore/limpeza-rubocop-77`; + `40740b3` para 32.4/docs). **Code Reviewer: 0 blockers** em ambas; **Bug Finder: 0 bugs novos**. O **débito D2/17.5 está FECHADO nos DOIS espelhos** (job + handler). Baseline final **1222/4257/3F+12E/0 skip** (as **15** pré-existentes, nenhuma da 32). A **32.3** deixou de ser tarefa de fechamento e virou **pendência OPERACIONAL STANDALONE** (bloqueio de **rede**, duração indefinida). A **32.4** foi concluída. **Sem ADR nova** (ver §decisão).
+
+### O que a Sprint 32 muda no entendimento do sistema
+
+- **A trava 17.2 passa a valer no recálculo AUTOMÁTICO (noturno), não só no dirigido por evento.** Antes, o `CalcularFrequenciaJob` recalculava os últimos 3 dias direto no `save!` do `CalculoDiario` (sem passar pela trava que só "levanta erro" no `consolidar`) — **mesma classe de bug** que a correção A/31.3 já havia fechado no handler. A 32 **elimina o último caminho de escrita** que burlava a trava: agora **nenhum** recalculador (job 17.5, `RecalcularTodosHandler`, `RegistroRecalculoHandler`, `VincularDesvincularHandler`) escreve num mês finalizado.
+- **Fim da divergência handler × job.** O débito D2 alertava que corrigir só o handler criaria divergência. A ordem **32.1 → 32.2** foi respeitada: a correção **nasce no job** e o handler **espelha** (semântica conferida **linha a linha** — 0 divergência de regra). O sistema passa a ter **um único entendimento** de "não recalcular mês finalizado", expresso pelo **predicado canônico único** `ConsolidacaoMensalService.finalizado?` (grep prova: **nenhum segundo crivo**).
+- **A guarda é POR DIA, não por "mês corrente".** Os 3 últimos dias podem **cruzar a virada de mês**; a checagem usa `dia.year/dia.month` (não o mês de `hoje`), então cobre virada de mês, fronteira de ano e ano bissexto (provado por teste + 9 cenários adversariais).
+- **Custo de lookup reduzido (S1).** A memoização por `[ano, mes]` **local ao usuário** reduz os até 4 `find_by` por usuário para no máximo 2 (o corrente e, na virada, o anterior) — otimização pura, **comportamento externo inalterado**.
+- **Fronteira com a filosofia do job preservada.** Nada da "3 dias + mês corrente" foi reaberto; a única adição é a guarda prévia. A **staleness da virada** (mês anterior **aberto** recalculado sem reconsolidação) permanece **de propósito** (débito aceito — ver §achados).
+
+### Decisão sobre ADR — **NÃO** criar ADR nova (confirmado com argumentos)
+
+A avaliação preliminar foi **confirmada**: **não cabe ADR nova**. Três razões:
+
+1. **A decisão arquitetural é ANTERIOR à sprint.** O guard de mês finalizado como **predicado lido antes da escrita** — inclusive aplicado ao **DIA** — já está consolidado na **ADR-0011 regra 4** ("Trava de mês finalizado (17.2) vale para o recálculo por evento — inclusive para o DIA", com o motivo explícito do `save!` sem guarda). A própria ADR-0011, em §Consequências, **prescreve** o tratamento do D2/17.5: *"o tratamento correto é tarefa própria sobre a 17.5 (guard por dia lá; o handler espelha)"*. A Sprint 32 **executou exatamente o que a ADR-0011 já mandava** — não é decisão nova, é **cumprimento** de decisão registrada.
+2. **Natureza da entrega = aplicação/espelhamento, não escolha arquitetural.** Não houve nova alternativa descartada, novo trade-off estrutural nem nova regra de negócio. O que a 32 fez foi **fechar os dois espelhos** que faltavam (job 32.1 + handler 31.4/32.2) e **reusar** o predicado canônico.
+3. **Consistência de série.** A última ADR é a **0011**. Criar uma "ADR-0012" para registrar a *aplicação* de uma regra da 0011 infla a série com uma decisão que **não existe** (o mesmo critério de coesão que a 0011 usou para não se fragmentar em sete).
+
+**Ação de manutenção da ADR-0011 (defasagem):** a §Consequências da ADR-0011 ainda listava o **D2/17.5 como débito ABERTO**. Como a 32 o **fechou**, anexei à ADR-0011 uma **nota datada de resolução** (sem reescrever o texto original — preserva o histórico). Ver §Artefatos.
+
+### Achados do Bug Finder — onde foram catalogados
+
+O Bug Finder (`docs/quality/bug_report_32_hardening_guard_finalizado.md`) reportou **0 bugs novos** (🔴0/🟠0/🟡0/🟢1/⚪1). Catalogação:
+
+| Achado | Origem | Onde foi catalogado | Foi para `lessons.md`? |
+|---|---|---|---|
+| 🟢 **TOCTOU residual** de mês finalizado (**confirmado reproduzível** pelo ATAQUE 8) + **nuance nova** da memoização (janela "grudenta" passa de *por consulta* para *por usuário*) | Débito conhecido (31.3/31.5; ADR-0011 regra 4); **reduzido** — não ampliado — pelo hardening | §**Débitos Técnicos** deste doc (linha do TOCTOU, com a nuance) + `bug_report_32_…` (Bug 1) + `review_report_32_2.md` ⚪ O2 | **NÃO** — coberto pelo ADR-0011 regra 4 + pela lição de 2026-10-13 ("guarda antes de TODA escrita") e pelo próprio bug report |
+| ⚪ **Staleness pré-existente na virada** (mês anterior **aberto** recalculado sem reconsolidação; carryover pode ler valor antigo) | **Pré-existente** — filosofia do job (3 dias + mês corrente), proibida de reabrir | §**Débitos Técnicos** deste doc (entrada nova, marcada ⚪/fora de escopo) + `bug_report_32_…` (Info) | **NÃO** — é comportamento de propósito, não lição |
+
+**Sobre a nuance da memoização merecer registro no `_context`/governança:** **não** merece entrada própria. Ela é uma consequência **de baixo impacto** (finalização **manual**, janela de microssegundos) de uma **otimização** (S1), já **precisamente registrada** no `bug_report_32_…` (Bug 1) e no §Débitos deste doc, e **coberta pela classe** do débito TOCTOU existente. Registrá-la na governança criaria duplicação sem ganho.
+
+### Riscos/decisões que exigem o dev nesta virada (checklist)
+
+- [ ] **Merge da pilha 31 em `integration/sprint-29`** — **PENDENTE / bloqueado por decisão do dev** (`COMMIT_MODE=manual`); `integration/sprint-29` @ `d50f317` **intacta**. A Sprint 32 **não** altera esse bloqueio.
+- [ ] **Merge da branch da Sprint 32** (`feature/demanda-32-2-espelho-handler` @ `40740b3`, já em `origin`/`gitlab`) para a base escolhida — decisão do dev (via `--no-ff`, preservando o agrupamento).
+- [ ] **32.3 (STANDALONE) — deploy da migration `create_tarefas_recalculo` no dev remoto.** Aprovada, **bloqueada por rede**. Destravar restaurando a rota/VPN → `cd api-ponto && bin/rails db:migrate`. **NÃO** ligar o cron `executa_tarefas` antes (hoje **desligado**, correto).
+- [ ] **Sprint 33 — sem ruling:** decidir o próximo escopo (ver §"Situação da Sprint 33"). **NÃO** iniciar sem decisão.
+- [ ] *(Informativo)* **Commit/push do pacote doc-only do CTO** desta virada — manual, pelo dev.
+
+### Sequência recomendada de entrega (proposta — CTO NÃO executa)
+
+1. **Gate de CI local** (`ci-cd-pipeline`) sobre a pilha da Sprint 32: security → quality → **test** (mandatório). Baseline final **1222/4257/3F+12E** (as **15** pré-existentes devem ser reconhecidas, não atribuídas à sprint).
+2. **Merge da `feature/demanda-32-2-espelho-handler`** (que já contém 32.1 → 32.2) na base escolhida — `--no-ff`, após confirmar rebase sobre o HEAD atual da base.
+3. **32.3 (ao destravar a rede): `db:migrate` no dev remoto** — **antes** de ligar o cron na branch integrada.
+4. **Push** da branch integrada aos remotes (GitLab + fork GitHub), conforme o padrão do repo.
+5. **Fechamento** já materializado: header 🟢 + §Encerramento + Débitos/Linha do Tempo + nota de resolução na ADR-0011 + catalogação dos achados + README. Commit **doc-only** do pacote do CTO (o dev commita/pusha manualmente — `COMMIT_MODE=manual`).
+6. **Sprint 33** — abrir **somente após ruling do dev** (próxima seção).
+
+### Situação da Sprint 33 — **EM ABERTO por falta de ruling do dev**
+
+A Sprint 33 **não está definida** — **não abri escopo**. Candidatos já rastreados (escolha do dev; **nenhum** comprometido):
+
+- **`32.O1` — Enforcement opt-in da cascata** (ADR-0010 regra 9; **~5 pts**; causa-raiz do Bug 🔴1 da 30). **Único candidato de ALTO valor de hardening** — mas **toca autorização** e exige **plano claro + aprovação do dev**. **Não** puxado na 32.
+- **Tipos de recálculo adiados** `FERIADO`/`DIAEXCEPCIONAL`/`DIREITO` — exigem **models de domínio inexistentes** (política incremental vigente).
+- **Linha basic8** (Sprints 25/27/28 do plano v1) — **PAUSADA** por ruling do dev (2026-10-14): **não cancelada**, pode voltar ao horizonte.
+- **Bug 🟠2** (`/presenca/*` sem autenticação) — **risco aceito**; gatilho de revisita = fim dos testes manuais da Estação.
+
+### Artefatos da consolidação (editados pelo CTO nesta virada)
+
+- `docs/progress/iteration_32.md` — **header** (🟢 ENCERRADA), **§Linha do Tempo** (sprint-level), **§Encerramento da Sprint 32**, **§Débitos Técnicos** (TOCTOU + nuance da memoização; staleness; 32.3 standalone), **Quadro de tarefas** e **Definição de Pronto**.
+- `docs/adr/0011-mecanismo-recalculo-por-evento.md` — **nota datada de resolução** do D2/17.5 (feito pelos espelhos 32.1/32.2), sem reescrever o texto original.
+- `docs/README.md` — estado atual atualizado (última sprint implementada = **32**).
+- *(NÃO editado por decisão de escopo — regeneração é do Summarizer):* `docs/progress/_context.md` (**defasado** — HEAD `ceaac87`, Sprint 32 como esboço) e `docs/governance/_context.md` (lições 42 / ADRs 0000–0011 — precisa refletir a 32).
+

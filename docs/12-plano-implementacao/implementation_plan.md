@@ -6,7 +6,7 @@
 >
 > **Encadeamento:** inicia após a tarefa 23.7 (Sprint 23 — integração CanCanCan nos controllers).
 >
-> **Escopo desta versão:** o plano deixa de ser exclusivo da linha "scaffolds basic8" (v1, Sprints 24–28) e passa a cobrir a história real do projeto. As Sprints **29/30/31 estão concluídas** e a **32 está esboçada** (macro). Ver a nota de reconciliação abaixo antes de ler os épicos.
+> **Escopo desta versão:** o plano deixa de ser exclusivo da linha "scaffolds basic8" (v1, Sprints 24–28) e passa a cobrir a história real do projeto. As Sprints **29/30/31 estão concluídas** e a **32 está ENCERRADA** (CTO, 2026-10-14 — `iteration_32.md`; D2/17.5 fechado nos dois espelhos; 32.3 reclassificada como pendência operacional standalone). Ver a nota de reconciliação abaixo antes de ler os épicos.
 
 ---
 
@@ -41,7 +41,7 @@ A v1 deste plano descrevia **apenas** a linha de scaffolds/CRUD basic8 (Sprints 
 O projeto Frequência (migração do módulo `presenca` da Intranet para Rails 8) correu, até aqui, em **duas linhas de trabalho distintas**, não numa única sequência linear:
 
 1. **Linha basic8 (Sprints 24–26, inacabada):** padronizar CRUDs administrativos no estilo do app de referência `basic8` — gems `zutils`/`simple_form`/`ransack`/`pagy`, wiring do pagy no stack admin, port de estilo (partials `shared/*`, layout, JS/UX) e (pendente) templates de scaffold com piloto P2 e remoção do kaminari. A Sprint 24 concluiu a stack; a Sprint 26 entregou o prelúdio de estilo; as Sprints 25/27/28 não foram executadas.
-2. **Linha PRD de Regras de Negócio (Sprints 29–32):** fechar os **gaps priorizados do §9** do `PRD-REGRAS-NEGOCIO-PRESENCA.md` a partir da varredura do legado. A **Sprint 29** substituiu o baseline "todo autenticado lê tudo" pela **cascata de autorização** do legado (ADR-0010); a **Sprint 30** expôs o gate D5, semeou/migrou as roles granulares da cascata, fechou os débitos S2/S3 e produziu o insumo de rollout `:shadow`; a **Sprint 31** materializou o **mecanismo estrutural de recálculo por evento** do PRD §5.2 — fila persistente + job de despacho + handlers (ADR-0011). A **Sprint 32** (esboço) é uma sprint de **hardening/débitos herdados** (guarda de mês finalizado no job 17.5, cauda do período do vínculo, deploy da migration, governança de docs).
+2. **Linha PRD de Regras de Negócio (Sprints 29–32):** fechar os **gaps priorizados do §9** do `PRD-REGRAS-NEGOCIO-PRESENCA.md` a partir da varredura do legado. A **Sprint 29** substituiu o baseline "todo autenticado lê tudo" pela **cascata de autorização** do legado (ADR-0010); a **Sprint 30** expôs o gate D5, semeou/migrou as roles granulares da cascata, fechou os débitos S2/S3 e produziu o insumo de rollout `:shadow`; a **Sprint 31** materializou o **mecanismo estrutural de recálculo por evento** do PRD §5.2 — fila persistente + job de despacho + handlers (ADR-0011). A **Sprint 32** é uma sprint de **hardening/débitos herdados** (guarda de mês finalizado no job 17.5, cauda do período do vínculo, deploy da migration, governança de docs) — **encerrada em 2026-10-14** (D2/17.5 fechado nos dois espelhos; 32.3 reclassificada como pendência operacional standalone; 32.4 concluída).
 
 **Estado de autorização (transversal):** a cascata está implementada, provada e **não vigente** — flag `FREQUENCIA_AUTORIZACAO_CASCATA` default `:off`; a decisão de virar `:on` foi **resolvida** (dev, `d50f317`): **ativar quando todas as roles estiverem prontas** — hoje está bloqueada pela migração de atribuição (30.9b a 87,9% de não-resolvidos, acima do limiar de 10%).
 
@@ -67,7 +67,7 @@ gantt
     D5 HTTP roles S2 S3 shadow em DEV : 2026-10-06, 3d
     section Sprint 31 — Recálculo por evento §5.2 ✅
     Fila TarefaRecalculo job e 3 handlers : 2026-10-13, 1d
-    section Sprint 32 — Débitos herdados (esboço)
+    section Sprint 32 — Débitos herdados ✅
     D2-17.5 Q16 deploy docs : 2026-10-14, 5d
 ```
 
@@ -112,7 +112,7 @@ Materializa o **mecanismo estrutural** de recálculo em lote por evento do legad
 
 - Sprints: 31 · Status: **encerrado** (`iteration_31.md`) · Consolidação durável: **ADR-0011**
 
-### Épico 7 — Hardening e débitos herdados — Sprint 32 (esboço)
+### Épico 7 — Hardening e débitos herdados — Sprint 32 ✅
 
 Sprint de **dívida técnica e governança** que fecha os débitos herdados das Sprints 30/31 e a operação pendente. **Escopo macro restrito** aos candidatos abaixo (não inventar outros):
 
@@ -122,7 +122,7 @@ Sprint de **dívida técnica e governança** que fecha os débitos herdados das 
 - **Deploy da migration `create_tarefas_recalculo` (31.1)** — aplicada só no banco de **teste local**; falta `db:migrate` no **dev remoto** antes de qualquer uso do mecanismo fora do teste.
 - **Governança de docs** — corrigir o **cabeçalho defasado do `docs/README.md`** (estado do projeto datado de 2026-08-05; Fases 4+ ainda "suspensas") e o **`CLAUDE.md` do workspace** que aponta a documentação para `pessoas2/docs/` (árvore do **outro** projeto) em vez de `Frequencia/docs/`.
 
-- Sprints: 32 · Status: **esboçado (macro)** — o detalhamento é do Sprint Planner
+- Sprints: 32 · Status: **✅ Encerrada (CTO, 2026-10-14)** — `iteration_32.md` (D2/17.5 fechado nos dois espelhos; 32.3 reclassificada como pendência operacional standalone; 32.4 concluída)
 
 **Horizonte seguinte (Sprint 33+ — não comprometido, derivado de gaps já documentados):** tipos de recálculo adiados (`FERIADO`/`DIAEXCEPCIONAL`/`DIREITO` — exigem models de domínio inexistentes); gaps remanescentes do PRD §9 — #4 (cap de banco de horas + 4 flags administrativas por dia), #6 (`isPermitidoModalidadeOcorrencias`), #8 (divergência da modalidade `OCORRENCIAS` com 2+ marcações); débito **estrutural** do enforcement opt-in da cascata (ADR-0010 regra 9 — causa-raiz do Bug 🔴1); e a **revisita do Bug 🟠2** (`/presenca/*` sem autenticação — risco aceito, gatilho: fim dos testes manuais da Estação). *Nada aqui está agendado; são candidatos rastreados, não compromissos.*
 
@@ -204,9 +204,9 @@ Sprint de **dívida técnica e governança** que fecha os débitos herdados das 
 - Estimativa: 1 semana (14 pontos, execução sequencial)
 - Rastreabilidade (PRD/ADR): `PRD-REGRAS-NEGOCIO-PRESENCA.md` **§5.2 (L139–148)** e **§9 item 3 (L201)** · **ADR-0011** (consolidação durável)
 
-### Sprint 32 — Hardening e débitos herdados (esboço) ⬜
+### Sprint 32 — Hardening e débitos herdados ✅
 
-- Status: ⬜ Esboçada (macro) — aguarda detalhamento do Sprint Planner
+- Status: ✅ Encerrada (CTO, 2026-10-14) — `iteration_32.md`; pilha `fe7f8ff` (32.1) → `905d8fb` (32.2) (+`40740b3` docs/32.4). Núcleo de código 5 pts (32.1+32.2), 0 blockers / 0 bugs novos; **D2/17.5 fechado nos dois espelhos** (job + handler); baseline 1222/4257/3F+12E. **32.3** (deploy da migration) **reclassificada como pendência OPERACIONAL STANDALONE** (bloqueio de rede). **32.4** concluída. Sem ADR nova (coberto pela ADR-0011 regra 4).
 - Goal: Fechar os débitos herdados das Sprints 30/31 e a operação pendente, sem introduzir funcionalidade nova.
 - Escopo macro (candidatos — **não inventar outros**): guarda de mês finalizado no `CalcularFrequenciaJob` (D2/17.5); recálculo da "cauda" do período ao encolher o vínculo (Q16/31.5); quadro real de devs (Q15); deploy da migration `create_tarefas_recalculo` (31.1) no dev remoto; correção de governança de docs (cabeçalho do `docs/README.md` + `CLAUDE.md` do workspace apontando para `pessoas2/docs/`).
 - Dependências: Sprints 30/31 (débitos) — sem dependência de código nova entre os itens.
@@ -257,14 +257,14 @@ As decisões das linhas de autorização e recálculo foram consolidadas em ADRs
 | **Numeração do plano historicamente divergente** (Sprint 26 real ≠ Sprint 26 planejada) | 🟡 | Esta v2 registra a reconciliação; futuras sprints mantêm a numeração real das iterations |
 | **Enforcement opt-in da cascata** (ADR-0010 regra 9) — novo controller que leia frequência vaza silenciosamente, em **qualquer** valor da flag | 🟠 Alto | Emenda ADR-0010 regra 9; tarefa estrutural no horizonte (33+); até lá, disciplina de incluir o concern + teste de conteúdo |
 | **Cascata não vigente** — flag `FREQUENCIA_AUTORIZACAO_CASCATA` default `:off`; migração de atribuição das roles (30.9b) bloqueada a 87,9% de não-resolvidos (> limiar 10%) | 🟠 | Decisão `d50f317`: ativar `:on` quando todas as roles estiverem prontas; desbloquear o eixo de casamento da migração antes |
-| **D2/17.5** — `CalcularFrequenciaJob` recalcula os últimos 3 dias **sem** guarda de mês finalizado (pré-existente) | 🟠 | Tratado como **escopo da Sprint 32** (guard por dia no job; o handler espelha) |
-| **Q16 (31.5)** — cauda do período não recalculada ao encolher o vínculo ⇒ `CalculoDiario` stale | 🟠 | Escopo da Sprint 32 (decisão do dev: literal × estender) |
-| **Migration `create_tarefas_recalculo` (31.1) não aplicada no dev remoto** — mecanismo §5.2 não opera fora do teste | 🟠 (operacional) | Escopo da Sprint 32 (deploy/`db:migrate`) |
+| **D2/17.5** — `CalcularFrequenciaJob` recalcula os últimos 3 dias **sem** guarda de mês finalizado (pré-existente) | 🟠 | ✅ **RESOLVIDO (32.1/32.2, 2026-10-14)** — guard por dia no job (`fe7f8ff`) + espelho no handler (`905d8fb`) |
+| **Q16 (31.5)** — cauda do período não recalculada ao encolher o vínculo ⇒ `CalculoDiario` stale | 🟠 | ✅ **RESOLVIDO (dev, 2026-10-14): MANTER O LITERAL** — cauda é **débito ACEITO e documentado**; não é tarefa |
+| **Migration `create_tarefas_recalculo` (31.1) não aplicada no dev remoto** — mecanismo §5.2 não opera fora do teste | 🟠 (operacional) | Aprovada pelo dev; **bloqueada por rede** (host inalcançável) — **pendência OPERACIONAL STANDALONE** (fora do caminho crítico da sprint); destravar via `db:migrate`; cron **desligado** |
 | **Bug 🟠2 — `/presenca/*` sem autenticação** (batidas do dia + hashes biométricos de terceiros a qualquer host) — **risco aceito**, não resolvido | 🔴 | Gatilho de revisita: fim dos testes manuais da Estação; opções: rede/allowlist · gate por ativação · aceitar por design (ADR-0003) |
 | **TOCTOU residual de mês finalizado** (31.3/31.5) — guard `finalizado?` é "melhor esforço" | 🟢 | Documentado honestamente; reabrir se a finalização de mês passar a ser automatizada |
 | **Crash-window do despacho** (31.2) — entre marcar `processada` e o efeito do handler | 🟢 | Idempotência mora nos handlers; retry sofisticado fora de escopo |
-| **Divergência handler × job** — corrigir só o handler de recálculo criaria divergência com o `CalcularFrequenciaJob` | 🟡 | Toda correção da trava de mês finalizado nasce no **job 17.5** e é espelhada no handler (Sprint 32) |
-| **Governança de docs defasada** — `docs/README.md` (estado de 2026-08-05) e `CLAUDE.md` do workspace apontando para `pessoas2/docs/` | 🟡 | Escopo da Sprint 32 (correção de cabeçalho/ponteiro) |
+| **Divergência handler × job** — corrigir só o handler de recálculo criaria divergência com o `CalcularFrequenciaJob` | 🟡 | ✅ **RESOLVIDO (32.1→32.2, 2026-10-14)** — correção nasce no job e é espelhada no handler; equivalência conferida linha a linha |
+| **Governança de docs defasada** — `docs/README.md` (estado de 2026-08-05) e `CLAUDE.md` do workspace apontando para `pessoas2/docs/` | 🟡 | ✅ **RESOLVIDO (32.4 + cabeçalho do `docs/README.md`, 2026-10-14)** — ponteiro do `CLAUDE.md` do workspace escopado por projeto |
 | **Baseline da suíte com defeitos pré-existentes** (15 ao fim da 31: 11× Devise `redirect_to` + 1× timezone + order-dependent do espelho/paralelização) | 🟢 | Toda medição isola as pré-existentes antes de atribuir regressão |
 | **Regressão nas telas bespoke** (users/frequentadores) na troca de paginação — quando a Sprint 27 for retomada | 🟡 | Escopo mínimo (só paginação); suíte cobre `?page=`; exceção RN02 documentada |
 

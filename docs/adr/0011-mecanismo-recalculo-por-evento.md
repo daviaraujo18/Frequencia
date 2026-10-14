@@ -156,6 +156,14 @@ Regras:
 - **D2 da 17.5** (pré-existente): `CalcularFrequenciaJob` recalcula os últimos 3 dias **sem** guarda de
   mês finalizado (mesmo padrão do bug A/31.3). Corrigir **só o handler** criaria **divergência handler ×
   job** — o tratamento correto é **tarefa própria sobre a 17.5** (guard por dia lá; o handler espelha).
+  - **✅ RESOLVIDO (Sprint 32, 2026-10-14):** a guarda `finalizado?` **por dia** foi implementada no
+    `CalcularFrequenciaJob` (**32.1**, commit `fe7f8ff`) e **espelhada** no `RecalcularTodosHandler`
+    (**32.2**, commit `905d8fb`) — exatamente o tratamento prescrito acima. Os **dois espelhos** do
+    D2/17.5 estão **fechados**; nenhuma ADR nova foi necessária (a decisão é **esta** regra). Reviews
+    `docs/quality/review_report_32_1.md`/`_32_2.md` (0 blockers); Bug Finder **0 bugs novos**
+    (`docs/quality/bug_report_32_hardening_guard_finalizado.md`). O **débito TOCTOU** (acima) permanece
+    🟢, com a nuance adicional de que a **memoização** por `[ano, mes]` (local ao usuário) torna a janela
+    "grudenta" **por usuário** (de baixo impacto — finalização manual).
 - **Crash-window do despacho:** entre marcar `processada` e o efeito do handler, um crash perde o
   efeito (não há retry automático sofisticado). A idempotência mora **nos handlers** — débito aceito.
 - **Volume** (`RECALCULAR_TODOS`/período longo): mitigado pelo escopo temporal do pipeline (3 dias +

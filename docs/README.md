@@ -15,9 +15,9 @@
 | **Fase 3 — Mapeamento de Domínio (DDD)** | ✅ **CONCLUÍDA** | `03-dominio/` |
 | **Fase 4 — ARQUITETURA / CÓDIGO (Rails)** | 🚧 **EM ANDAMENTO** — arquitetura definida; sistema em implementação por sprints | `02-arquitetura/` |
 | **PRD + Plano (Sprints/Tasks)** | ✅ **ENTREGUES** — PRDs na raiz + `implementation_plan.md`/`SPRINT-PLAN.md` | `12-plano-implementacao/` |
-| **Implementação (Sprints)** | ✅ **Sprints 23–31 implementadas** (última: 31 — recálculo por evento, **ADR-0011**, 2026-10-13) | `progress/` |
+| **Implementação (Sprints)** | ✅ **Sprints 23–32 implementadas** (última: 32 — hardening da guarda de mês finalizado, **2026-10-14**; antecessora: 31 — recálculo por evento, **ADR-0011**) | `progress/` |
 
-> **Fluxo executado:** Inventário ✅ → **PRD** ✅ → **Plano de Desenvolvimento (Sprints + Tasks)** ✅ → **implementação Rails em curso** (Sprints 23–31 concluídas; débitos herdados e próximas sprints em `progress/_context.md`).
+> **Fluxo executado:** Inventário ✅ → **PRD** ✅ → **Plano de Desenvolvimento (Sprints + Tasks)** ✅ → **implementação Rails em curso** (Sprints 23–32 concluídas; débitos herdados e próximas sprints em `progress/_context.md`).
 
 ---
 
@@ -32,7 +32,7 @@
 | **4** | Arquitetura Alvo (Rails + DDD) | 🚧 Em andamento (arquitetura definida; código implementado por sprints) |
 | **5** | Estratégia de Migração (Strangler Fig) | 🔜 Pendente |
 | **6** | Plano de Compatibilidade (EstaçãoPonto) | 🔜 Pendente |
-| **7** | Plano de Implementação (Sprints/Tasks) | ✅ Entregue (PRDs + `implementation_plan.md`/`SPRINT-PLAN.md`; Sprints 23–31 implementadas) |
+| **7** | Plano de Implementação (Sprints/Tasks) | ✅ Entregue (PRDs + `implementation_plan.md`/`SPRINT-PLAN.md`; Sprints 23–32 implementadas) |
 | **8** | Plano de Testes | 🔜 Pendente |
 | **9** | Plano de Implantação | 🔜 Pendente |
 
@@ -111,7 +111,7 @@
 
 ## Fase 4 — Arquitetura Alvo 🚧 EM ANDAMENTO
 
-Com o PRD entregue, a Fase 4 foi destravada e a implementação Rails está em curso (Sprints 23–31). Cobre (`02-arquitetura/`):
+Com o PRD entregue, a Fase 4 foi destravada e a implementação Rails está em curso (Sprints 23–32). Cobre (`02-arquitetura/`):
 - Diagrama de camadas (Controllers, Services, Models, Domain, Infrastructure) — Rails API-only
 - Definição de API (endpoints, formato, versionamento)
 - Estratégia de autenticação/autorização
@@ -129,7 +129,7 @@ Com o PRD entregue, a Fase 4 foi destravada e a implementação Rails está em c
 |------|----------|------------------------|
 | **5 — Estratégia de Migração** | Strangler Fig com proxy reverso; estratégia já recomendada no framework | `05-migracao/` |
 | **6 — Compatibilidade EstaçãoPonto** | Adaptador / proxy / replicação de API; mínimo de alteração na estação | `07-estacao-ponto/` / `06-integracoes/` |
-| **7 — Plano de Implementação** | Sprints e Tasks (a partir do **PRD**) — ✅ entregue; Sprints 23–31 implementadas | `12-plano-implementacao/` |
+| **7 — Plano de Implementação** | Sprints e Tasks (a partir do **PRD**) — ✅ entregue; Sprints 23–32 implementadas | `12-plano-implementacao/` |
 | **8 — Plano de Testes** | RSpec, integração, contrato (Pact), regressão, homologação | `10-testes/` |
 | **9 — Plano de Implantação** | CI/CD, rollback, monitoramento, observabilidade | `11-deploy/` |
 
