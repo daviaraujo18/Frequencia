@@ -52,7 +52,7 @@
 | `08-pessoas/` | Integrações | **Pessoas** (fonte de dados cadastrais, ADR-0001) | [`00-indice.md`](08-pessoas/00-indice.md) |
 | `09-intranet/` | **Fases 1–2** | **Intranet legada** — módulo `presenca`, fluxos A–D, DUVs | [`00-indice-modulo-presenca.md`](09-intranet/00-indice-modulo-presenca.md) |
 | `02-arquitetura/` | **Fase 4** | Arquitetura do novo sistema — decisões consolidadas em `adr/`; pasta a preencher | *(vazia → ver `adr/`)* |
-| `10-testes/` / `11-deploy/` | **Fases 8/9** | Testes e implantação — a preencher | *(vazias)* |
+| `10-testes/` / `11-deploy/` | **Fases 8/9** | Testes e implantação — a preencher | `10-testes/` vazia; `11-deploy/` já contém [`arquivo-recurring-yml-solid-queue.yml`](11-deploy/arquivo-recurring-yml-solid-queue.yml) (arquivo histórico da migração Solid Queue→Sidekiq) |
 | `adr/` | Decisões | Architecture Decision Records | [ADRs `0000`–`0011`](adr/) |
 | `specs/` | — | Memória/estado da sessão (Spec-Driven) | `STATE.md` |
 | `duvidas/` | — | Rastreamento de dúvidas (resolvidas e realocadas) | `README.md` |
@@ -143,4 +143,4 @@ Com o PRD entregue, a Fase 4 foi destravada e a implementação Rails está em c
 - Os **fluxos de engenharia reversa** (Fase 2) ficam em `09-intranet/fluxos/` com evidência `arquivo:linha`.
 
 ---
-**Última atualização:** 2026-10-14
+**Última atualização:** 2026-10-15

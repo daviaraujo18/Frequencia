@@ -327,7 +327,7 @@ O Bug Finder (`docs/quality/bug_report_32_hardening_guard_finalizado.md`) report
 - [ ] **Merge da pilha 31 em `integration/sprint-29`** — **PENDENTE / bloqueado por decisão do dev** (`COMMIT_MODE=manual`); `integration/sprint-29` @ `d50f317` **intacta**. A Sprint 32 **não** altera esse bloqueio.
 - [ ] **Merge da branch da Sprint 32** (`feature/demanda-32-2-espelho-handler` @ `40740b3`, já em `origin`/`gitlab`) para a base escolhida — decisão do dev (via `--no-ff`, preservando o agrupamento).
 - [ ] **32.3 (STANDALONE) — deploy da migration `create_tarefas_recalculo` no dev remoto.** Aprovada, **bloqueada por rede**. Destravar restaurando a rota/VPN → `cd api-ponto && bin/rails db:migrate`. **NÃO** ligar o cron `executa_tarefas` antes (hoje **desligado**, correto).
-- [ ] **Sprint 33 — sem ruling:** decidir o próximo escopo (ver §"Situação da Sprint 33"). **NÃO** iniciar sem decisão.
+- [x] **Sprint 33 — escopo DEFINIDO pelo dev (2026-10-15): `32.O1`** (enforcement opt-in da cascata, ADR-0010 regra 9). **Toca autorização** ⇒ exige **plano claro + aprovação explícita ANTES de qualquer código** — plano a ser submetido; nada implementado. Os demais candidatos seguem rastreados (ver §"Situação da Sprint 33").
 - [ ] *(Informativo)* **Commit/push do pacote doc-only do CTO** desta virada — manual, pelo dev.
 
 ### Sequência recomendada de entrega (proposta — CTO NÃO executa)
@@ -339,9 +339,11 @@ O Bug Finder (`docs/quality/bug_report_32_hardening_guard_finalizado.md`) report
 5. **Fechamento** já materializado: header 🟢 + §Encerramento + Débitos/Linha do Tempo + nota de resolução na ADR-0011 + catalogação dos achados + README. Commit **doc-only** do pacote do CTO (o dev commita/pusha manualmente — `COMMIT_MODE=manual`).
 6. **Sprint 33** — abrir **somente após ruling do dev** (próxima seção).
 
-### Situação da Sprint 33 — **EM ABERTO por falta de ruling do dev**
+### Situação da Sprint 33 — **ESCOPO DEFINIDO pelo dev (2026-10-15): `32.O1`**
 
-A Sprint 33 **não está definida** — **não abri escopo**. Candidatos já rastreados (escolha do dev; **nenhum** comprometido):
+**Atualização (2026-10-15):** o dev **decidiu o escopo da Sprint 33 = `32.O1`** (enforcement opt-in da cascata, ADR-0010 regra 9, ~5 pts). Como **toca autorização**, a regra global exige **plano claro + aprovação explícita do dev ANTES de qualquer código**: o plano será submetido e, só após o aval, o `iteration_33.md` é detalhado e a implementação começa. **Nada foi implementado.** Os demais candidatos abaixo **permanecem rastreados e não comprometidos**:
+
+_(a lista abaixo é o registro de quando a sprint estava indefinida — mantida como histórico)_
 
 - **`32.O1` — Enforcement opt-in da cascata** (ADR-0010 regra 9; **~5 pts**; causa-raiz do Bug 🔴1 da 30). **Único candidato de ALTO valor de hardening** — mas **toca autorização** e exige **plano claro + aprovação do dev**. **Não** puxado na 32.
 - **Tipos de recálculo adiados** `FERIADO`/`DIAEXCEPCIONAL`/`DIREITO` — exigem **models de domínio inexistentes** (política incremental vigente).
