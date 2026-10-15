@@ -1,5 +1,15 @@
 module Admin
   class DashboardController < Admin::ApplicationController
+    # Tarefa 33.1 (Sprint 33) — Camada 1: dispensa justificada. Todo o corpo que
+    # lê recursos de frequência (`TimeRecord`/`RegistroMensalFrequencia`/
+    # `Pessoas::Vinculo`) está sob `if current_user.admin?`: o admin é o passo 2
+    # da cascata (visão global por design), e a view replica o gate — ou seja,
+    # NÃO vaza a não-admin (`bug_report_30_cobertura_cascata`, Info 1, premissa
+    # refutada). Logo, não precisa de `restringir_frequencia`.
+    fora_da_cascata_justificativa(
+      "corpo gateado por current_user.admin? (passo 2 — visão global); não vaza a não-admin"
+    )
+
     def index
       # Task 23.7 — CanCanCan: autorização explícita para leitura do dashboard.
       # Admin, gestor e operador podem visualizar (todos têm :read em :all).

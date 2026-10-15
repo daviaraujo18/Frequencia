@@ -16,6 +16,23 @@
 # comportamento atual. Modo `:shadow`: nada é restringido; só se LOGA o que a
 # cascata negaria. Modo `:on`: as listagens são filtradas.
 module FrequenciaAuthorization
+  extend ActiveSupport::Concern
+
+  # Tarefa 33.1 (Sprint 33) — Camada 1: o `include` deste concern É o opt-in.
+  # Incluir o concern declara a postura `:coberto` (o controller participa da
+  # cascata). É a FONTE ÚNICA de declaração, consumida tanto pelo guard de
+  # runtime (`Admin::ApplicationController#verificar_postura_cascata`) quanto
+  # pelo meta-teste de drift (33.2) — sem lista paralela de allow-list. O
+  # `class_attribute :cascata_postura` também vive no `Admin::ApplicationController`
+  # (para os controllers que NÃO incluem o concern e declaram `:dispensado`). Aqui
+  # reafirmamos o atributo no próprio includer para que o concern seja
+  # AUTOSSUFICIENTE: qualquer classe que o inclua (inclusive hosts de teste fora
+  # do contexto admin) ganha o atributo antes de marcar `:coberto`.
+  included do
+    class_attribute :cascata_postura, default: nil
+    self.cascata_postura = :coberto
+  end
+
   private
 
   def frequencia_cascata_ligada?

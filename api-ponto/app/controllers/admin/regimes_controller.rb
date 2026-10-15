@@ -1,5 +1,9 @@
 module Admin
   class RegimesController < Admin::ApplicationController
+    # Tarefa 33.1 (Sprint 33) — Camada 1: dispensa justificada. Não lê recursos
+    # de frequência — só `Regime`/`RegimeCategoria`.
+    fora_da_cascata_justificativa("não lê recursos de frequência — CRUD de Regime")
+
     # Task 23.7 — CanCanCan: CRUD puro carregado e autorizado pelo
     # `load_and_authorize_resource` (padrão estacoes/versoes/users).
     # Somente admin tem `:manage` em Regime (ability.rb 23.5) — o loader

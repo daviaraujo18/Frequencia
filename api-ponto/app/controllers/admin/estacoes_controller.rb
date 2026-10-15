@@ -1,5 +1,10 @@
 module Admin
   class EstacoesController < Admin::ApplicationController
+    # Tarefa 33.1 (Sprint 33) — Camada 1: dispensa justificada. Não lê recursos
+    # de frequência (`TimeRecord`/`CalculoDiario`/`RegistroMensalFrequencia`/
+    # `IntervencaoFrequencia`/`Pessoas::Vinculo`) — só `EstacaoPonto`.
+    fora_da_cascata_justificativa("não lê recursos de frequência — CRUD de EstacaoPonto")
+
     # Task 23.7 — CanCanCan: CRUD puro carregado e autorizado pelo
     # `load_and_authorize_resource` (mesmo padrão do Admin::UsersController,
     # único controller com load_and_authorize_resource até a 23.7).

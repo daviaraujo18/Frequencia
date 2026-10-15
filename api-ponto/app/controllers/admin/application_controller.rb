@@ -13,6 +13,51 @@ module Admin
     APP_NAME = "API Ponto TJPI".freeze
     APP_DESCRIPTION = "Sistema de registro e controle de frequência do TJPI".freeze
 
+    # Tarefa 33.1 (Sprint 33) — Camada 1: contrato de declaração de postura
+    # perante a cascata de autorização de frequência. Todo controller `Admin::*`
+    # declara EXATAMENTE uma postura:
+    #   - `:coberto`    → inclui `FrequenciaAuthorization` (hook `included`);
+    #   - `:dispensado` → chama `.fora_da_cascata_justificativa("motivo")`.
+    # `nil` (default) = NÃO declarado → o guard `verificar_postura_cascata`
+    # barra em runtime (fail-closed sob `FREQUENCIA_CASCATA_ENFORCEMENT=raise`).
+    # A postura é HERDADA (class_attribute) e NÃO é declarada na base de
+    # propósito: assim cada controller concreto precisa declarar a sua. A base
+    # `Presenca::*` não herda `Admin::ApplicationController` e, por isso, não é
+    # alcançada pelo guard (contexto pré-sessão — ADR-0003; Bug 🟠2 = risco aceito).
+    class_attribute :cascata_postura, default: nil
+
+    # Tarefa 33.1 (Sprint 33) — motivo da dispensa, PERSISTIDO para leitura em
+    # runtime (não só no texto-fonte). A macro abaixo grava aqui; o meta-teste
+    # de drift (33.2) asserta `cascata_justificativa.present?` de forma fiável,
+    # sem heurística de grep sobre o código. `nil` quando a postura não é
+    # `:dispensado`.
+    class_attribute :cascata_justificativa, default: nil
+
+    # Tarefa 33.1 (Sprint 33) — postura é decisão POR CLASSE, nunca HERDADA.
+    # `class_attribute` propaga o valor para subclasses; sem este reset, um
+    # controller novo criado por `class X < Admin::AlgumConcreto` (em vez de
+    # herdar a base) passaria no guard sem declarar nada, herdando a postura —
+    # e, no eixo `:dispensado`, até a justificativa alheia (falso-verde). O hook
+    # ZERA a postura em toda subclasse; quem quiser postura declara a sua (via
+    # `include FrequenciaAuthorization` ou `fora_da_cascata_justificativa`).
+    def self.inherited(subclasse)
+      super
+      subclasse.cascata_postura = nil
+      subclasse.cascata_justificativa = nil
+    end
+
+    # Macro de dispensa explícita. A justificativa é OBRIGATÓRIA no código
+    # (motivo em branco → `ArgumentError`): dispensar um controller da cascata é
+    # uma decisão consciente e auditável, não um esquecimento silencioso. O
+    # meta-teste de drift (33.2) exige justificativa NÃO vazia para aceitar um
+    # `:dispensado` — lida via `cascata_justificativa` (runtime), não por grep.
+    def self.fora_da_cascata_justificativa(motivo)
+      raise ArgumentError, "justificativa obrigatória para dispensar a cascata" if motivo.blank?
+
+      self.cascata_justificativa = motivo
+      self.cascata_postura = :dispensado
+    end
+
     # Task 24.3 (Sprint 24) — Pagy (RF03): expõe o backend de paginação para
     # todos os controllers admin via `@pagy, @collection = pagy(...)`. O módulo
     # é privado no Pagy 9 (chamado pelas actions), e sua inclusão NÃO altera a
@@ -39,6 +84,11 @@ module Admin
     # contexto API/presença — `ApplicationController` base (ActionController::API)
     # e `Presenca::*` continuam sem sessão/menu (RNF01/RNF06).
     before_action :set_configurations
+    # Tarefa 33.1 (Sprint 33) — Camada 1: guard fail-closed que exige DECLARAÇÃO
+    # de postura (não restringe leitura de conteúdo). Roda em TODA action admin
+    # e é INDEPENDENTE de `FREQUENCIA_AUTORIZACAO_CASCATA`. No-op para quem
+    # declarou (`:coberto`/`:dispensado`).
+    before_action :verificar_postura_cascata
     check_authorization
 
     # Task 23.7 — CanCanCan: redireciona para dashboard quando o usuário
@@ -51,6 +101,25 @@ module Admin
     helper_method :current_user, :logged_in?
 
     private
+
+    # Tarefa 33.1 (Sprint 33) — Camada 1 (runtime): guard que exige DECLARAÇÃO
+    # de postura por controller (não restringe leitura de conteúdo). Se a classe
+    # NÃO declarou postura: `Rails.logger.warn` no modo `log` (fail-open) ou
+    # `CascataNaoDeclaradaError` no modo `raise` (fail-closed). Independente de
+    # `FREQUENCIA_AUTORIZACAO_CASCATA` (`:off`/`:shadow`/`:on`) — o furo da
+    # omissão existe em qualquer estado da cascata (D2).
+    #
+    # Com TODOS os controllers `Admin::*` declarados, é NO-OP em produção, em
+    # qualquer estado da flag de cascata (D2/R3).
+    def verificar_postura_cascata
+      return if self.class.cascata_postura.present?
+
+      msg = "#{self.class.name}: controller admin sem postura de cascata declarada " \
+            "(include FrequenciaAuthorization ou fora_da_cascata_justificativa)"
+      return Rails.logger.warn(msg) if FrequenciaCascataEnforcement.log?
+
+      raise CascataNaoDeclaradaError, msg
+    end
 
     # Resolve o usuário do contexto admin. Duas fontes de sessão coexistem
     # (ver bug_report_23_cs): `session[:user_id]` (contrato legado — fonte

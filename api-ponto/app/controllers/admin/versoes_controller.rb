@@ -1,5 +1,9 @@
 module Admin
   class VersoesController < Admin::ApplicationController
+    # Tarefa 33.1 (Sprint 33) — Camada 1: dispensa justificada. Não lê recursos
+    # de frequência — só `Versao`.
+    fora_da_cascata_justificativa("não lê recursos de frequência — CRUD de Versao")
+
     # Task 23.7 — CanCanCan: CRUD puro carregado e autorizado pelo
     # `load_and_authorize_resource` (padrão estacoes/regimes/users).
     # Somente admin tem `:manage` em Versao (ability.rb 23.5) — o loader

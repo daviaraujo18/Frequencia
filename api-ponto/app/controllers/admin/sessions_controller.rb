@@ -1,5 +1,10 @@
 module Admin
   class SessionsController < Admin::ApplicationController
+    # Tarefa 33.1 (Sprint 33) — Camada 1: dispensa justificada. Login/sessão é
+    # pré-autenticação (`skip_authorization_check`) e não lê nenhum recurso de
+    # frequência — o guard só exige declaração, e aqui ela é explícita.
+    fora_da_cascata_justificativa("login/sessão pré-autenticação — não lê recursos de frequência")
+
     skip_before_action :require_login, only: [ :new, :create ]
     skip_before_action :verify_authenticity_token, only: [ :create ]
     # Task 23.7 — Login/sessão não requer autorização CanCanCan.
