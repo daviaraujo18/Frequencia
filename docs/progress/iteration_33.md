@@ -162,29 +162,41 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
     `direitos_deveres`/`gestores_individuais`/`sessions` = não leem recursos de frequência). A base
     `Presenca::*` **não** herda o guard.
   - **Flag própria `FREQUENCIA_CASCATA_ENFORCEMENT`** (D2/R4) — **desacoplada** de
-    `FREQUENCIA_AUTORIZACAO_CASCATA`. Valores: `log` (fail-open com WARN) | `raise` (fail-closed). Em
-    **test/CI**, `raise` é o padrão.
+    `FREQUENCIA_AUTORIZACAO_CASCATA`. Família **LIGAR** (`raise`/`levantar`/`on`/`true`/`1`/`yes`/`enabled`/
+    `ativo`/`strict`) → fail-closed; família **OBSERVAR** (`log`/`warn`/`avisar`/`observar`/`shadow`/`off`/
+    `false`/`0`/`no`/`disabled`) → só WARN; **valor não reconhecido → fail-closed + WARN** (nunca
+    fail-open silencioso). Ausente/vazio: **`raise` em test/CI** (gate duro), `log` fora. `CI` só liga se
+    truthy (`1`/`true`).
 - **Escopo (o que NÃO ENTRA):** tocar a `Ability` (D3); adotar `toca_frequencia only:[…]` por action (D4);
   restringir leitura de conteúdo (o guard só exige declaração); alterar regras da cascata/roles; commitar
   `config/environments/development.rb`.
 - **Critérios de aceite (testáveis):**
-  - [ ] **Contrato:** um controller `Admin::*` que **não** declara postura, sob `FREQUENCIA_CASCATA_ENFORCEMENT=raise`,
+  - [x] **Contrato:** um controller `Admin::*` que **não** declara postura, sob `FREQUENCIA_CASCATA_ENFORCEMENT=raise`,
     ao executar qualquer action → **levanta `CascataNaoDeclaradaError`**.
-  - [ ] **`log` ≠ `raise` (explícito):** o **mesmo** cenário sob `FREQUENCIA_CASCATA_ENFORCEMENT=log` →
+  - [x] **`log` ≠ `raise` (explícito):** o **mesmo** cenário sob `FREQUENCIA_CASCATA_ENFORCEMENT=log` →
     **NÃO levanta**, emite **um `Rails.logger.warn`** com o nome da classe. (É o único delta entre os dois
     modos; a mensagem é idêntica.)
-  - [ ] **Fail-closed em TODOS os estados da flag de cascata (D2):** o guard nega/avisa **independentemente**
+  - [x] **Fail-closed em TODOS os estados da flag de cascata (D2):** o guard nega/avisa **independentemente**
     de `FREQUENCIA_AUTORIZACAO_CASCATA` (`:off`/`:shadow`/`:on`) — provado com a flag de cascata em cada um
     dos 3 estados.
-  - [ ] **No-op para quem declarou:** um controller `:coberto` e um `:dispensado` (com justificativa) **não**
+  - [x] **No-op para quem declarou:** um controller `:coberto` e um `:dispensado` (com justificativa) **não**
     são afetados pelo guard em nenhum estado da flag de enforcement.
-  - [ ] **Macro exige justificativa:** `fora_da_cascata_justificativa("")`/`nil` → **`ArgumentError`**.
-  - [ ] **Cobertura de anotação:** **todo** controller `Admin::*` da árvore declara postura (nenhum deixa o
+  - [x] **Macro exige justificativa:** `fora_da_cascata_justificativa("")`/`nil` → **`ArgumentError`**.
+  - [x] **Cobertura de anotação:** **todo** controller `Admin::*` da árvore declara postura (nenhum deixa o
     guard levantar na suíte) — a base `Presenca::*` **não** é afetada.
-  - [ ] **`Ability` inalterada (D3):** `git diff` **não** mostra alteração em `api-ponto/app/models/ability.rb`.
-  - [ ] **Sem regressão:** suíte permanece **1222/4257/3F+12E/0 skip** (as 15 pré-existentes isoladas);
+  - [x] **`Ability` inalterada (D3):** `git diff` **não** mostra alteração em `api-ponto/app/models/ability.rb`.
+  - [x] **Sem regressão:** suíte permanece **1235/4314/3F+12E/0 skip** (as 15 pré-existentes isoladas;
+  +13 runs/+57 asserts = os testes novos da 33.1);
     RuboCop 0 offenses nos arquivos tocados; `zeitwerk:check` OK.
-- **Status:** ⬜ Pendente
+- **Status:** ✅ **Implementada (2026-10-15)** — Camada 1 (runtime) entregue no working tree (sem commit — `COMMIT_MODE=manual`).
+  Contrato de postura (`:coberto`/`:dispensado`) + guard fail-closed (`verificar_postura_cascata`) + flag própria
+  `FREQUENCIA_CASCATA_ENFORCEMENT` (`log`→`raise`); os **7** controllers participantes declaram `:coberto` via `include`
+  e os **7** demais `Admin::*` recebem `fora_da_cascata_justificativa("…")`. Branch:
+  `feat/sprint-33-camada-1-guard-cascata`. Arquivos: `api-ponto/app/controllers/concerns/frequencia_authorization.rb`,
+  `api-ponto/app/controllers/admin/application_controller.rb`, os 7 controllers admin anotados,
+  `api-ponto/app/models/frequencia_cascata_enforcement.rb` (novo),
+  `api-ponto/app/models/cascata_nao_declarada_error.rb` (novo),
+  `api-ponto/test/controllers/admin/cascata_enforcement_test.rb` (novo, 17 testes). Ver §"Notas de implementação (33.1)".
 - **Fora do escopo desta tarefa:** o meta-teste de drift e os testes de conteúdo (33.2/33.3); o DRY (33.5).
 
 ### Área — 2. Camada 2 (build): meta-teste de drift (fecha a classe) + testes de conteúdo
@@ -215,6 +227,20 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
     sintético** que lê `TimeRecord` **sem** declarar → **rejeitado**. Prova executável de que o §2.2(1) pega
     um controller novo (T1).
   - **Flag-independente:** o meta-teste **não** lê a flag de cascata nem a de enforcement — vale em qualquer estado.
+  - **Varredura RECURSIVA + classes reais (M1 do review 33.1):** o detector usa glob **recursivo**
+    (`api-ponto/app/controllers/admin/**/*_controller.rb`) — **não** o glob top-level de um nível — e/ou
+    localiza os subclasses por `Admin::ApplicationController.descendants` (eager-load em test), em vez de
+    derivar a constante de `File.basename(...).camelize`. Fecha o falso-verde para um controller novo em
+    subpasta ou que herde a base de fora de `app/controllers/admin/`.
+  - **Excluir a base abstrata e ignorar comentários (M2 do review 33.1):** o detector **exclui**
+    `application_controller.rb` (base abstrata, sem rotas) e **ignora linhas de comentário** — a base casa o
+    conjunto por causa do menu (`permission_check: TimeRecord`, `application_controller.rb:214`) e
+    `estacoes_controller.rb:4` casa por **comentário**; nenhum dos dois "lê" o recurso. Sobre-inclusão
+    intencional deve ser **documentada**, não mascarar o critério.
+  - **Justificativa lida em RUNTIME (M3 do review 33.1):** o detector lê a justificativa da dispensa via
+    **`cascata_justificativa`** (persistida pela macro na 33.1) — **não** por grep/regex no texto-fonte.
+    Exige `present?` de forma fiável; grep (`fora_da_cascata_justificativa(MOTIVO)`, heredoc, constante) fica
+    frágil e é proibido como mecanismo de verificação.
 - **Escopo (o que NÃO ENTRA):** testes de conteúdo por tela (é a 33.3); tocar a `Ability`; criar manifest
   paralelo de allow-list (a allow-list **lê a mesma declaração** de postura — §0.5/R2).
 - **Critérios de aceite (testáveis):**
@@ -227,6 +253,14 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
     remover o concern de um deles → **falha**.
   - [ ] **Conjunto fechado e justificado:** o detector usa exatamente `TimeRecord | CalculoDiario |
     RegistroMensalFrequencia | IntervencaoFrequencia | Pessoas::Vinculo`.
+  - [ ] **Recursivo e por classe (M1):** um controller sensível criado em **subpasta** (`admin/<sub>/x_controller.rb`)
+    ou que herde `Admin::ApplicationController` de **fora** de `admin/` → **vermelho** (o glob recursivo /
+    `descendants` o pega). O teste prova esse caso com arquivo sintético.
+  - [ ] **Base e comentários excluídos (M2):** o detector **não** acusa `application_controller.rb` (menu) nem
+    um recurso citado **em comentário**; um arquivo sintético com o recurso só em comentário → **não** conta
+    como sensível (ou a sobre-inclusão é intencional e documentada).
+  - [ ] **Justificativa em runtime (M3):** um `:dispensado` sem `cascata_justificativa.present?` → **vermelho**;
+    a checagem **não** usa grep/regex no texto-fonte (asserta o valor runtime).
   - [ ] **Sem regressão:** suíte permanece **1222/4257/3F+12E/0 skip** (as 15 isoladas); RuboCop 0 offenses;
     `zeitwerk:check` OK.
 - **Status:** ⬜ Pendente
@@ -351,8 +385,15 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 - **Default seguro:** o guard, com todos os controllers declarados, é **no-op em produção, em qualquer
   estado da cascata**. O rollout começa em **`log`** no 1º deploy (só WARN); após um ciclo sem WARN, o dev
   **flipa para `raise`**.
-- **Kill-switch (runtime):** `FREQUENCIA_CASCATA_ENFORCEMENT=log` (ou `off`) desliga o guard de runtime
-  **sem** reverter código.
+- **Kill-switch (runtime):** `FREQUENCIA_CASCATA_ENFORCEMENT` **rebaixa** o gate sem reverter código.
+  - **LIGAR** o fail-closed: `raise`/`levantar`/`on`/`true`/`1`/`yes`/`enabled`/`ativo`/`strict` → `:raise`.
+  - **OBSERVAR** (só `Rails.logger.warn`, não levanta): `log`/`warn`/`avisar`/`observar`/`shadow`/`off`/
+    `false`/`0`/`no`/`disabled` → `:log`.
+  - **Valor NÃO reconhecido → fail-closed** (`:raise` + um WARN alto). **Não há fail-open silencioso**: um
+    valor ambíguo nunca desliga o gate por engano (corrige o `on`/`true`/`1` que antes caíam em `:log` —
+    `bug_report_33_1`). Case/whitespace não importam.
+  - **Ausente/vazio:** `:raise` em test/CI; `:log` nos demais ambientes (1º deploy de produção). `CI` só
+    conta como ligado se **truthy** (`1`/`true`) — `CI=false`/`CI=0` não forçam `:raise`.
 - **Rollback da Camada 1:** remover o `before_action`/macro + o hook `included` do concern → volta ao estado
   atual. **Reversível em um commit.**
 - **Rollback da Camada 2:** `git revert` dos arquivos de teste — **zero** risco de produção.
@@ -403,7 +444,7 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 
 | Tarefa | Área | Pontos | Dependência | Natureza | Status |
 |--------|------|--------|-------------|----------|--------|
-| **33.1** | Camada 1 — contrato de postura + guard fail-closed (runtime) | **2** | nenhuma | código (toca autorização) | ⬜ Pendente |
+| **33.1** | Camada 1 — contrato de postura + guard fail-closed (runtime) | **2** | nenhuma | código (toca autorização) | ✅ Implementada (2026-10-15) |
 | **33.2** | Camada 2 — meta-teste de drift + assert recíproco (build) | **2** | **33.1** | testes | ⬜ Pendente |
 | **33.3** | Camada 2 — testes de conteúdo por tela + revisão de expectativa | **2** | **33.1** | testes | ⬜ Pendente |
 | **33.4** | Guard runtime `log` × `raise` + mutation testing | **1** | **33.1** | testes | ⬜ Pendente |
@@ -485,3 +526,50 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 | Horário | O que foi feito | Resultado |
 |---------|-----------------|-----------|
 | 2026-10-15 | **Sprint Planner reescreve o `iteration_33.md`** estritamente alinhado ao artefato de aprovação (§7.1, D1–D5/Q33-C); código real confirmado (symbols/caminhos) | **5 tarefas**, **8 pts**, 1 dev sequencial; banner ✅ ALINHADO; rascunho anterior **superseded** |
+| 2026-10-15 | **Code Specialist implementa a 33.1** (Camada 1 — contrato de postura + guard fail-closed + flag própria `FREQUENCIA_CASCATA_ENFORCEMENT`) no working tree; **sem commit** (`COMMIT_MODE=manual`) | Suíte **1235/4314/3F+12E/0 skip** (as 15 pré-existentes; +13 testes novos); RuboCop 0; zeitwerk OK; `ability.rb` intocado |
+| 2026-10-15 | **Code Reviewer** na 33.1 (`docs/quality/review_report_33_1.md`) | **0 blockers / 0 high**; 4 🟡 + 1 ⚪ + 2 💡 (M1–M4; B1; S1/S2) |
+| 2026-10-15 | **Bug Finder** na 33.1 (`docs/quality/bug_report_33_1.md`) | **0 crítico / 0 alto**; 2 🟡 (BF-M1 herança de postura; BF-M2 kill-switch fail-open) + 1 🟢 + 3 ⚪ |
+| 2026-10-15 | **Correções aplicadas** (M3, M4, S2, BF-M1, BF-M2, BF baixo) no working tree; **sem commit** | `cascata_justificativa` persistida; postura **não herdada** (`inherited`); flag **fail-closed** p/ valor ambíguo; `CI` só truthy; doc do kill-switch alinhada — teste da 33.1 **17/87/0F/0E**; área admin **255/1363/0F/0E**; RuboCop 0 |
+
+## Notas de implementação (33.1) — plano × código real
+
+> Divergências de **símbolo/caminho/alcance** encontradas ao implementar. **Nada do escopo/decisões D1–D5/Q33-C
+> foi alterado.**
+
+1. **O concern tem um 8º includer (host de teste).** O `iteration_33.md` e o §0.3 do plano falam só dos **7
+   controllers `Admin::*`** que incluem `FrequenciaAuthorization`. O `grep` real mostra um **8º includer fora
+   do contexto admin**: `Intranet::MigrarRolesCascataServiceTest::HostComCascata`
+   (`api-ponto/test/services/intranet/migrar_roles_cascata_service_test.rb:68`) — host de teste que exercita
+   `restringir_frequencia` sem controller. Consequência: o hook `included do … end` **declara**
+   `class_attribute :cascata_postura, default: nil` **antes** de marcar `:coberto` (fiel ao esqueleto do §2.1
+   do plano), tornando o concern **autossuficiente** — sem isso, o host de teste quebra com `NoMethodError`
+   (`cascata_postura=` indefinido). O guard é **no-op** para o host (não é controller roteado).
+2. **A base `Admin::ApplicationController` NÃO declara postura** (default `nil`) — de propósito: é abstrata
+   (sem rotas/actions) e, se declarasse, o `class_attribute` herdado tornaria `:dispensado`/`:coberto`
+   visível a **todos** os subclasses, anulando o guard. Cada controller concreto declara a sua.
+3. **`fora_da_cascata_justificativa` PERSISTE o motivo** (`class_attribute :cascata_justificativa`) além de
+   setar `:dispensado` — **correção do achado M3 do review 33.1** (o esqueleto do §2.1 só validava `blank?`).
+   Com isso o meta-teste de drift (33.2) exige justificativa **não vazia** lendo o valor **em runtime**, sem
+   heurística de grep no texto-fonte (`fora_da_cascata_justificativa(MOTIVO)`, heredoc, constante).
+4. **Retorno do guard no modo `log`:** `return Rails.logger.warn(msg)` devolve o retorno de `Logger#warn`
+   (truthy), **não** `nil`; no modo `raise` levanta; para `:coberto`/`:dispensado` retorna `nil`. Detalhe
+   irrelevante para o contrato (o before_action só importa pelo efeito colateral), mas registrado.
+5. **Local arquivos novos (segue o real):** PORO `FrequenciaCascataEnforcement` e o erro `CascataNaoDeclaradaError`
+   vivem em `api-ponto/app/models/` (mesmo diretório real do irmão `FrequenciaAutorizacaoCascata`; **não** há
+   `app/services/` nem `app/errors/` no projeto). `CascataNaoDeclaradaError` é **top-level** (não namespaced),
+   como o esqueleto do §2.1 o referencia sem qualificação.
+6. **Nenhum controller `Admin::*` deixa o guard levantar na suíte:** os 14 controllers concretos declaram
+   postura (7 `:coberto` via `include`, 7 `:dispensado` via macro). A base `Presenca::*` **não** herda
+   `Admin::ApplicationController` e **não** responde a `cascata_postura` (provado por teste).
+7. **Sem alteração** em `ability.rb` (D3 — `git diff` vazio), `db/schema.rb`, rotas ou migrations; nenhuma
+   dependência nova; nenhuma ADR nova. Nada commitado/pushado (`COMMIT_MODE=manual`).
+8. **Postura NÃO é herdada por subclasse de concreto** (correção do achado **BF-M1** do Bug Finder 33.1). Um
+   controller novo criado por `class X < Admin::AlgumConcreto` herdava a postura do pai — e, no eixo
+   `:dispensado`, até a **justificativa alheia** (falso-verde; a 33.2 via `descendants` daria verde errado).
+   Corrigido com `self.inherited(subclasse)` na base, que **zera** `cascata_postura`/`cascata_justificativa`
+   em toda subclasse: a postura é decisão **por classe**, nunca herdada.
+9. **Kill-switch passou a falhar-CLOSED para valor ambíguo** (correção do achado **BF-M2**). Antes, só
+   `raise`/`levantar` ligavam — `on`/`true`/`1`/`yes`/`enabled` caíam em `:log` (fail-open **silencioso**, uma
+   armadilha de confiança falsa num gate de autorização). Agora há famílias explícitas **LIGAR**/**OBSERVAR** e
+   **valor não reconhecido → `:raise` + um WARN alto**. O baixo (BF) também foi corrigido: `CI` só conta como
+   ligado se **truthy** (`1`/`true`) — `CI=false`/`CI=0` não forçam `:raise`. Ver §"Compatibilidade e rollback".
