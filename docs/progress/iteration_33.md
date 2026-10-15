@@ -244,26 +244,33 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 - **Escopo (o que NÃO ENTRA):** testes de conteúdo por tela (é a 33.3); tocar a `Ability`; criar manifest
   paralelo de allow-list (a allow-list **lê a mesma declaração** de postura — §0.5/R2).
 - **Critérios de aceite (testáveis):**
-  - [ ] **Controller novo sem declaração FALHA (T1):** detector recebe o arquivo sintético que lê `TimeRecord`
+  - [x] **Controller novo sem declaração FALHA (T1):** detector recebe o arquivo sintético que lê `TimeRecord`
     sem declarar → **rejeitado** (o teste passa ao provar a rejeição).
-  - [ ] **Toda a árvore real declara postura (T2):** varredura de `app/controllers/admin/**/*.rb` — conjunto
-    dos que casam os recursos sensíveis **⊆** declarados → **verde**; introduzir um controller sensível sem
-    postura → **vermelho**.
-  - [ ] **Recíproco (T3):** para cada `:coberto`, assert que o arquivo contém `include FrequenciaAuthorization`;
-    remover o concern de um deles → **falha**.
-  - [ ] **Conjunto fechado e justificado:** o detector usa exatamente `TimeRecord | CalculoDiario |
+  - [x] **Toda a árvore real declara postura (T2):** varredura recursiva de `app/controllers` — conjunto
+    dos que casam os recursos sensíveis **⊆** declarados → **verde** (14 varridos, 6 sensíveis, 0 drift);
+    introduzir um controller sensível sem postura → **vermelho**.
+  - [x] **Recíproco (T3):** para cada `:coberto`, assert que a classe inclui `FrequenciaAuthorization`
+    (`klass.include?`, runtime); um `:coberto` que não inclui o concern → **falha**.
+  - [x] **Conjunto fechado e justificado:** o detector usa exatamente `TimeRecord | CalculoDiario |
     RegistroMensalFrequencia | IntervencaoFrequencia | Pessoas::Vinculo`.
-  - [ ] **Recursivo e por classe (M1):** um controller sensível criado em **subpasta** (`admin/<sub>/x_controller.rb`)
-    ou que herde `Admin::ApplicationController` de **fora** de `admin/` → **vermelho** (o glob recursivo /
-    `descendants` o pega). O teste prova esse caso com arquivo sintético.
-  - [ ] **Base e comentários excluídos (M2):** o detector **não** acusa `application_controller.rb` (menu) nem
-    um recurso citado **em comentário**; um arquivo sintético com o recurso só em comentário → **não** conta
-    como sensível (ou a sobre-inclusão é intencional e documentada).
-  - [ ] **Justificativa em runtime (M3):** um `:dispensado` sem `cascata_justificativa.present?` → **vermelho**;
-    a checagem **não** usa grep/regex no texto-fonte (asserta o valor runtime).
-  - [ ] **Sem regressão:** suíte permanece **1222/4257/3F+12E/0 skip** (as 15 isoladas); RuboCop 0 offenses;
-    `zeitwerk:check` OK.
-- **Status:** ⬜ Pendente
+  - [x] **Recursivo e por classe (M1):** um controller sensível criado em **subpasta** (`admin/<sub>/x_controller.rb`)
+    ou que herde `Admin::ApplicationController` de **fora** de `admin/` → **vermelho** (glob recursivo +
+    resolução da classe pela posição relativa do caminho). Provado com arquivo sintético em `Dir.mktmpdir`.
+  - [x] **Base e comentários excluídos (M2):** o detector **não** acusa `application_controller.rb` (base
+    abstrata — não é subclasse de si mesma) nem um recurso citado **em comentário** (caso real:
+    `estacoes_controller.rb:4`).
+  - [x] **Justificativa em runtime (M3):** um `:dispensado` sem `cascata_justificativa.present?` → **vermelho**;
+    a checagem **não** usa grep/regex no texto-fonte (asserta o valor runtime — um texto que menciona a macro
+    com justificativa, mas sem justificativa em runtime, é reprovado).
+  - [x] **Sem regressão:** suíte **1256/4387/3F+12E** (as 15 pré-existentes isoladas; **17 testes** desta
+    tarefa); RuboCop 0 offenses nos arquivos tocados; `zeitwerk:check` OK.
+- **Status:** ✅ **Implementada (2026-10-15)** — Camada 2 (build) entregue no working tree (sem commit — `COMMIT_MODE=manual`).
+  Detector `CoberturaCascata` (`api-ponto/test/support/cobertura_cascata.rb`) unit-testável com arquivos sintéticos +
+  meta-teste `api-ponto/test/controllers/admin/cascata_cobertura_test.rb` (17 testes: T1/T2/T3, conjunto fechado,
+  M1 recursivo/subpasta/**caminho**, M2 base+comentários, M3 runtime, flag-independente). Review **0 blockers**
+  (`docs/quality/review_report_33_2.md`); Bug Finder **0 crítico** (`docs/quality/bug_report_33_2.md`); correções
+  M1/M2/M4 + Bug 1/Bug 2 aplicadas; M3 = débito. Branch:
+  `feat/sprint-33-camada-2-meta-teste-drift`. Ver §"Notas de implementação (33.2)".
 - **Fora do escopo desta tarefa:** conteúdo das telas (33.3); DRY (33.5).
 
 #### Tarefa 33.3 — Testes de conteúdo por tela (ausência do terceiro) + revisão de expectativa (Camada 2, D1)
@@ -437,6 +444,11 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
   plano) — **não criar agora**. Severidade: 🟡 — Tarefa: (pós-33).
 - [ ] **Bug 🟠2 (`/presenca/*` sem autenticação)** — **risco aceito** (ADR-0010 §Notas); gatilho = fim dos
   testes manuais da Estação. **Fora do escopo da 33.** Severidade: 🟠 (aceito) — Tarefa: fora.
+- [ ] **Bypass do guard via `skip_before_action :verificar_postura_cascata`** (M3 do review 33.2; Obs. 1 do
+  `bug_report_33_1`) — um controller admin pode **desligar** o guard da Camada 1 numa linha, e nem a Camada 1
+  nem o meta-teste de drift (33.2) **detectam** isso (a 33.2 não lê a cadeia de callbacks). Hoje **nenhum**
+  controller usa esse skip (verificado). Mitigação possível: a Camada 2 passar a assertar que nenhum
+  `Admin::*` faz `skip_before_action :verificar_postura_cascata`. **Severidade: 🟡 — Tarefa: 33.x / pós-33.**
 - [ ] *(Herdados, NÃO reabertos nesta sprint)* TOCTOU residual de mês finalizado; staleness pré-existente na
   virada; crash-window do despacho — ver `iteration_32.md` §Débitos. Severidade: 🟢/⚪ — Tarefa: fora.
 
@@ -445,7 +457,7 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 | Tarefa | Área | Pontos | Dependência | Natureza | Status |
 |--------|------|--------|-------------|----------|--------|
 | **33.1** | Camada 1 — contrato de postura + guard fail-closed (runtime) | **2** | nenhuma | código (toca autorização) | ✅ Implementada (2026-10-15) |
-| **33.2** | Camada 2 — meta-teste de drift + assert recíproco (build) | **2** | **33.1** | testes | ⬜ Pendente |
+| **33.2** | Camada 2 — meta-teste de drift + assert recíproco (build) | **2** | **33.1** | testes | ✅ Implementada (2026-10-15) |
 | **33.3** | Camada 2 — testes de conteúdo por tela + revisão de expectativa | **2** | **33.1** | testes | ⬜ Pendente |
 | **33.4** | Guard runtime `log` × `raise` + mutation testing | **1** | **33.1** | testes | ⬜ Pendente |
 | **33.5** | DRY `incluir_cpfs_com_cascata` → concern (D5) | **1** | **33.1** | refatoração (behavior-preserving) | ⬜ Pendente |
@@ -530,6 +542,11 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 | 2026-10-15 | **Code Reviewer** na 33.1 (`docs/quality/review_report_33_1.md`) | **0 blockers / 0 high**; 4 🟡 + 1 ⚪ + 2 💡 (M1–M4; B1; S1/S2) |
 | 2026-10-15 | **Bug Finder** na 33.1 (`docs/quality/bug_report_33_1.md`) | **0 crítico / 0 alto**; 2 🟡 (BF-M1 herança de postura; BF-M2 kill-switch fail-open) + 1 🟢 + 3 ⚪ |
 | 2026-10-15 | **Correções aplicadas** (M3, M4, S2, BF-M1, BF-M2, BF baixo) no working tree; **sem commit** | `cascata_justificativa` persistida; postura **não herdada** (`inherited`); flag **fail-closed** p/ valor ambíguo; `CI` só truthy; doc do kill-switch alinhada — teste da 33.1 **17/87/0F/0E**; área admin **255/1363/0F/0E**; RuboCop 0 |
+| 2026-10-15 | **Code Specialist implementa a 33.2** (Camada 2 — detector de drift `CoberturaCascata` + meta-teste) no working tree; **sem commit** (`COMMIT_MODE=manual`) | Detector **15/39/0F/0E**; árvore real **14 varridos / 6 sensíveis / 0 drift**; suíte **1254/4383/3F+12E/0 skip** (as 15 pré-existentes; +15 runs/+39 assertivas); RuboCop 0; zeitwerk OK; `ability.rb` intocado |
+| 2026-10-15 | **Code Reviewer** na 33.2 (`docs/quality/review_report_33_2.md`) — com **teste de mutação** (removeu `include` real, criou `admin/sub/` → meta-teste falhou = não tautológico) | **0 blockers / 0 high**; 4 🟡 (M1 caminho; M2 lista paralela; M3 skip não detectado; M4 comentário inline) + 4 ⚪ + 3 💡 |
+| 2026-10-15 | **Correções aplicadas** (M1, M2, M4; M3 → débito) no working tree; **sem commit** | `RECURSOS_SENSIVEIS` **deriva da Ability** (fim da lista paralela); varredura também por **caminho** (`admin/**`); comentário inline documentado; débito do `skip_before_action` registrado — meta-teste **16/51/0F/0E** |
+| 2026-10-15 | **Bug Finder** na 33.2 (`docs/quality/bug_report_33_2.md`) | **0 crítico**; **1 🟠 + 1 🟡** (Bug 1: `declarado?` levantava `NoMethodError` p/ classe retida por caminho; Bug 2: o teste de caminho não exercia o critério — stub herdava a base admin) — ambos **defeitos do conserto M1** |
+| 2026-10-15 | **Correções Bug 1/Bug 2 + assert não-tautológico** no working tree; **sem commit** | `declarado?` trata "sem `cascata_postura`" como drift; stub usa `::ApplicationController`; assert do conjunto fechado voltou a ser literal — **mutação provou** a cobertura do caminho; meta-teste **17/43/0F/0E**; suíte **1256/4387/3F+12E**; RuboCop 0 |
 
 ## Notas de implementação (33.1) — plano × código real
 
@@ -573,3 +590,77 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
    armadilha de confiança falsa num gate de autorização). Agora há famílias explícitas **LIGAR**/**OBSERVAR** e
    **valor não reconhecido → `:raise` + um WARN alto**. O baixo (BF) também foi corrigido: `CI` só conta como
    ligado se **truthy** (`1`/`true`) — `CI=false`/`CI=0` não forçam `:raise`. Ver §"Compatibilidade e rollback".
+
+## Notas de implementação (33.2) — plano × código real
+
+> Divergências de **caminho/símbolo/alcance** encontradas ao implementar. **Nada do escopo/decisões
+> D1–D5/Q33-C foi alterado.**
+
+1. **Raiz da varredura é `app/controllers/**` (superset), não `app/controllers/admin/**`.** O §2.2 do plano e o
+   briefing falam em varrer `app/controllers/admin/**/*.rb`. O detector varre `app/controllers/**/*_controller.rb`
+   **recursivamente** e retém um arquivo por **dois** critérios (**correção M1 do review 33.2**): (a) a classe
+   **herda** `Admin::ApplicationController` (`klass < …`, ancestralidade) **ou** (b) o arquivo **vive sob
+   `admin/`** (critério por **CAMINHO** — pega um controller admin que *não* herde a base e que, só por
+   ancestralidade, escaparia). Arquivo que não resolve a constante também é retido (fail-safe).
+   A base abstrata (`application_controller.rb`) e as bases `Presenca::*`/`Users::*` são excluídas.
+2. **Resolução da classe pela POSIÇÃO relativa do caminho** (não por `File.basename(...).camelize`, como M1
+   proíbe). `admin/sub/x_controller.rb` → `Admin::Sub::XController`. `descendants` foi **descartado** como
+   mecanismo primário: medido no ambiente, `Admin::ApplicationController.descendants` é **vazio** em test local
+   (`config.eager_load = ENV["CI"].present?` → `false` sem `CI`), o que daria **falso-verde**; a resolução por
+   `safe_constantize` do caminho relativo **carrega** cada controller (determinística em qualquer ambiente).
+3. **O helper vive em `test/support/cobertura_cascata.rb` e é carregado pelo `require_relative` do próprio
+   meta-teste.** `test/support/` **não** é autoloaded neste projeto (só `pessoas_espelho_helper` e
+   `class_method_stub_helper` são `require`-ados no `test_helper.rb`). **Não** alterei o `test_helper.rb` —
+   mantive o footprint mínimo e o helper autossuficiente (não acopla a suíte inteira).
+4. **Conjunto fechado confirmado na árvore real:** 14 controllers varridos; **6 sensíveis** (`frequencia`,
+   `frequencia_por_orgao`, `frequentadores`, `time_records`, `users` = `:coberto`; `dashboard` = `:dispensado`,
+   pois lê `TimeRecord` em código real sob o gate `current_user.admin?`); **0 drift**. `parcial` e
+   `relatorio_terceirizados` são `:coberto` mas **não** sensíveis (sem fonte real hoje) — continuam cobertos pelo
+   assert recíproco (T3).
+5. **M2 medido:** `estacoes_controller.rb` casa o conjunto **só por comentário** → `sensivel?` = `false`;
+   `dashboard_controller.rb` casa em **código** (linhas 26-28) → `sensivel?` = `true` mas **declarado**
+   (`:dispensado` + justificativa) → não é drift. A base abstrata (`application_controller.rb`, menu em
+   `permission_check: TimeRecord`) é excluída por não ser subclasse de si mesma.
+6. **M3 medido sem grep:** um `:dispensado` cujo texto-fonte **menciona** `fora_da_cascata_justificativa("…")`
+   mas cuja `cascata_justificativa` em runtime é `nil` → **reprovado** (o teste passa ao provar que a checagem lê
+   o atributo runtime, não o texto). O `:dispensado` legítimo (macro da 33.1, justificativa persistida) é aceito.
+7. **`RECURSOS_SENSIVEIS` agora DERIVA da fonte única** (correção **M2 do review 33.2**):
+   `Ability::RECURSOS_FREQUENCIA.map(&:name) + ["Pessoas::Vinculo"]` — **nenhuma lista paralela**. Um recurso
+   novo na `Ability` (regra do §0.5/R2) passa a ser coberto pelo detector **automaticamente**.
+8. **Sobre-inclusão de comentário-no-fim-da-linha é INTENCIONAL** (correção **M4 do review 33.2**): só linhas
+   de comentário **inteiras** são descartadas; um recurso citado em comentário no fim de uma linha de código
+   conta como sensível — direção fail-closed (prefere acusar de mais a deixar passar). Redação alinhada no
+   helper.
+9. **Novo teste M1 por CAMINHO:** um controller sob `admin/**` que **não** herda a base admin é retido pela
+   varredura (provado com diretório temporário + classe-stub). Fecha o falso-negativo que o review apontou.
+   O **M3 do review** (`skip_before_action :verificar_postura_cascata` não detectado) ficou registrado como
+   **débito** em §"Débitos Técnicos" (não corrigido nesta tarefa).
+10. **Bug 1 e Bug 2 do Bug Finder (`bug_report_33_2`) — defeitos do conserto M1, corrigidos:**
+    - **Bug 1:** `declarado?`/`detectores` levantavam `NoMethodError` quando uma classe retida pelo **critério
+      de CAMINHO** não respondia a `cascata_postura` (não herda a base admin) — o build ficaria vermelho, mas
+      por erro confuso. Corrigido: **sem `cascata_postura` ⇒ não declarou (drift)**, nunca exceção.
+    - **Bug 2:** o stub do teste de caminho estava dentro de `module Admin`, então `ApplicationController`
+      resolvia para `Admin::ApplicationController` — o stub **herdava a base admin** e a retenção vinha da
+      **ancestralidade**, não do caminho (o teste não provava o M1). Corrigido com `::ApplicationController`
+      e **provado por mutação**: remover `|| sob_admin` faz o teste **falhar**.
+    - Assert do "conjunto fechado" volta a ser **literal** (o assert derivado era tautológico — Obs. do BF).
+    - **Observações ⚪ restantes (não bloqueantes, registradas):** base abstrata **intermediária** sob `admin/`
+      citando recurso no menu não é excluída (só `Admin::ApplicationController`, por identidade); o helper
+      referencia `Ability` no load (autossuficiência cedida em favor do M2); `=begin/=end` não tratado
+      (sobre-inclusão fail-closed); indireção/SQL cru por nome de tabela não é pego (limite declarado da Camada 2).
+7. **Flag-independente:** o resultado do detector é idêntico sob `FREQUENCIA_AUTORIZACAO_CASCATA` ∈
+   {off, shadow, on} × `FREQUENCIA_CASCATA_ENFORCEMENT` ∈ {log, raise} — assertado por teste; o módulo **não**
+   referencia nenhuma das duas variáveis.
+8. **Inicialização da tarefa adaptada ao estado real:** o `task-initialization-protocol` prevê branch a partir
+   da `develop` atualizada, mas a `develop` está **89 commits atrás** do HEAD e **não contém a 33.1** (a
+   dependência declarada da 33.2). Criei a branch da demanda a partir do HEAD da linha da Sprint 33
+   (`feat/sprint-33-camada-1-guard-cascata` @ `ab19400`), preservando a Camada 1 — a base efetiva da sprint.
+   Branch nova: `feat/sprint-33-camada-2-meta-teste-drift`.
+9. **Sem alteração** em `ability.rb` (D3 — `git diff` vazio), `db/schema.rb`, rotas ou migrations; nenhuma
+   dependência nova; nenhuma ADR nova; nenhum arquivo do AI Workflow tocado. Nada commitado/pushado
+   (`COMMIT_MODE=manual`).
+10. **Limite declarado (honestidade do gate):** o detector é **estático por conteúdo** para a sensibilidade —
+    um controller que leia frequência por **indireção** (via service/model intermediário que cite o recurso, e
+    não o controller) não é pego por esta camada; é o risco 🟡 já registrado em §"Riscos" e coberto pelos testes
+    de conteúdo (33.3), que asseram o **efeito**. O detector também **não** detecta `skip_before_action
+    :verificar_postura_cascata` (Observação 1 do Bug Finder 33.1) — limitação inerente à Camada 1.
