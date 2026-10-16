@@ -19,9 +19,21 @@ module Admin
     # (banco `pessoas_test` sem schema carregado — task 8.13). Usa o helper
     # capturar/restaurar: `remove_method` num método real de produção (aqui um
     # `def self.`) o apagaria para os arquivos seguintes do mesmo processo.
+    #
+    # Task 33.3 (Sprint 33) — o stub HONRA `incluir_cpfs` (espelha o contrato real
+    # `scope.where(pessoas: { cpf: incluir_cpfs })`): sem isso, o `incluir_cpfs`
+    # que a cascata injeta em `/users` seria ignorado e o teste passaria
+    # independentemente do filtro (teste degenerado). `nil` = sem filtro (todos).
     def stub_vinculos(vinculos)
-      paginado = Kaminari.paginate_array(vinculos).page(1)
-      com_metodo_de_classe_stubado(Pessoas::Vinculo, :frequentadores_ativos, ->(**_kwargs) { paginado }) { yield }
+      corpo = lambda do |incluir_cpfs: nil, **_kwargs|
+        filtrados = if incluir_cpfs.nil?
+          vinculos
+        else
+          vinculos.select { |v| incluir_cpfs.include?(v.pessoa.cpf) }
+        end
+        Kaminari.paginate_array(filtrados).page(1)
+      end
+      com_metodo_de_classe_stubado(Pessoas::Vinculo, :frequentadores_ativos, corpo) { yield }
     end
 
     test "deve listar usuarios sem cpf (cadastrados manualmente)" do
@@ -101,15 +113,76 @@ module Admin
       assert_redirected_to dashboard_path
     end
 
-    test "usuario nao-admin ainda pode listar usuarios (read baseline)" do
+    # Task 33.3 (Sprint 33) — REVISÃO DO CASO QUE SANCIONAVA O 200 SEM CONTEÚDO.
+    # Antes, o teste "usuario nao-admin ainda pode listar usuarios (read baseline)"
+    # asseria SÓ `assert_response :success` (com um stub VAZIO `stub_vinculos([])`):
+    # provava que o HTTP 200 saía, mas NADA sobre o conteúdo — foi exatamente o
+    # formato que deixou passar o Bug 🔴1 (`users#index` vazava o roster de
+    # frequentadores de terceiros a um autenticado comum; Bug Finder 30, achado 5).
+    # Agora o caso assere o CONTEÚDO sob a cascata LIGADA (`:on`), no grão da
+    # matriz da 29.8: o não-admin lista usuários (read baseline preservado), mas
+    # NÃO vê o terceiro fora dos visíveis.
+    test "usuario nao-admin lista usuarios mas NAO ve terceiro fora dos visiveis (conteudo sob :on)" do
       login_como_nao_admin
+      vinculos = [ vinculo_double(NOME_TERCEIRO, CPF_TERCEIRO), vinculo_double(NOME_VISIVEL, CPF_VISIVEL) ]
 
-      stub_vinculos([]) { get users_path }
-
+      # CONTRASTE (:off é o comportamento de hoje): o terceiro aparece — logo a
+      # ausência sob `:on` é atribuível à cascata, não ao stub.
+      com_flag(nil) do
+        com_visiveis([ CPF_VISIVEL ]) do
+          stub_vinculos(vinculos) { get users_path }
+        end
+      end
       assert_response :success
+      assert_select "td", text: NOME_TERCEIRO
+
+      # SOB TESTE: 200 E sem o terceiro no corpo (o que o teste antigo não asseria).
+      com_flag("on") do
+        com_visiveis([ CPF_VISIVEL ]) do
+          stub_vinculos(vinculos) { get users_path }
+        end
+      end
+      assert_response :success
+      assert_select "td", { text: NOME_TERCEIRO, count: 0 },
+                    "sob :on o não-admin NÃO pode ver o terceiro fora dos visíveis"
+      assert_select "td", text: NOME_VISIVEL
     end
 
     private
+
+    PessoaDouble = Struct.new(:nome, :cpf, keyword_init: true)
+    VinculoDouble = Struct.new(:id, :pessoa, keyword_init: true)
+
+    CPF_TERCEIRO = "30030030030".freeze
+    CPF_VISIVEL  = "20020020020".freeze
+    NOME_TERCEIRO = "Terceiro Invisivel Users 33".freeze
+    NOME_VISIVEL  = "Visivel Users 33".freeze
+
+    def vinculo_double(nome, cpf)
+      VinculoDouble.new(id: cpf.to_i, pessoa: PessoaDouble.new(nome: nome, cpf: cpf))
+    end
+
+    def com_visiveis(cpfs, &bloco)
+      com_metodo_de_classe_stubado(
+        Pessoas::Vinculo, :cpfs_frequentadores_visiveis, ->(_usuario) { cpfs }
+      ) { bloco.call }
+    end
+
+    def com_flag(valor)
+      anterior = ENV[FrequenciaAutorizacaoCascata::VARIAVEL]
+      if valor.nil?
+        ENV.delete(FrequenciaAutorizacaoCascata::VARIAVEL)
+      else
+        ENV[FrequenciaAutorizacaoCascata::VARIAVEL] = valor
+      end
+      yield
+    ensure
+      if anterior.nil?
+        ENV.delete(FrequenciaAutorizacaoCascata::VARIAVEL)
+      else
+        ENV[FrequenciaAutorizacaoCascata::VARIAVEL] = anterior
+      end
+    end
 
     def login_como_nao_admin
       delete logout_path
