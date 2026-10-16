@@ -294,18 +294,44 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 - **Escopo (o que NÃO ENTRA):** alterar comportamento de runtime; ligar `:on` production-wide; testar
   `/presenca/*` (Bug 🟠2 = risco aceito).
 - **Critérios de aceite (testáveis):**
-  - [ ] **Ausência do terceiro:** para cada tela de listagem acima, sob `:on`, o corpo de resposta **não**
-    contém o identificador do terceiro não-visível (grão da matriz 29.8).
-  - [ ] **Contraste com `:off`/`:shadow`:** o mesmo terceiro **aparece** sob `:off` (paridade com hoje) —
-    prova que a restrição é a cascata, não o stub.
-  - [ ] **Revisão de `users_controller_test.rb`:** o caso que sancionava o **200 sem asserir conteúdo** passa
-    a refletir o comportamento novo (assertivas de conteúdo sob `:on`); nenhuma expectativa antiga
-    contraditória permanece.
-  - [ ] **Estabilidade:** os testes de conteúdo seguem o padrão de stub entre 2 bancos (Pessoas × primário)
-    dos testes de cascata existentes (29.8/30.7); todo stub de método de classe usa
-    `test/support/class_method_stub_helper.rb` (**save/restore; NUNCA `remove_method`**).
-  - [ ] **Sem regressão:** suíte permanece **1222/4257/3F+12E/0 skip** (as 15 isoladas); RuboCop 0 offenses.
-- **Status:** ⬜ Pendente
+  - [x] **Ausência do terceiro:** para cada tela de listagem acima, sob `:on`, o corpo de resposta **não**
+    contém o identificador do terceiro não-visível (grão da matriz 29.8). Medido em
+    `cascata_conteudo_test.rb` (9 testes, 40 assertivas). **Cobertura REAL por mutação** (review 33.3 —
+    neutralizar `frequencia_cascata_ligada?`): **4 telas provam o filtro da cascata** —
+    `/frequentadores`, `/users`, `/frequencia`, `/frequencia_por_orgao` (falham sob mutação);
+    **`/time_records`** isola o terceiro pelo **escopo não-admin** (`where(user_id: current_user.id)`),
+    que vale em qualquer estado da flag — **não** pela cascata (a contribuição da cascata ali é o dropdown
+    de anos); **`/relatorio_terceirizados` e `/parcial`** **não têm fonte real** (`@registros = []`) — os
+    asserts são **guarda de estado** (não provam a cascata; quebram quando a fonte chegar, forçando
+    atualização); **`/dashboard`** guarda o **gate `current_user.admin?`**, não a cascata.
+  - [x] **Contraste com `:off`/`:shadow`:** o mesmo terceiro **aparece** sob `:off` (paridade com hoje) —
+    prova que a restrição é a cascata, não o stub. Medido (controle positivo dentro de cada teste) em
+    `/frequentadores`, `/users` e `/frequencia` (nome presente em `:off`, ausente em `:on`); em
+    `/frequencia_por_orgao`, o agregado conta o terceiro em `:off` (2) e o exclui em `:on` (1).
+    **Exceção documentada (honesta):** em `/time_records` o terceiro não aparece em **nenhum** estado —
+    o isolamento ali é do escopo NÃO-admin (`where(user_id: current_user.id)`), não da cascata; o teste
+    registra a degenerescência em vez de forçar um contraste falso (a contribuição da cascata para essa
+    tela é o dropdown de anos, coberto em `time_records_anos_cascata_test.rb`).
+  - [x] **Revisão de `users_controller_test.rb`:** o caso que sancionava o **200 sem asserir conteúdo**
+    (`"usuario nao-admin ainda pode listar usuarios (read baseline)"`, com stub VAZIO `stub_vinculos([])`)
+    foi reescrito para `"usuario nao-admin lista usuarios mas NAO ve terceiro fora dos visiveis (conteudo
+    sob :on)"` — assere conteúdo sob `:on` (`refute` do terceiro + presença do visível) **e** o contraste
+    `:off`. Nenhuma expectativa antiga contraditória permanece. O helper `stub_vinculos` passou a **honrar
+    `incluir_cpfs`** (espelha o contrato real), sem o que a assertiva seria degenerada.
+  - [x] **Estabilidade:** os testes seguem o padrão de stub dos testes de cascata existentes (29.8/30.7);
+    todo stub de método de classe usa `test/support/class_method_stub_helper.rb`
+    (`com_metodo_de_classe_stubado` — **save/restore; nunca `remove_method`**); a flag
+    `FREQUENCIA_AUTORIZACAO_CASCATA` é manipulada com o mesmo idioma (save/restore no `ensure`).
+  - [x] **Sem regressão:** suíte medida **1265 runs / 4434 assertions / 3 failures + 12 errors / 0 skips**
+    (as **15 pré-existentes** isoladas — inalteradas; **+9 runs / +47 assertivas** desta tarefa); RuboCop
+    **0 offenses** nos arquivos tocados; `zeitwerk:check` **OK**.
+- **Status:** ✅ **Implementada (2026-10-15)** — Camada 2 (build), testes de conteúdo por tela entregues no
+  working tree (sem commit — `COMMIT_MODE=manual`). Arquivos: `api-ponto/test/controllers/admin/cascata_conteudo_test.rb`
+  (novo, 9 testes / **41 assertivas** — tela a tela) e a **revisão** de
+  `api-ponto/test/controllers/admin/users_controller_test.rb`. Review **0 blockers**
+  (`docs/quality/review_report_33_3.md`); Bug Finder **0 crítico** (`docs/quality/bug_report_33_3.md`);
+  correções A1/M1/B2 + Bug 1/Obs-2 aplicadas. Branch:
+  `feat/sprint-33-camada-2-conteudo-por-tela`. Ver §"Notas de implementação (33.3)".
 - **Fora do escopo desta tarefa:** o detector de drift (33.2); o DRY (33.5).
 
 ### Área — 3. Testes do guard de runtime + mutation testing
@@ -458,7 +484,7 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 |--------|------|--------|-------------|----------|--------|
 | **33.1** | Camada 1 — contrato de postura + guard fail-closed (runtime) | **2** | nenhuma | código (toca autorização) | ✅ Implementada (2026-10-15) |
 | **33.2** | Camada 2 — meta-teste de drift + assert recíproco (build) | **2** | **33.1** | testes | ✅ Implementada (2026-10-15) |
-| **33.3** | Camada 2 — testes de conteúdo por tela + revisão de expectativa | **2** | **33.1** | testes | ⬜ Pendente |
+| **33.3** | Camada 2 — testes de conteúdo por tela + revisão de expectativa | **2** | **33.1** | testes | ✅ Implementada (2026-10-15) |
 | **33.4** | Guard runtime `log` × `raise` + mutation testing | **1** | **33.1** | testes | ⬜ Pendente |
 | **33.5** | DRY `incluir_cpfs_com_cascata` → concern (D5) | **1** | **33.1** | refatoração (behavior-preserving) | ⬜ Pendente |
 
@@ -547,6 +573,11 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 | 2026-10-15 | **Correções aplicadas** (M1, M2, M4; M3 → débito) no working tree; **sem commit** | `RECURSOS_SENSIVEIS` **deriva da Ability** (fim da lista paralela); varredura também por **caminho** (`admin/**`); comentário inline documentado; débito do `skip_before_action` registrado — meta-teste **16/51/0F/0E** |
 | 2026-10-15 | **Bug Finder** na 33.2 (`docs/quality/bug_report_33_2.md`) | **0 crítico**; **1 🟠 + 1 🟡** (Bug 1: `declarado?` levantava `NoMethodError` p/ classe retida por caminho; Bug 2: o teste de caminho não exercia o critério — stub herdava a base admin) — ambos **defeitos do conserto M1** |
 | 2026-10-15 | **Correções Bug 1/Bug 2 + assert não-tautológico** no working tree; **sem commit** | `declarado?` trata "sem `cascata_postura`" como drift; stub usa `::ApplicationController`; assert do conjunto fechado voltou a ser literal — **mutação provou** a cobertura do caminho; meta-teste **17/43/0F/0E**; suíte **1256/4387/3F+12E**; RuboCop 0 |
+| 2026-10-15 | **Code Specialist implementa a 33.3** (Camada 2 — testes de conteúdo por tela + revisão de `users_controller_test.rb`) no working tree; **sem commit** (`COMMIT_MODE=manual`) | Novo `cascata_conteudo_test.rb` **9/37/0F/0E** tela a tela; `users_controller_test.rb` revisado (caso do 200-sem-conteúdo agora assere conteúdo sob `:on`); suíte **1265/4430/3F+12E/0 skip** (as 15 pré-existentes; +9 runs/+43 assertivas); RuboCop 0; zeitwerk OK; `ability.rb`/`schema.rb`/rotas intocados |
+| 2026-10-15 | **Code Reviewer** na 33.3 (`docs/quality/review_report_33_3.md`) — **teste de mutação** por tela (neutralizou `frequencia_cascata_ligada?`) | **0 blockers**; **1 🟠** (A1: `/relatorio_terceirizados` e `/parcial` com assert **vacuamente verdadeiro**); 2 🟡 (M1 `/time_records` degenerado; M2 relato 15/52 ≠ 9/32) + 2 ⚪ + 1 💡. **Só 4/8 telas provam o filtro da cascata** |
+| 2026-10-15 | **Correções A1/M1/B2 aplicadas** no working tree; **sem commit** | Placeholders renomeados + assert de estado (`/parcial` assere o *empty-state*, não-vácuo) + TO-DO; `/time_records` e `/dashboard` renomeados para o que de fato guardam; afirmação inflada "8 telas" corrigida no doc — `cascata_conteudo_test.rb` **9/40/0F/0E**; suíte **1265/4433/3F+12E**; RuboCop 0 |
+| 2026-10-15 | **Bug Finder** na 33.3 (`docs/quality/bug_report_33_3.md`) | **0 crítico / 0 alto**; **1 🟡** (Bug 1: `/frequencia_por_orgao` **cego a SUBSTITUIÇÃO** — mutação `cpfs = visíveis` passava) + 3 ⚪; **corrigiu o review** (B1: `assert_select text:` é igualdade EXATA, não substring) |
+| 2026-10-15 | **Correções Bug 1 + Obs-2 aplicadas** no working tree; **sem commit** | `/frequencia_por_orgao` ganha **visível de outro órgão** (mutação `cpfs = visíveis` agora **falha**: 1≠2); `/time_records` ganha ator **com CPF visível a si** (stub de login Pessoas) + assert contra empty-state — `cascata_conteudo_test.rb` **9/41/0F/0E** (estável em seeds 1/999); suíte **1265/4434/3F+12E**; RuboCop 0 |
 
 ## Notas de implementação (33.1) — plano × código real
 
@@ -664,3 +695,87 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
     não o controller) não é pego por esta camada; é o risco 🟡 já registrado em §"Riscos" e coberto pelos testes
     de conteúdo (33.3), que asseram o **efeito**. O detector também **não** detecta `skip_before_action
     :verificar_postura_cascata` (Observação 1 do Bug Finder 33.1) — limitação inerente à Camada 1.
+
+## Notas de implementação (33.3) — plano × código real
+
+> Divergências de **caminho/estrutura** encontradas ao implementar. **Nada do escopo/decisões
+> D1–D5/Q33-C foi alterado.**
+
+1. **Arquivo novo dedicado aos testes de conteúdo (`cascata_conteudo_test.rb`), não dentro do
+   `cascata_cobertura_test.rb`.** O briefing/§2.2(3) sugerem pôr os testes de conteúdo no
+   `cascata_cobertura_test.rb` (33.2) "e/ou ampliar os existentes". O `cascata_cobertura_test.rb` é um
+   `ActiveSupport::TestCase` **unitário** (testa o detector com arquivos sintéticos em memória); testes de
+   conteúdo exigem `ActionDispatch::IntegrationTest` (requisição HTTP + `response.body`). Misturar unidade e
+   integração no mesmo arquivo acoplaria a suíte inteira e tornaria o footprint do meta-teste maior.
+   Optou-se por um arquivo de integração **novo**, `test/controllers/admin/cascata_conteudo_test.rb`, que
+   cobre **tela a tela** (§3 do plano) — mantendo o meta-teste de drift (33.2) intacto e unit-testável.
+2. **Ator NÃO-global sem CPF (login sem stub do Pessoas).** Para os testes de conteúdo o ator é um `User`
+   sem `cpf`, sem admin e sem role global (o único perfil em que a cascata de fato restringe — o passo 2
+   curto-circuita admin/role geral). Sem CPF, o login não passa por `Pessoas::User.buscar_por_cpf` e não
+   exige stub — mesmo padrão de `frequencia_cascata_controller_test.rb`.
+3. **Stub de `Pessoas::Vinculo` por tela (sem schema do espelho).** O `Pessoas::Vinculo` é stubado
+   devolvendo um terceiro NÃO-visível — como pede o §3 do plano ("com `Pessoas::Vinculo` stubado"). Duas
+   fontes: `frequentadores_ativos` (honrando `incluir_cpfs`; `/frequentadores` e `/users`) e a agregação por
+   órgão (`orgaos_em_uso`/`cpfs_por_orgao`/`cpfs_frequentadores_visiveis`; `/frequencia_por_orgao`). Assim o
+   teste **não** depende de `test:pessoas_schema:load` (a matriz 29.8 depende; esta camada, não).
+4. **Contraste `:off x :on` aplicado só onde é verdadeiro (honestidade do critério).** `/frequentadores`,
+   `/users` e `/frequencia` exibem o terceiro em `:off` e o ocultam em `:on` (contraste direto);
+   `/frequencia_por_orgao` conta o terceiro em `:off` e o exclui em `:on` (contraste por contagem). **Em
+   `/time_records` o contraste NÃO se aplica:** o escopo NÃO-admin (`where(user_id: current_user.id)`) já
+   esconde o terceiro em **qualquer** estado da flag — o teste registra explicitamente essa degenerescência
+   (um teste separado prova que em `:off` o terceiro também não aparece) em vez de forçar um contraste
+   falso. A contribuição da cascata para essa tela é o **dropdown de anos** (Bug 🟡3), já coberto por
+   `time_records_anos_cascata_test.rb` e re-assertado sob `:on` aqui.
+5. **`/relatorio_terceirizados` e `/parcial` não têm fonte real hoje** (`@registros = []`) — o assert de
+   conteúdo é o trivial de ausência do identificador (não há como vazar dado inexistente). `/dashboard` é
+   **admin-only** para os cards de batidas: o não-admin não vê nem o identificador do terceiro nem o card
+   "Últimas Batidas" (o isolamento ali é o gate `current_user.admin?`, não a cascata — coerente com a
+   dispensa justificada do controller na 33.1).
+6. **Revisão de `users_controller_test.rb` (mandatória).** O caso
+   `"usuario nao-admin ainda pode listar usuarios (read baseline)"` asseria **apenas** `assert_response
+   :success` sobre um stub **vazio** (`stub_vinculos([])`) — exatamente o formato que deixou passar o Bug
+   🔴1. Foi reescrito para `"usuario nao-admin lista usuarios mas NAO ve terceiro fora dos visiveis
+   (conteudo sob :on)"`: assere o **conteúdo** (terceiro ausente sob `:on`, presente sob `:off`). Para que
+   a assertiva não fosse **degenerada**, o helper local `stub_vinculos` passou a **honrar `incluir_cpfs`**
+   (espelha o contrato real `scope.where(pessoas: { cpf: incluir_cpfs })`) — antes ele ignorava o filtro e
+   retornava tudo, o que faria a cascata "passar" sem efeito algum. Os demais testes do arquivo usam
+   `stub_vinculos([])` (lista vazia) e não mudam de resultado.
+7. **Sem alteração** em `app/**` (incl. `ability.rb` — `git diff` vazio), `db/schema.rb`, rotas ou
+   migrations; nenhuma dependência nova; nenhuma ADR nova; nenhum arquivo do AI Workflow tocado; nada
+   commitado/pushado (`COMMIT_MODE=manual`).
+8. **Nenhum bug de produção revelado.** Os testes de conteúdo **passaram** contra o código atual (não
+   falharam) — a cascata, sob `:on`, filtra as telas com fonte real. **Ressalva honesta (review 33.3, 🟠
+   A1):** das 8 telas citadas, apenas **4 provam o filtro da cascata** por mutação (`/frequentadores`,
+   `/users`, `/frequencia`, `/frequencia_por_orgao`); 2 são **placeholders** sem fonte real
+   (`/relatorio_terceirizados`, `/parcial`); `/time_records` isola por **escopo** e `/dashboard` por
+   **gate admin**. Não houve necessidade de tocar `app/**`.
+9. **Bug 1 e Observação 2 do Bug Finder (`bug_report_33_3`) — corrigidos:**
+    - **Bug 1 (🟡) — teste cego a SUBSTITUIÇÃO.** O setup de `/frequencia_por_orgao` criava só
+      frequentadores **do próprio órgão**, então `órgão ∩ visíveis == visíveis`: o teste passava mesmo com
+      o controller trocando `cpfs &= frequentadores_visiveis_cpfs` por `cpfs = frequentadores_visiveis_cpfs`
+      (**vazamento de agregado entre órgãos**) — confirmado por mutação (esperado 1, real 2). Corrigido
+      adicionando um **visível de OUTRO órgão com batida**; a mutação agora **FALHA** o teste (prova de que
+      distingue interseção de substituição).
+    - **Observação 2 (⚪) — `/time_records` não provava o invariante "vê os próprios registros".** O ator era
+      criado **sem CPF** e o teste só asseria ausência; como `restringir_frequencia` filtra por
+      `where(user_id: frequentadores_visiveis_user_ids)` (`frequencia_authorization.rb:67`) **sem** somar
+      `current_user.id`, um não-admin fora do conjunto visível veria **zero** registros — inclusive os
+      próprios — e o teste passaria igual. Agora o ator tem **CPF visível a si** (com stub do login via
+      `Pessoas::User.buscar_por_cpf`, pois quem tem CPF autentica pelo Pessoas) e o teste assere que **não**
+      cai no empty-state. **Não foi revelado bug de produção** — o invariante se confirma para o usuário com
+      CPF (o caso real de /time_records, que exige batida).
+
+10. **Correções do review 33.3 aplicadas** (`review_report_33_3.md`): (A1) os 2 placeholders ganharam nome
+    honesto + assert de estado (o de `/parcial` assere a linha de *empty-state*, não-vácuo) e um TO-DO
+    para quando a fonte chegar; (M1) o teste de `/time_records` foi renomeado para explicitar que o
+    isolamento vem do **escopo**, não da cascata; (B2) o de `/dashboard` explicita que guarda o **gate
+    admin**. A afirmação inflada do item 8 ("filtra as 8 telas") foi corrigida.
+11. **O Bug Finder CORRIGIU o review:** o B1 do review afirmava que `assert_select … text:` casa por
+    **substring**; medido no `rails-dom-testing` instalado, é **igualdade exata** (`content == match_with`).
+    Logo o "falso-verde silencioso" do B1 foi **superestimado** — o controle positivo `:off` denuncia o
+    arquivo. A Mutação A (concern → `false`) derruba **5** testes (4 no arquivo novo + 1 em
+    `users_controller_test`), confirmando o poder probatório das 4 telas reais.
+12. **Inicialização da tarefa adaptada ao estado real:** a branch da demanda foi criada a partir do HEAD da
+   linha da Sprint 33 (`feat/sprint-33-camada-2-meta-teste-drift` @ `86da982`, que contém a 33.1 e a 33.2 —
+   a dependência declarada). A `develop` está atrás e não contém a 33.1; preservou-se a base efetiva da
+   sprint. Branch nova: `feat/sprint-33-camada-2-conteudo-por-tela`.
