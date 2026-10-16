@@ -95,7 +95,10 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 - **Aval do dev:** ✅ **REGISTRADA em 2026-10-15** (§7.1 do artefato de aprovação) — gate satisfeito.
 - **Base de código:** HEAD atual da linha da Sprint 32 (`feature/demanda-32-2-espelho-handler`
   @ `40740b3`, já em `origin`/`gitlab`; `integration/sprint-29` @ `d50f317`). A pilha 31 está contida na base.
-- **Baseline da suíte a isolar (PISO de não-regressão):** **1222 runs / 4257 assertions / 3F + 12E / 0 skip**.
+- **Baseline da suíte a isolar (PISO de não-regressão):** **1222 runs / 4257 assertions / 3F + 12E / 0 skip**
+  (**pré-sprint — valor aprovado**). ⚠️ **Atualização (2026-10-16):** o piso **CORRENTE**, medido após as
+  33.1–33.3, é **1265 runs / 4434 assertions / 3F + 12E / 0 skip** (+43 runs/+177 assertivas de testes novos).
+  As tarefas **33.4/33.5** usam o piso corrente; as 15 falhas pré-existentes são as mesmas.
   As **15** são **pré-existentes** (11× Devise `redirect_to` + 1× timezone em `PresencaEndpointsTest` + 1×
   order-dependent do espelho/paralelização; ver `docs/progress/_context.md`). **Toda medição deve isolar as
   15** antes de atribuir regressão.
@@ -357,7 +360,8 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
   - [ ] As 3 mutações acima derrubam, cada uma, o teste correspondente (não-vacuidade provada).
   - [ ] **Sem `remove_method`:** stubs de ENV/logger via `test/support/class_method_stub_helper.rb`
     (save/restore no `ensure`).
-  - [ ] **Sem regressão:** suíte permanece **1222/4257/3F+12E/0 skip** (as 15 isoladas); RuboCop/Zeitwerk OK.
+  - [ ] **Sem regressão:** suíte permanece **1265/4434/3F+12E/0 skip** (as 15 isoladas) — **piso CORRENTE**
+    (o pré-sprint aprovado era 1222/4257; as 33.1–33.3 somaram +43 runs/+177 assertivas); RuboCop/Zeitwerk OK.
 - **Status:** ⬜ Pendente
 
 ### Área — 4. DRY correlato (D5)
@@ -387,8 +391,8 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
   - [ ] **Behavior-preserving:** suíte de `/frequentadores` e `/users` **verde antes e depois**, com
     expectativas inalteradas; o comportamento do helper é idêntico (mesma saída para os mesmos params).
   - [ ] **Sem duplicação:** `grep -rn "def incluir_cpfs_com_cascata"` retorna **1** ocorrência (no concern).
-  - [ ] **Sem regressão:** suíte permanece **1222/4257/3F+12E/0 skip** (as 15 isoladas); RuboCop 0 offenses;
-    `zeitwerk:check` OK.
+  - [ ] **Sem regressão:** suíte permanece **1265/4434/3F+12E/0 skip** (as 15 isoladas) — **piso CORRENTE**
+    (o pré-sprint aprovado era 1222/4257); RuboCop 0 offenses; `zeitwerk:check` OK.
 - **Status:** ⬜ Pendente
 - **Fora do escopo desta tarefa:** qualquer mudança de autorização (é refatoração pura).
 
@@ -502,7 +506,8 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
   revisado (não sanciona mais o 200 sem asserir conteúdo).
 - [ ] 33.4 implementada: guard `log` × `raise` provado + mutation testing dos pontos de decisão.
 - [ ] 33.5 implementada: `incluir_cpfs_com_cascata` **único** (no concern); behavior-preserving.
-- [ ] **Sem regressão:** suíte **1222/4257/3F+12E/0 skip** com as **15 pré-existentes isoladas**; RuboCop 0
+- [ ] **Sem regressão:** suíte **1265/4434/3F+12E/0 skip** com as **15 pré-existentes isoladas** (piso
+  **CORRENTE**, medido após 33.1–33.3; o **pré-sprint aprovado** era 1222/4257/3F+12E); RuboCop 0
   offenses nos arquivos tocados; `zeitwerk:check` OK.
 - [ ] **`Ability` inalterada (D3)**; **`db/schema.rb` inalterado**; **nenhuma rota alterada**; nenhuma
   migration; **nenhuma ADR nova criada**.
