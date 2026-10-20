@@ -346,8 +346,11 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
   derruba um teste**, para que o guard não vire código morto.
 - **Rastreabilidade:** artefato de aprovação §5 T4/T5 + §2.1 (fail-closed × fail-open) + §7.1 (D2).
 - **Estimativa:** **1 ponto** | **Atribuição:** Dev 1 | **Dependências:** **33.1**.
-- **Arquivos tocados:** **novo** `api-ponto/test/controllers/admin/cascata_enforcement_test.rb` (ou o arquivo
-  do 33.2, se o projeto preferir concentrar).
+- **Arquivos tocados:** **`api-ponto/test/controllers/admin/cascata_enforcement_test.rb`** — **ESTENDIDO, não
+  recriado** (reconciliação de escopo, ver §Notas (33.4)): o arquivo foi entregue pela **33.1** e já cobria T4
+  (fail-closed sob `raise`) e T5 (`log` → não levanta + UM WARN). O delta real da 33.4 é o **endurecimento de
+  T5** (o WARN é o do guard, não espúrio) + a **prova de não-vacuidade por mutation testing** (executada pelo
+  Code Specialist e registrada em §Notas (33.4); o projeto não tem framework de mutation testing).
 - **Escopo (o que ENTRA):**
   - **T4 — fail-closed:** controller anônimo sem declaração + `FREQUENCIA_CASCATA_ENFORCEMENT=raise` → **levanta**.
   - **T5 — log:** mesmo cenário em `log` → **não levanta**, emite **WARN** (spy no `Rails.logger`).
@@ -356,13 +359,22 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
     predicado da flag (`log`/`raise`) ⇒ T5 falha.
 - **Escopo (o que NÃO ENTRA):** testes de conteúdo (33.3); drift de rota/CI além do guard.
 - **Critérios de aceite (testáveis):**
-  - [ ] T4 e T5 verdes; reproduzem o delta `log` × `raise` (única diferença: levantar × WARN).
-  - [ ] As 3 mutações acima derrubam, cada uma, o teste correspondente (não-vacuidade provada).
-  - [ ] **Sem `remove_method`:** stubs de ENV/logger via `test/support/class_method_stub_helper.rb`
+  - [x] T4 e T5 verdes; reproduzem o delta `log` × `raise` (única diferença: levantar × WARN).
+  - [x] As 3 mutações acima derrubam, cada uma, o teste correspondente (não-vacuidade provada — ver §Notas (33.4)).
+  - [x] **Sem `remove_method`:** stubs de ENV/logger via `test/support/class_method_stub_helper.rb`
     (save/restore no `ensure`).
-  - [ ] **Sem regressão:** suíte permanece **1265/4434/3F+12E/0 skip** (as 15 isoladas) — **piso CORRENTE**
+  - [x] **Sem regressão:** suíte permanece **1265/4434/3F+12E/0 skip** (as 15 isoladas) — **piso CORRENTE**
     (o pré-sprint aprovado era 1222/4257; as 33.1–33.3 somaram +43 runs/+177 assertivas); RuboCop/Zeitwerk OK.
-- **Status:** ⬜ Pendente
+- **Status:** ✅ **Implementada (2026-10-16)** — testes do guard (T4/T5) **endurecidos + não-vacuidade provada
+  por mutation testing** no working tree (sem commit — `COMMIT_MODE=manual`). Arquivo estendido:
+  `api-ponto/test/controllers/admin/cascata_enforcement_test.rb` (**17 testes / 90 assertivas**, +3 assertivas
+  vs. a 33.1). Mutações medidas: **(i)** guard neutralizado → **6F**; **(ii)** hook `included do` removido →
+  **4F** (33.2) + **2F** (33.1); **(iii)** predicado da flag trocado no PORO → **6F + 1E** (T5 morto).
+  Review **0 blockers** (`docs/quality/review_report_33_4.md`), que **reproduziu as 3 mutações** (números
+  idênticos); correção **M1** aplicada (endurecimento também no wiring test). Suíte
+  **1265/4437/3F+12E/0 skip** (as 15 pré-existentes; +3 assertivas); RuboCop 0; zeitwerk OK; `app/**`,
+  `ability.rb`, schema e rotas **intocados** (mutações restauradas — md5 idêntico). Ver §"Notas de
+  implementação (33.4)".
 
 ### Área — 4. DRY correlato (D5)
 
@@ -489,7 +501,7 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 | **33.1** | Camada 1 — contrato de postura + guard fail-closed (runtime) | **2** | nenhuma | código (toca autorização) | ✅ Implementada (2026-10-15) |
 | **33.2** | Camada 2 — meta-teste de drift + assert recíproco (build) | **2** | **33.1** | testes | ✅ Implementada (2026-10-15) |
 | **33.3** | Camada 2 — testes de conteúdo por tela + revisão de expectativa | **2** | **33.1** | testes | ✅ Implementada (2026-10-15) |
-| **33.4** | Guard runtime `log` × `raise` + mutation testing | **1** | **33.1** | testes | ⬜ Pendente |
+| **33.4** | Guard runtime `log` × `raise` + mutation testing | **1** | **33.1** | testes | ✅ Implementada (2026-10-16) |
 | **33.5** | DRY `incluir_cpfs_com_cascata` → concern (D5) | **1** | **33.1** | refatoração (behavior-preserving) | ⬜ Pendente |
 
 **Total comprometido:** **8 pontos** (dentro da faixa aprovada **5–8 pt**). **1 dev, execução sequencial.**
@@ -583,6 +595,9 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
 | 2026-10-15 | **Correções A1/M1/B2 aplicadas** no working tree; **sem commit** | Placeholders renomeados + assert de estado (`/parcial` assere o *empty-state*, não-vácuo) + TO-DO; `/time_records` e `/dashboard` renomeados para o que de fato guardam; afirmação inflada "8 telas" corrigida no doc — `cascata_conteudo_test.rb` **9/40/0F/0E**; suíte **1265/4433/3F+12E**; RuboCop 0 |
 | 2026-10-15 | **Bug Finder** na 33.3 (`docs/quality/bug_report_33_3.md`) | **0 crítico / 0 alto**; **1 🟡** (Bug 1: `/frequencia_por_orgao` **cego a SUBSTITUIÇÃO** — mutação `cpfs = visíveis` passava) + 3 ⚪; **corrigiu o review** (B1: `assert_select text:` é igualdade EXATA, não substring) |
 | 2026-10-15 | **Correções Bug 1 + Obs-2 aplicadas** no working tree; **sem commit** | `/frequencia_por_orgao` ganha **visível de outro órgão** (mutação `cpfs = visíveis` agora **falha**: 1≠2); `/time_records` ganha ator **com CPF visível a si** (stub de login Pessoas) + assert contra empty-state — `cascata_conteudo_test.rb` **9/41/0F/0E** (estável em seeds 1/999); suíte **1265/4434/3F+12E**; RuboCop 0 |
+| 2026-10-16 | **Code Specialist implementa a 33.4** (endurecimento de T5 + mutation testing dos pontos de decisão) no working tree; **sem commit** (`COMMIT_MODE=manual`) | Reconciliação: arquivo da 33.1 **estendido** (não recriado); T5 endurecido (WARN é do guard, não espúrio) — `cascata_enforcement_test.rb` **17/89/0F/0E** (+2 assertivas). Mutações medidas: **(i)** guard neutralizado → **6F**; **(ii)** hook `included do` removido → **4F** (33.2) + **2F** (33.1); **(iii)** predicado da flag no PORO trocado → **6F + 1E** (T5 morto). Suíte **1265/4436/3F+12E/0 skip**; RuboCop 0; zeitwerk OK; `app/**`/`ability.rb`/schema/rotas intocados (mutações restauradas — md5 idêntico) |
+| 2026-10-16 | **Code Reviewer** na 33.4 (`docs/quality/review_report_33_4.md`) — **reexecutou as 3 mutações** | **0 blockers**; 🟡 M1 (endurecimento ficara só no T5 unitário, não no wiring) + 2 ⚪ + 2 💡; números das mutações **bateram exatamente** com o reportado |
+| 2026-10-16 | **Correção M1 aplicada** no working tree; **sem commit** | Wiring test também prova que o WARN é do guard (filtra a linha do guard, não conta todos os WARNs) — `cascata_enforcement_test.rb` **17/90/0F/0E**; suíte **1265/4437/3F+12E**; RuboCop 0 |
 
 ## Notas de implementação (33.1) — plano × código real
 
@@ -784,3 +799,64 @@ por colidir com a migração de roles da 30.9b a 87,9%). Concretamente:
    linha da Sprint 33 (`feat/sprint-33-camada-2-meta-teste-drift` @ `86da982`, que contém a 33.1 e a 33.2 —
    a dependência declarada). A `develop` está atrás e não contém a 33.1; preservou-se a base efetiva da
    sprint. Branch nova: `feat/sprint-33-camada-2-conteudo-por-tela`.
+
+## Notas de implementação (33.4) — reconciliação de escopo + mutation testing
+
+> **RECONCILIAÇÃO (feita ANTES de escrever código).** O `iteration_33.md` descrevia a 33.4 como um **novo**
+> `cascata_enforcement_test.rb`; esse arquivo **já existia**, entregue pela **33.1** (17 testes / 87
+> assertivas). Logo a 33.4 **ESTENDE** o arquivo (não o recria) — decisão registrada; motivo: recriar
+> duplicaria os testes de T4/T5 já verdes e criaria uma segunda superfície para a mesma decisão (anti-DRY).
+
+1. **Mapeamento de lacunas (o que a 33.1 já cobria × o delta da 33.4):**
+   - **T4 — fail-closed sob `raise`:** **JÁ COBERTO** pela 33.1, em 4 testes — "controller sem postura sob
+     raise levanta", "fail-closed independe de `FREQUENCIA_AUTORIZACAO_CASCATA` (off/shadow/on)", "postura
+     não é herdada por subclasse" e o wiring de ACTION real (`CascataEnforcementWiringTest`). **Não
+     duplicado.**
+   - **T5 — `log` → não levanta + UM WARN:** **JÁ COBERTO** pela 33.1, em 2 testes ("sob log NÃO levanta e
+     emite UM warn", "log e raise produzem a MESMA mensagem") + o wiring. **Reforçado** (não duplicado) —
+     ver item 3.
+   - **Mutation testing:** **GAP REAL** — inexistente. É o núcleo da 33.4 (itens 4–6).
+2. **Endurecimento de T5 (assert fraco → forte) — aplicado nos DOIS pontos.** O assert de "o WARN é o do
+   guard" era **indireto**: media `io.string.lines.select { WARN } == 1` e o nome da classe em `io.string`
+   **inteiro** — se qualquer linha espúria carregasse o nome da classe, passaria. Agora o teste assere, na
+   **linha do WARN**, o nome da classe **E** o marcador da mensagem de `verificar_postura_cascata`
+   (`"sem postura de cascata declarada"`) — provando que a emissão vem da decisão sob teste. Feito no **T5
+   unitário** e, na correção **M1 do review 33.4**, também no **`CascataEnforcementWiringTest`** (o caminho
+   mais realista, pela cadeia de callbacks) — que mantinha o assert fraco. No wiring, filtra-se a **linha do
+   guard** em vez de contar todos os WARNs (um request completo pode logar outros).
+3. **Stubs/ENV/logger:** sem `remove_method`. `ENV` via `com_env` (save/restore no `ensure`); logger via
+   `with_logger` (`Rails.logger = Logger.new(StringIO)`, restaurado no `ensure`) — idioma já usado na 33.1.
+4. **Mutation testing — prova de NÃO-VACUIDADE (o projeto não tem framework de mutation testing):** a prova
+   são as **mutações reais executadas** sobre `app/**`, cada uma **restaurada** (md5 idêntico ao baseline).
+   As 3 mutações foram aplicadas **uma a uma** (backup em `/tmp`, edição, execução do teste focado,
+   restauração por `cp` + conferência de md5):
+   - **(i) Neutralizar o guard** (`Admin::ApplicationController#verificar_postura_cascata` → `return` no topo,
+     no-op sempre): **6 failures** em `cascata_enforcement_test.rb` — os 3 testes de T4 + o wiring + "log e
+     raise produzem a MESMA mensagem" + o T5 endurecido (sem WARN emitido). Alvo exigido: **T4 cai. ✅**
+   - **(ii) Remover o hook `included do` do concern** `FrequenciaAuthorization` (os `:coberto` deixam de
+     declarar): **4 failures** em `cascata_cobertura_test.rb` (33.2) — "T2 a árvore real não tem drift",
+     "T2 injetar sensível sem postura", "T3 todo `:coberto` inclui o concern", "T1 contraprova" — **e 2
+     failures** em `cascata_enforcement_test.rb` ("no-op para `:coberto`", "todo `Admin::*` declara
+     postura"). Alvo exigido: **T2 (33.2) cai. ✅**
+   - **(iii) Trocar o predicado da flag no PORO** `FrequenciaCascataEnforcement` (`log?` passa a ler
+     `modo == :raise`): **6 failures + 1 error** em `cascata_enforcement_test.rb` — incluindo o T5 endurecido,
+     que **erra** com `CascataNaoDeclaradaError` (o guard levanta em `log`). Alvo exigido: **T5 cai. ✅**
+   - **Prova de restauração:** `git diff --stat -- app/` **vazio** ao final; md5 de
+     `application_controller.rb`/`frequencia_authorization.rb`/`frequencia_cascata_enforcement.rb` **idêntico**
+     ao baseline. `ability.rb`/`db/schema.rb`/rotas **intocados** (`git status` limpo fora do ruído
+     pré-existente de `config/`).
+5. **Nenhum bug de produção revelado** pelas mutações — o guard, o concern e o PORO comportam-se conforme
+   projetado; a 33.4 não alterou `app/**` como entrega.
+6. **Números medidos (finais):** focado **17 runs / 90 assertivas / 0F / 0E / 0 skips**; suíte completa
+   **1265 runs / 4437 assertivas / 3 failures / 12 errors / 0 skips** (as **15 pré-existentes** isoladas;
+   +3 assertivas vs. o piso 1265/4434 — **sem** run novo). RuboCop **0 offenses** no arquivo tocado;
+   `zeitwerk:check` **OK**.
+8. **Review 33.4 (`review_report_33_4.md`) — 0 blockers; 🟡 M1 corrigido.** O reviewer **reproduziu as 3
+   mutações** e os números bateram **exatamente** (i=6F; ii=4F+2F; iii=6F+1E) — a prova de não-vacuidade é
+   **crível**. M1: o endurecimento de T5 tinha ficado **só no teste unitário**, deixando o **wiring test**
+   (cadeia real de callbacks) com o assert fraco — corrigido. Observação ⚪ (registrada, não bloqueante):
+   a 33.4 rodou sobre a **branch da 33.3**, sem branch própria (ver item 7).
+7. **Branch/entrega:** a tarefa rodou sobre a branch de integração da Sprint 33
+   `feat/sprint-33-camada-2-conteudo-por-tela` @ `2b92550` (que já contém 33.1+33.2+33.3) — a base efetiva
+   da sprint, **não** a `develop` (que está ~89 commits atrás e não contém a 33.1). **Sem commit/push**
+   (`COMMIT_MODE=manual`).
