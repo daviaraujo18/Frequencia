@@ -3,6 +3,16 @@ require "test_helper"
 # Tarefa 33.1 (Sprint 33) — Camada 1 (runtime): testes do contrato de declaração
 # de postura + guard fail-closed (`Admin::ApplicationController#verificar_postura_cascata`).
 #
+# Tarefa 33.4 (Sprint 33) — ESTENDE este arquivo (não recria): a 33.1 já entregava
+# T4 (fail-closed sob `raise`) e T5 (`log` → não levanta + UM WARN). O delta da
+# 33.4 é (a) o ENDURECIMENTO de T5 (prova que o WARN é o do guard, não espúrio) e
+# (b) a prova de NÃO-VACUIDADE por mutation testing — as 3 mutações (neutralizar
+# o guard; remover o hook `included do` do concern; trocar o predicado da flag no
+# PORO) foram executadas sobre `app/**` e cada uma derruba o teste correspondente.
+# O projeto não tem framework de mutation testing: a prova são os NÚMEROS medidos,
+# registrados em `docs/progress/iteration_33.md` §Notas (33.4), no idiom dos
+# reviews anteriores (29.3/29.6/32.1/32.2).
+#
 # Cobre cada critério de aceite testável da 33.1:
 #   - controller sem postura sob `raise` → levanta `CascataNaoDeclaradaError`;
 #   - `log` ≠ `raise`: mesmo cenário sob `log` → NÃO levanta, emite UM WARN;
@@ -61,14 +71,19 @@ module Admin
     # ------------------------------------------------------------------
     # (2) `log` ≠ `raise`: NÃO levanta, emite um WARN com o nome da classe
     # ------------------------------------------------------------------
-    test "mesmo controller sob log NAO levanta e emite UM warn com o nome da classe" do
+    test "mesmo controller sob log NAO levanta e emite UM warn do guard (nao espurio)" do
       com_enforcement("log") do
         with_logger do |io|
           guard(Admin::SemPosturaTestStubController) # não deve levantar
 
           warns = io.string.lines.select { |linha| linha.include?("WARN") }
           assert_equal 1, warns.size, "deve emitir exatamente um WARN"
-          assert_match "Admin::SemPosturaTestStubController", io.string
+          # 33.4 (endurecimento): o único WARN TEM de ser o do guard — carrega o
+          # nome da classe E o marcador da mensagem de `verificar_postura_cascata`.
+          # Um WARN espúrio (de outra origem no mesmo logger) não satisfaz este
+          # assert, o que prova que a emissão vem da decisão sob teste.
+          assert_match "Admin::SemPosturaTestStubController", warns.first
+          assert_match "sem postura de cascata declarada", warns.first
         end
       end
     end
@@ -309,7 +324,18 @@ module Admin
           with_logger do |io|
             get "/sem_postura_wiring"
             assert_response :success
-            assert_match "Admin::SemPosturaWiringController", io.string
+
+            # 33.4 (endurecimento — M1 do review 33.4): a cadeia REAL de callbacks
+            # também prova que o WARN vem do guard. Um request completo pode logar
+            # OUTROS WARNs, então filtramos a linha do GUARD (nome da classe +
+            # marcador), em vez de contar todos os WARNs do logger.
+            warns_do_guard = io.string.lines.select do |linha|
+              linha.include?("WARN") && linha.include?("Admin::SemPosturaWiringController")
+            end
+            assert_equal 1, warns_do_guard.size,
+                         "o guard deve emitir exatamente um WARN para a classe sem postura"
+            assert_match "sem postura de cascata declarada", warns_do_guard.first,
+                         "o WARN tem de ser o do guard (`verificar_postura_cascata`), não espúrio"
           end
         end
       end
